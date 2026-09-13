@@ -197,7 +197,7 @@ async function onLogout() {
   loggingOut.value = true;
   try {
     await auth.logout();
-    await navigateTo('/login');
+    await navigateTo('/');
   } finally {
     loggingOut.value = false;
   }
