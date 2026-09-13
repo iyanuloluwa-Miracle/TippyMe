@@ -91,18 +91,13 @@
           <label for="signup-password" class="block text-sm text-cheer-ink">
             Password
           </label>
-          <input
+          <UiPasswordInput
             id="signup-password"
             v-model="password"
-            type="password"
-            name="password"
             autocomplete="new-password"
-            required
-            minlength="8"
             placeholder="At least 8 characters"
             :disabled="pending"
-            class="mt-1.5 w-full rounded-xl border border-black/10 bg-[#f7f4ff] px-3.5 py-2.5 text-base text-cheer-ink placeholder:text-cheer-ink/35 transition-colors duration-200 focus:border-cheer-leaf/40 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cheer-leaf/30 disabled:opacity-60"
-          >
+          />
         </div>
 
         <div class="flex items-center justify-between gap-3 text-sm">

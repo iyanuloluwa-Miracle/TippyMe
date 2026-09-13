@@ -116,7 +116,7 @@
             class="motion-animate motion-animate-delay-3 mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5"
             aria-label="Support totals"
           >
-            <div class="rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur-sm sm:p-5">
+            <div class="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur-sm sm:p-5">
               <p class="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white/45">
                 Successful tips
               </p>
@@ -124,7 +124,7 @@
                 {{ dashboard.totals.successfulTipCount }}
               </p>
             </div>
-            <div class="rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur-sm sm:p-5">
+            <div class="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur-sm sm:p-5">
               <p class="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white/45">
                 Link views
               </p>
@@ -135,7 +135,7 @@
                 {{ dashboard.linkViews?.thisWeek ?? 0 }} this week (UTC)
               </p>
             </div>
-            <div class="rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur-sm sm:p-5">
+            <div class="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur-sm sm:p-5">
               <p class="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white/45">
                 Views → tips
               </p>
@@ -150,22 +150,22 @@
                 Conversion from link views
               </p>
             </div>
-            <div class="rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur-sm sm:p-5">
+            <div class="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur-sm sm:p-5">
               <p class="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white/45">
                 {{ dashboard.totals.periodLabel }}
               </p>
-              <p class="mt-2 text-3xl font-bold tabular-nums tracking-tight">
+              <p class="mt-2 break-words text-xl font-bold leading-tight tabular-nums tracking-tight sm:text-2xl">
                 {{ formatMoney(dashboard.totals.periodSupport, dashboard.currency) }}
               </p>
               <p class="mt-1.5 text-xs text-white/45">
                 {{ dashboard.totals.periodTipCount }} tip{{ dashboard.totals.periodTipCount === 1 ? '' : 's' }} (UTC)
               </p>
             </div>
-            <div class="rounded-2xl border border-cheer-mint/25 bg-cheer-mint/15 p-4 backdrop-blur-sm sm:p-5">
+            <div class="min-w-0 overflow-hidden rounded-2xl border border-cheer-mint/25 bg-cheer-mint/15 p-4 backdrop-blur-sm sm:p-5">
               <p class="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-cheer-mint/80">
                 Payout status
               </p>
-              <p class="mt-2 text-lg font-bold tracking-tight text-cheer-mint sm:text-xl">
+              <p class="mt-2 break-words text-lg font-bold tracking-tight text-cheer-mint sm:text-xl">
                 {{ settlementLabel }}
               </p>
               <p class="mt-1.5 text-xs text-white/45">
