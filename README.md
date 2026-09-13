@@ -38,13 +38,7 @@ Health check: [http://localhost:3000/api/health](http://localhost:3000/api/healt
 | `npm run build` | Production build |
 | `npm run db:seed` | Seed demo creators |
 
-## Production
 
-- [docs/PHASE-15-PRODUCTION.md](./docs/PHASE-15-PRODUCTION.md)
-- [docs/production-checklist.md](./docs/production-checklist.md)
-
-Docker: `Dockerfile` + `docker-compose.prod.yml`.  
-Bachs webhooks: `https://<domain>/api/webhooks/bachs`.
 
 ## Docs
 
