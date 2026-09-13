@@ -23,8 +23,9 @@ export default defineNuxtConfig({
     bachsWebhookSecret: process.env.BACHS_WEBHOOK_SECRET || '',
     bachsPlatformFeePercent: process.env.BACHS_PLATFORM_FEE_PERCENT || '5',
     resendApiKey: process.env.RESEND_API_KEY || '',
-    resendFromEmail:
-      process.env.RESEND_FROM_EMAIL || 'TippyMe <noreply@example.com>',
+    // Empty default so Docker/Pxxl builds do not bake example.com into the image.
+    // Runtime: set RESEND_FROM_EMAIL (preferred) or NUXT_RESEND_FROM_EMAIL.
+    resendFromEmail: process.env.RESEND_FROM_EMAIL || '',
     byteshipApiKey: process.env.BYTESHIP_API_KEY || '',
     openrouterApiKey: process.env.OPENROUTER_API_KEY || '',
     openrouterApiBaseUrl:

@@ -181,12 +181,16 @@ export function getServerEnv(): ServerEnv {
         (config.bachsPlatformFeePercent as string) ||
         process.env.BACHS_PLATFORM_FEE_PERCENT
       )?.trim() || '5',
+    // Prefer process.env: Nuxt bakes runtimeConfig at build; Pxxl/Docker often
+    // only inject RESEND_* at runtime (NUXT_RESEND_* would also work).
     RESEND_API_KEY:
-      ((config.resendApiKey as string) || process.env.RESEND_API_KEY)?.trim() ||
+      (process.env.RESEND_API_KEY || (config.resendApiKey as string))?.trim() ||
       undefined,
     RESEND_FROM_EMAIL:
       (
-        (config.resendFromEmail as string) || process.env.RESEND_FROM_EMAIL
+        process.env.RESEND_FROM_EMAIL ||
+        process.env.NUXT_RESEND_FROM_EMAIL ||
+        (config.resendFromEmail as string)
       )?.trim() || 'TippyMe <noreply@example.com>',
     BYTESHIP_API_KEY:
       (
