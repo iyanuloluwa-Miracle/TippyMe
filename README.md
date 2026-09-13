@@ -16,7 +16,7 @@ Creator support platform for African builders — **one link** to receive tips v
 ```bash
 npm install
 cp .env.example .env
-# Set MONGODB_URI (local Mongo or Atlas)
+
 npm run db:seed
 ```
 
