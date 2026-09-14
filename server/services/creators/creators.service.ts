@@ -205,9 +205,9 @@ export class CreatorsService {
         const id = insertedId(created);
 
         if (linkRows.length > 0) {
-          await SocialLinkModel.create(
+          await SocialLinkModel.insertMany(
             linkRows.map((link) => ({ ...link, creatorId: id })),
-            { session, ordered: true },
+            { session },
           );
         }
 
@@ -376,9 +376,9 @@ export class CreatorsService {
     await withTransaction(async (session) => {
       await SocialLinkModel.deleteMany({ creatorId: profile.id }, { session });
       if (linkRows.length > 0) {
-        await SocialLinkModel.create(
+        await SocialLinkModel.insertMany(
           linkRows.map((link) => ({ ...link, creatorId: profile.id })),
-          { session, ordered: true },
+          { session },
         );
       }
     });
