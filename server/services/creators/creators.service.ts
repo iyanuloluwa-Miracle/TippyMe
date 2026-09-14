@@ -9,6 +9,7 @@ import {
   isUniqueViolation,
   toPlain,
   toPlainList,
+  uniqueViolationFields,
   useDb,
   withTransaction,
 } from '../../db';
@@ -230,14 +231,7 @@ export class CreatorsService {
 
       return toCreatorProfileDto(profile);
     } catch (err) {
-      if (isUniqueViolation(err)) {
-        throw new ApiError(
-          409,
-          'USERNAME_TAKEN',
-          'That username was just taken. Please choose another.',
-        );
-      }
-      throw err;
+      throw this.mapCreateUniqueViolation(err);
     }
   }
 
@@ -299,14 +293,7 @@ export class CreatorsService {
 
       return toCreatorProfileDto(updated);
     } catch (err) {
-      if (isUniqueViolation(err)) {
-        throw new ApiError(
-          409,
-          'USERNAME_TAKEN',
-          'That username was just taken. Please choose another.',
-        );
-      }
-      throw err;
+      throw this.mapCreateUniqueViolation(err);
     }
   }
 
@@ -846,6 +833,33 @@ export class CreatorsService {
       return new ApiError(400, reason, usernameValidationMessage(reason));
     }
     return new ApiError(409, 'USERNAME_TAKEN', 'That username is already taken.');
+  }
+
+  /** Map Mongo E11000 to the right API error — never blame username for other keys. */
+  private mapCreateUniqueViolation(err: unknown): never {
+    if (!isUniqueViolation(err)) {
+      throw err;
+    }
+    const fields = uniqueViolationFields(err);
+    if (fields.includes('userId')) {
+      throw new ApiError(
+        409,
+        'PROFILE_EXISTS',
+        'You already have a creator profile.',
+      );
+    }
+    if (fields.includes('username') || fields.length === 0) {
+      throw new ApiError(
+        409,
+        'USERNAME_TAKEN',
+        'That username was just taken. Please choose another.',
+      );
+    }
+    throw new ApiError(
+      409,
+      'CONFLICT',
+      'That update conflicts with existing data. Please try again.',
+    );
   }
 
   private normalizeTipAmounts(amounts: string[]): string[] {

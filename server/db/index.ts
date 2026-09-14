@@ -69,6 +69,33 @@ export function isUniqueViolation(err: unknown): boolean {
   );
 }
 
+/** Field names from a Mongo duplicate-key (E11000) error, if present. */
+export function uniqueViolationFields(err: unknown): string[] {
+  if (!isUniqueViolation(err) || typeof err !== 'object' || err === null) {
+    return [];
+  }
+
+  const keyPattern = (err as { keyPattern?: Record<string, unknown> })
+    .keyPattern;
+  if (keyPattern && typeof keyPattern === 'object') {
+    return Object.keys(keyPattern);
+  }
+
+  const message =
+    'message' in err && typeof (err as { message?: unknown }).message === 'string'
+      ? (err as { message: string }).message
+      : '';
+  const indexMatch = message.match(/index:\s+[\w.]*?(\w+)_1\b/i);
+  if (indexMatch?.[1]) {
+    return [indexMatch[1]];
+  }
+  const dupKeyMatch = message.match(/dup key:\s*\{\s*(\w+)\s*:/i);
+  if (dupKeyMatch?.[1]) {
+    return [dupKeyMatch[1]];
+  }
+  return [];
+}
+
 export {
   UserModel,
   CreatorProfileModel,

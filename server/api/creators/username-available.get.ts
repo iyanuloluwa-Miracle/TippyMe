@@ -2,6 +2,8 @@ import { CreatorsService } from '../../services/creators/creators.service';
 import { defineApiHandler } from '../../lib/define-api';
 
 export default defineApiHandler(async (event) => {
+  // Availability must never be cached — stale TAKEN answers block real claims.
+  setHeader(event, 'Cache-Control', 'no-store');
   const query = getQuery(event);
   const username = typeof query.username === 'string' ? query.username : '';
   const creators = new CreatorsService();

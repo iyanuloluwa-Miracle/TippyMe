@@ -335,17 +335,17 @@
 
       <div class="flex flex-col gap-3 sm:flex-row">
         <NuxtLink
-          v-if="createdProfile"
-          :to="createdProfile.publicPath"
+          to="/dashboard"
           class="inline-flex flex-1 items-center justify-center rounded-full bg-cheer-leaf px-6 py-2.5 text-sm font-semibold text-white"
         >
-          Open Tippy page
+          Go to dashboard
         </NuxtLink>
         <NuxtLink
-          to="/dashboard"
+          v-if="createdProfile"
+          :to="createdProfile.publicPath"
           class="inline-flex flex-1 items-center justify-center rounded-full border border-black/10 px-6 py-2.5 text-sm font-semibold text-cheer-ink"
         >
-          Go to dashboard
+          Open Tippy page
         </NuxtLink>
       </div>
     </section>
@@ -358,6 +358,7 @@ import { ApiClientError } from '~/services/api';
 import { normalizeClaimUsername } from '~/utils/username-claim';
 
 definePageMeta({
+  layout: 'auth',
   middleware: 'auth',
 });
 
@@ -381,6 +382,7 @@ const username = ref('');
 const usernameAvailable = ref(false);
 const usernameStatus = ref<string | null>(null);
 let usernameTimer: ReturnType<typeof setTimeout> | null = null;
+let usernameCheckSeq = 0;
 
 const displayName = ref('');
 const bio = ref('');
@@ -446,7 +448,7 @@ const stepDescription = computed(() => {
     case 'support':
       return 'Currency and suggested amounts for your page.';
     case 'done':
-      return 'Preview below — payments come in a later phase.';
+      return 'Share your page, or jump into the dashboard.';
     default:
       return '';
   }
@@ -516,13 +518,17 @@ function onUsernameInput() {
 }
 
 async function checkUsername() {
-  if (username.value.length < 3) {
+  const seq = ++usernameCheckSeq;
+  const candidate = username.value;
+  if (candidate.length < 3) {
     usernameStatus.value = 'At least 3 characters.';
     usernameAvailable.value = false;
     return;
   }
   try {
-    const result = await api.checkUsername(username.value);
+    const result = await api.checkUsername(candidate);
+    // Ignore stale responses from earlier keystrokes.
+    if (seq !== usernameCheckSeq || candidate !== username.value) return;
     if (result.available) {
       usernameAvailable.value = true;
       usernameStatus.value = 'Available';
@@ -536,6 +542,7 @@ async function checkUsername() {
             : 'Invalid username';
     }
   } catch {
+    if (seq !== usernameCheckSeq || candidate !== username.value) return;
     usernameAvailable.value = false;
     usernameStatus.value = 'Could not check availability';
   }
@@ -605,6 +612,9 @@ function mapError(err: unknown): string {
     if (err.errorCode === 'USERNAME_TAKEN' || err.errorCode === 'RESERVED') {
       return err.message;
     }
+    if (err.errorCode === 'PROFILE_EXISTS') {
+      return 'You already have a Tippy page. Opening your dashboard…';
+    }
     if (err.statusCode >= 500) {
       return 'Something went wrong. Please try again.';
     }
@@ -637,12 +647,28 @@ async function submitOnboarding() {
     });
 
     createdProfile.value = profile;
-    if (auth.user) {
+    // Refresh from server so middleware sees hasCreatorProfile reliably.
+    await auth.fetchMe();
+    if (auth.user && !auth.user.hasCreatorProfile) {
       auth.setUser({ ...auth.user, hasCreatorProfile: true });
     }
-    await navigateTo(profile.publicPath);
+    step.value = 'done';
   } catch (err) {
     error.value = mapError(err);
+    if (err instanceof ApiClientError && err.errorCode === 'PROFILE_EXISTS') {
+      await auth.fetchMe();
+      await navigateTo('/dashboard');
+      return;
+    }
+    if (
+      err instanceof ApiClientError &&
+      (err.errorCode === 'USERNAME_TAKEN' || err.errorCode === 'RESERVED')
+    ) {
+      step.value = 'username';
+      usernameAvailable.value = false;
+      usernameStatus.value =
+        err.errorCode === 'RESERVED' ? 'Reserved — pick another' : 'Already taken';
+    }
   } finally {
     pending.value = false;
   }

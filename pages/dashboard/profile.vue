@@ -454,6 +454,7 @@ const originalUsername = ref('');
 const usernameOk = ref(true);
 const usernameStatus = ref<string | null>(null);
 let usernameTimer: ReturnType<typeof setTimeout> | null = null;
+let usernameCheckSeq = 0;
 
 const socialLinks = ref<{ platform: SocialPlatform; url: string }[]>([]);
 const supportMessage = ref('');
@@ -583,18 +584,21 @@ function onUsernameInput() {
 }
 
 async function checkUsername() {
-  if (username.value === originalUsername.value) {
+  const seq = ++usernameCheckSeq;
+  const candidate = username.value;
+  if (candidate === originalUsername.value) {
     usernameOk.value = true;
     usernameStatus.value = null;
     return;
   }
-  if (username.value.length < 3) {
+  if (candidate.length < 3) {
     usernameStatus.value = 'At least 3 characters.';
     usernameOk.value = false;
     return;
   }
   try {
-    const result = await api.checkUsername(username.value);
+    const result = await api.checkUsername(candidate);
+    if (seq !== usernameCheckSeq || candidate !== username.value) return;
     if (result.available) {
       usernameOk.value = true;
       usernameStatus.value = 'Available';
@@ -608,6 +612,7 @@ async function checkUsername() {
             : 'Invalid username';
     }
   } catch {
+    if (seq !== usernameCheckSeq || candidate !== username.value) return;
     usernameOk.value = false;
     usernameStatus.value = 'Could not check availability';
   }

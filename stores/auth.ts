@@ -15,6 +15,7 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async fetchMe() {
       const api = useApi();
+      const previousUser = this.user;
       this.status = 'loading';
       try {
         const { user } = await api.getMe();
@@ -24,6 +25,12 @@ export const useAuthStore = defineStore('auth', {
         if (err instanceof ApiClientError && err.statusCode === 401) {
           this.user = null;
           this.status = 'anonymous';
+          return;
+        }
+        // Keep an existing session on transient API failures.
+        if (previousUser) {
+          this.user = previousUser;
+          this.status = 'authenticated';
           return;
         }
         this.user = null;

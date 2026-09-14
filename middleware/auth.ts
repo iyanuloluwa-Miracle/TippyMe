@@ -21,6 +21,17 @@ export default defineNuxtRouteMiddleware(async (to) => {
     to.path !== '/onboarding' &&
     !to.path.startsWith('/onboarding/')
   ) {
-    return navigateTo('/onboarding');
+    // Client flag can lag right after onboarding — confirm before blocking.
+    try {
+      const api = useApi();
+      const { profile } = await api.getMyCreator();
+      if (profile && auth.user) {
+        auth.setUser({ ...auth.user, hasCreatorProfile: true });
+      } else if (!profile) {
+        return navigateTo('/onboarding');
+      }
+    } catch {
+      return navigateTo('/onboarding');
+    }
   }
 });
