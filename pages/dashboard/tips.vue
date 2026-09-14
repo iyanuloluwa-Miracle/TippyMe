@@ -5,10 +5,10 @@
         <p class="text-[0.7rem] font-bold uppercase tracking-[0.18em] text-cheer-leaf">
           Workspace
         </p>
-        <h1 class="mt-2 text-3xl font-bold tracking-tight text-cheer-ink sm:text-4xl">
+        <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-cheer-ink sm:text-5xl">
           Tips
         </h1>
-        <p class="mt-2 max-w-xl text-sm font-semibold text-cheer-ink/85">
+        <p class="mt-2 max-w-xl text-base font-semibold text-cheer-ink/85">
           Every tip on your Tippy page — filter by status and browse your full history.
         </p>
       </div>

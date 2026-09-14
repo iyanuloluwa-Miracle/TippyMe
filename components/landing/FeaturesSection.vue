@@ -33,10 +33,10 @@
             >
           </div>
           <div class="flex flex-1 flex-col p-5 sm:p-6">
-            <h3 class="text-lg font-bold tracking-tight text-cheer-ink">
+            <h3 class="text-xl font-extrabold tracking-tight text-cheer-ink">
               {{ feature.title }}
             </h3>
-            <p class="mt-2 text-sm font-semibold leading-relaxed text-cheer-ink/90 sm:text-base">
+            <p class="mt-2 text-base font-semibold leading-relaxed text-cheer-ink/90 sm:text-lg">
               {{ feature.description }}
             </p>
           </div>

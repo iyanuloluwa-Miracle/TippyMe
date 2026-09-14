@@ -13,16 +13,16 @@
         decoding="async"
       />
       <div class="min-w-0">
-        <cite class="block truncate text-base font-semibold not-italic tracking-tight text-cheer-ink">
+        <cite class="block truncate text-lg font-bold not-italic tracking-tight text-cheer-ink">
           {{ testimonial.name }}
         </cite>
-        <p class="truncate text-sm text-cheer-ink/50">
+        <p class="truncate text-sm font-semibold text-cheer-ink/55">
           {{ testimonial.role }}, {{ testimonial.location }}
         </p>
       </div>
     </div>
 
-    <p class="mt-5 flex-1 text-base font-semibold leading-relaxed text-cheer-ink/90">
+    <p class="mt-5 flex-1 text-lg font-semibold leading-relaxed text-cheer-ink/90">
       “{{ testimonial.quote }}”
     </p>
   </article>

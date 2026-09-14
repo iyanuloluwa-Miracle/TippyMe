@@ -74,12 +74,12 @@
                 </div>
               </div>
 
-              <h1 class="mt-5 max-w-xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-[3.35rem] lg:leading-[1.05]">
+              <h1 class="mt-5 max-w-xl text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-[3.35rem] lg:leading-[1.05]">
                 {{ dashboard.displayName }}
               </h1>
               <NuxtLink
                 to="/dashboard/profile"
-                class="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-cheer-mint/90 transition hover:text-cheer-mint"
+                class="mt-3 inline-flex items-center gap-1.5 text-base font-semibold text-cheer-mint/90 transition hover:text-cheer-mint"
               >
                 Edit profile
                 <span aria-hidden="true">→</span>
@@ -102,12 +102,12 @@
             <p class="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-white/45">
               Total successful support
             </p>
-            <p class="mt-2 text-5xl font-bold tabular-nums tracking-tight sm:text-6xl lg:text-[4.25rem] lg:leading-none">
+            <p class="mt-2 text-5xl font-extrabold tabular-nums tracking-tight sm:text-6xl lg:text-[4.25rem] lg:leading-none">
               {{ formatMoney(dashboard.totals.successfulSupport, dashboard.currency) }}
             </p>
-            <p class="mt-3 text-sm text-white/50">
+            <p class="mt-3 text-base text-white/50">
               Across
-              <span class="font-semibold text-cheer-mint">{{ dashboard.totals.successfulTipCount }}</span>
+              <span class="font-bold text-cheer-mint">{{ dashboard.totals.successfulTipCount }}</span>
               successful tip{{ dashboard.totals.successfulTipCount === 1 ? '' : 's' }}
             </p>
           </div>
@@ -209,11 +209,11 @@
                   <path d="M7 15h3" />
                 </svg>
               </span>
-              <h2 class="text-xl font-bold tracking-tight text-cheer-ink">
+              <h2 class="text-2xl font-extrabold tracking-tight text-cheer-ink">
                 Payout &amp; settlement
               </h2>
             </div>
-            <p class="mt-3 text-sm font-semibold leading-relaxed text-cheer-ink/85">
+            <p class="mt-3 text-base font-semibold leading-relaxed text-cheer-ink/85">
               {{ dashboard.settlement.message }}
             </p>
             <div class="mt-4 flex flex-wrap gap-2.5">
@@ -300,10 +300,10 @@
         <p class="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-cheer-leaf">
           Support goal
         </p>
-        <h2 class="mt-1 text-xl font-bold tracking-tight text-cheer-ink">
+        <h2 class="mt-1 text-2xl font-extrabold tracking-tight text-cheer-ink">
           {{ dashboard.supportGoal.title }}
         </h2>
-        <p class="mt-2 text-sm font-semibold text-cheer-ink/85">
+        <p class="mt-2 text-base font-semibold text-cheer-ink/85">
           {{ formatMoney(dashboard.supportGoal.raisedAmount, dashboard.supportGoal.currency) }}
           of
           {{ formatMoney(dashboard.supportGoal.targetAmount, dashboard.supportGoal.currency) }}
@@ -329,13 +329,13 @@
               <p class="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-cheer-leaf">
                 Activity
               </p>
-              <h2 class="mt-1 text-xl font-bold tracking-tight text-cheer-ink">
+              <h2 class="mt-1 text-2xl font-extrabold tracking-tight text-cheer-ink">
                 Recent support
               </h2>
             </div>
             <NuxtLink
               to="/dashboard/tips"
-              class="text-sm font-semibold text-cheer-leaf transition hover:text-cheer-ink"
+              class="text-base font-semibold text-cheer-leaf transition hover:text-cheer-ink"
             >
               View all tips
               <span aria-hidden="true">→</span>
@@ -354,7 +354,7 @@
           </ul>
           <p
             v-else
-            class="mt-6 rounded-2xl bg-cheer-sand/70 px-4 py-8 text-center text-sm text-cheer-ink/55"
+            class="mt-6 rounded-2xl bg-cheer-sand/70 px-4 py-8 text-center text-base text-cheer-ink/55"
           >
             No tips yet. Share your Tippy page to get started.
           </p>
@@ -366,7 +366,7 @@
           <p class="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-cheer-leaf">
             From supporters
           </p>
-          <h2 class="mt-1 text-xl font-bold tracking-tight text-cheer-ink">
+          <h2 class="mt-1 text-2xl font-extrabold tracking-tight text-cheer-ink">
             Recent messages
           </h2>
           <ul

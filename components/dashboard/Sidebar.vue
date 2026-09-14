@@ -48,7 +48,7 @@
         v-for="link in primaryLinks"
         :key="link.to"
         :to="link.to"
-        class="group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-mint focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1228]"
+        class="group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-[0.9375rem] font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-mint focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1228]"
         :class="
           isActive(link.to)
             ? 'bg-cheer-mint text-cheer-ink shadow-[0_8px_24px_-10px_rgba(238, 230, 255,0.7)]'
@@ -99,7 +99,7 @@
       <NuxtLink
         v-if="publicPath"
         :to="publicPath"
-        class="group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold text-white/65 transition-all duration-200 hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-mint focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1228]"
+        class="group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-[0.9375rem] font-bold text-white/65 transition-all duration-200 hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-mint focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1228]"
         @click="emit('navigate')"
       >
         <span

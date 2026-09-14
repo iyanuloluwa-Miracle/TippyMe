@@ -4,27 +4,27 @@
     @submit.prevent="onSubmit"
   >
     <header class="text-center">
-      <h1 class="text-2xl font-bold tracking-tight text-cheer-ink sm:text-3xl">
+      <h1 class="text-3xl font-extrabold tracking-tight text-cheer-ink sm:text-4xl">
         {{ title }}
       </h1>
-      <p class="mt-2 text-sm font-semibold leading-relaxed text-cheer-ink/85 sm:text-base">
+      <p class="mt-2 text-base font-semibold leading-relaxed text-cheer-ink/85 sm:text-lg">
         <template v-if="step === 'email'">
           Start with your email. We’ll send a one-time code, then you set a password and claim your link.
         </template>
         <template v-else-if="step === 'otp'">
           Enter the code sent to
-          <span class="font-semibold text-cheer-ink">{{ email }}</span>.
+          <span class="font-bold text-cheer-ink">{{ email }}</span>.
         </template>
         <template v-else>
           Choose a password for
-          <span class="font-semibold text-cheer-ink">{{ email }}</span>.
+          <span class="font-bold text-cheer-ink">{{ email }}</span>.
         </template>
       </p>
     </header>
 
     <div class="mt-8 space-y-4">
       <div v-if="step === 'email'">
-        <label for="signup-email" class="block text-sm text-cheer-ink">
+        <label for="signup-email" class="block text-base font-semibold text-cheer-ink">
           Email
         </label>
         <input
@@ -42,7 +42,7 @@
 
       <template v-else-if="step === 'otp'">
         <div>
-          <label for="signup-otp" class="block text-sm text-cheer-ink">
+          <label for="signup-otp" class="block text-base font-semibold text-cheer-ink">
             Verification code
           </label>
           <input
@@ -88,7 +88,7 @@
 
       <template v-else>
         <div>
-          <label for="signup-password" class="block text-sm text-cheer-ink">
+          <label for="signup-password" class="block text-base font-semibold text-cheer-ink">
             Password
           </label>
           <UiPasswordInput
@@ -126,7 +126,7 @@
 
     <button
       type="submit"
-      class="motion-cta motion-cta-primary mt-6 inline-flex w-full items-center justify-center rounded-full bg-cheer-leaf px-6 py-2.5 text-sm font-semibold text-white transition duration-200 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+      class="motion-cta motion-cta-primary mt-6 inline-flex w-full items-center justify-center rounded-full bg-cheer-leaf px-6 py-2.5 text-base font-bold text-white transition duration-200 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
       :disabled="pending"
     >
       <template v-if="pending">
@@ -142,11 +142,11 @@
       :username="googleUsername"
     />
 
-    <p class="mt-6 text-center text-sm font-semibold text-cheer-ink/85">
+    <p class="mt-6 text-center text-base font-semibold text-cheer-ink/85">
       Already have an account?
       <NuxtLink
         to="/login"
-        class="font-semibold text-cheer-leaf transition-colors duration-200 hover:text-cheer-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf rounded-sm"
+        class="font-bold text-cheer-leaf transition-colors duration-200 hover:text-cheer-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf rounded-sm"
       >
         Log in
       </NuxtLink>

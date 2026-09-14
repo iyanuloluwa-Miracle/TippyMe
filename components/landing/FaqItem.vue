@@ -9,7 +9,7 @@
         :id="buttonId"
         @click="$emit('toggle')"
       >
-        <span class="text-base font-semibold tracking-tight text-cheer-ink sm:text-lg">
+        <span class="text-lg font-bold tracking-tight text-cheer-ink sm:text-xl">
           {{ item.question }}
         </span>
         <span
@@ -41,7 +41,7 @@
       :class="open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
     >
       <div class="overflow-hidden">
-        <p class="px-5 pb-5 text-base font-semibold leading-relaxed text-cheer-ink/90 sm:px-6">
+        <p class="px-5 pb-5 text-lg font-semibold leading-relaxed text-cheer-ink/90 sm:px-6">
           {{ item.answer }}
         </p>
       </div>

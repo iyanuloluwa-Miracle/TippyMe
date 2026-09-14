@@ -9,13 +9,13 @@
     <component
       :is="headingTag"
       :id="headingId"
-      class="mt-3 text-3xl font-bold tracking-tight text-cheer-ink sm:text-4xl"
+      class="mt-3 text-4xl font-extrabold tracking-tight text-cheer-ink sm:text-5xl"
     >
       {{ title }}
     </component>
     <p
       v-if="description"
-      class="mt-4 text-base font-semibold leading-relaxed text-cheer-ink/90 sm:text-lg"
+      class="mt-4 text-lg font-semibold leading-relaxed text-cheer-ink/90 sm:text-xl"
     >
       {{ description }}
     </p>

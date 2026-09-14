@@ -129,6 +129,14 @@ export const featureItems: readonly FeatureItem[] = [
     illustrationAlt: 'Creator dashboard showing support totals and messages',
   },
   {
+    id: 'ai-polish',
+    title: 'Polish with AI',
+    description:
+      'Turn a rough bio into clear, supporter-ready copy — and a tip CTA — when you set up your page.',
+    illustration: '/illustrations/feature-message.png',
+    illustrationAlt: 'AI polishing a creator bio into clear supporter-ready copy',
+  },
+  {
     id: 'your-amounts',
     title: 'Your suggested amounts',
     description:

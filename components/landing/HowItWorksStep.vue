@@ -13,10 +13,10 @@
       >
         Step {{ stepNumber }}
       </span>
-      <h3 class="mt-4 text-2xl font-bold tracking-tight text-cheer-ink sm:text-3xl">
+      <h3 class="mt-4 text-2xl font-extrabold tracking-tight text-cheer-ink sm:text-3xl">
         {{ step.title }}
       </h3>
-      <p class="mt-3 text-base font-semibold leading-relaxed text-cheer-ink/90 sm:text-lg">
+      <p class="mt-3 text-lg font-semibold leading-relaxed text-cheer-ink/90 sm:text-xl">
         {{ step.description }}
       </p>
     </div>

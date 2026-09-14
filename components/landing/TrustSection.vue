@@ -21,10 +21,10 @@
           :key="item.id"
           class="rounded-2xl border border-black/10 bg-white p-5 shadow-sm shadow-black/5 sm:p-6"
         >
-          <h3 class="text-lg font-bold tracking-tight text-cheer-ink">
+          <h3 class="text-xl font-extrabold tracking-tight text-cheer-ink">
             {{ item.title }}
           </h3>
-          <p class="mt-2 text-sm font-semibold leading-relaxed text-cheer-ink/90 sm:text-base">
+          <p class="mt-2 text-base font-semibold leading-relaxed text-cheer-ink/90 sm:text-lg">
             {{ item.description }}
           </p>
         </li>

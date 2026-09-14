@@ -4,10 +4,10 @@
       <p class="text-[0.7rem] font-bold uppercase tracking-[0.18em] text-cheer-leaf">
         Workspace
       </p>
-      <h1 class="mt-2 text-3xl font-bold tracking-tight text-cheer-ink sm:text-4xl">
+      <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-cheer-ink sm:text-5xl">
         Edit profile
       </h1>
-      <p class="mt-2 max-w-xl text-sm font-semibold text-cheer-ink/85">
+      <p class="mt-2 max-w-xl text-base font-semibold text-cheer-ink/85">
         Update how you appear on your Tippy page, your social links, and support settings.
       </p>
     </header>
@@ -40,7 +40,7 @@
       >
         <h2
           id="identity-heading"
-          class="text-lg font-bold tracking-tight text-cheer-ink"
+          class="text-xl font-extrabold tracking-tight text-cheer-ink"
         >
           Identity
         </h2>
@@ -181,7 +181,7 @@
       >
         <h2
           id="social-heading"
-          class="text-lg font-bold tracking-tight text-cheer-ink"
+          class="text-xl font-extrabold tracking-tight text-cheer-ink"
         >
           Social links
         </h2>
@@ -267,7 +267,7 @@
       >
         <h2
           id="support-heading"
-          class="text-lg font-bold tracking-tight text-cheer-ink"
+          class="text-xl font-extrabold tracking-tight text-cheer-ink"
         >
           Support settings
         </h2>

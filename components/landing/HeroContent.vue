@@ -1,13 +1,13 @@
 <template>
   <div class="flex flex-col items-center text-center">
     <h1
-      class="motion-animate motion-animate-delay-1 mt-4 max-w-3xl text-4xl font-bold leading-[1.1] tracking-tight text-cheer-ink sm:text-5xl lg:text-6xl"
+      class="motion-animate motion-animate-delay-1 mt-4 max-w-3xl text-4xl font-extrabold leading-[1.1] tracking-tight text-cheer-ink sm:text-5xl lg:text-6xl"
     >
       {{ title }}
     </h1>
 
     <p
-      class="motion-animate motion-animate-delay-2 mt-5 max-w-2xl text-base font-semibold leading-relaxed text-cheer-ink/90 sm:text-lg"
+      class="motion-animate motion-animate-delay-2 mt-5 max-w-2xl text-lg font-semibold leading-relaxed text-cheer-ink/90 sm:text-xl"
     >
       {{ description }}
     </p>

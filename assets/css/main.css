@@ -22,19 +22,19 @@
   }
 
   body {
-    @apply font-medium;
+    @apply font-semibold;
   }
 
   h1,
   h2 {
-    @apply font-bold;
+    @apply font-extrabold;
   }
 
   h3,
   h4,
   h5,
   h6 {
-    @apply font-semibold;
+    @apply font-bold;
   }
 
   nav {
