@@ -45,6 +45,19 @@ onMounted(() => {
   const oauthError = route.query.error;
   if (oauthError === 'google_denied') {
     error.value = 'Google sign-in was cancelled. Please try again.';
+  } else if (oauthError === 'google_state') {
+    error.value = 'Google sign-in expired. Please try again.';
+  } else if (oauthError === 'google_token') {
+    error.value =
+      'Google could not verify this app. Check Client ID/Secret and the redirect URI in Google Console.';
+  } else if (oauthError === 'google_profile' || oauthError === 'google_email') {
+    error.value =
+      'Google did not share a verified email. Use another Google account or email signup.';
+  } else if (oauthError === 'google_config') {
+    error.value = 'Google sign-in is not configured on the server.';
+  } else if (oauthError === 'google_conflict') {
+    error.value =
+      'This email is already linked to a different Google account.';
   } else if (oauthError === 'google_failed') {
     error.value = 'Google sign-in failed. Please try again.';
   }

@@ -1,11 +1,9 @@
 import { defineApiHandler } from '../../../lib/define-api';
 import { setAuthCookie } from '../../../lib/auth';
+import { ApiError } from '../../../lib/errors';
 import { getServerEnv } from '../../../lib/env';
 import { AuthService } from '../../../services/auth.service';
-import {
-  GOOGLE_OAUTH_STATE_COOKIE,
-  parseAndValidateOAuthState,
-} from '../../../services/auth/google-oauth';
+import { parseAndValidateOAuthState } from '../../../services/auth/google-oauth';
 
 function redirectWithError(appUrl: string, code: string): string {
   const url = new URL('/login', appUrl);
@@ -13,23 +11,35 @@ function redirectWithError(appUrl: string, code: string): string {
   return url.toString();
 }
 
+function errorCodeFor(err: unknown): string {
+  if (err instanceof ApiError) {
+    switch (err.error) {
+      case 'INVALID_OAUTH_STATE':
+        return 'google_state';
+      case 'GOOGLE_TOKEN_EXCHANGE_FAILED':
+        return 'google_token';
+      case 'GOOGLE_USERINFO_FAILED':
+        return 'google_profile';
+      case 'GOOGLE_EMAIL_REQUIRED':
+      case 'GOOGLE_EMAIL_UNVERIFIED':
+        return 'google_email';
+      case 'GOOGLE_AUTH_UNAVAILABLE':
+        return 'google_config';
+      case 'GOOGLE_ACCOUNT_CONFLICT':
+        return 'google_conflict';
+      default:
+        return 'google_failed';
+    }
+  }
+  return 'google_failed';
+}
+
 export default defineApiHandler(async (event) => {
   const appUrl = getServerEnv().APP_URL.replace(/\/$/, '');
   const query = getQuery(event);
-  const isProd = getServerEnv().NODE_ENV === 'production';
-
-  const clearStateCookie = () => {
-    deleteCookie(event, GOOGLE_OAUTH_STATE_COOKIE, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: 'lax',
-      path: '/',
-    });
-  };
 
   try {
     if (typeof query.error === 'string' && query.error) {
-      clearStateCookie();
       return sendRedirect(
         event,
         redirectWithError(appUrl, 'google_denied'),
@@ -39,7 +49,6 @@ export default defineApiHandler(async (event) => {
 
     const code = typeof query.code === 'string' ? query.code : '';
     if (!code) {
-      clearStateCookie();
       return sendRedirect(
         event,
         redirectWithError(appUrl, 'google_failed'),
@@ -49,9 +58,7 @@ export default defineApiHandler(async (event) => {
 
     const state =
       typeof query.state === 'string' ? query.state : undefined;
-    const cookieValue = getCookie(event, GOOGLE_OAUTH_STATE_COOKIE);
-    const payload = parseAndValidateOAuthState(state, cookieValue);
-    clearStateCookie();
+    const payload = parseAndValidateOAuthState(state);
 
     const auth = new AuthService();
     const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown';
@@ -75,14 +82,10 @@ export default defineApiHandler(async (event) => {
     }
     return sendRedirect(event, `${appUrl}/onboarding`, 302);
   } catch (err) {
-    clearStateCookie();
+    const code = errorCodeFor(err);
     console.warn(
-      `Google OAuth callback failed: ${err instanceof Error ? err.message : 'unknown'}`,
+      `Google OAuth callback failed code=${code}: ${err instanceof Error ? err.message : 'unknown'}`,
     );
-    return sendRedirect(
-      event,
-      redirectWithError(appUrl, 'google_failed'),
-      302,
-    );
+    return sendRedirect(event, redirectWithError(appUrl, code), 302);
   }
 });
