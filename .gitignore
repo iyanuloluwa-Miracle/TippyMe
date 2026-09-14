@@ -34,3 +34,8 @@ outray/
 
 # Test artifacts
 coverage/
+
+# Local curl / scratch files (never ship cookies or probe payloads)
+tmp-cookies.txt
+tmp-*.json
+tmp-*

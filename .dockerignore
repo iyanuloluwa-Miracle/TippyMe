@@ -21,3 +21,6 @@ npm-debug.log*
 .dockerignore
 Dockerfile*
 docker-compose*.yml
+tmp-cookies.txt
+tmp-*.json
+tmp-*
