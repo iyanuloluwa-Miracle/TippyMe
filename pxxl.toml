@@ -2,7 +2,8 @@
 # Local Docker builds still use Dockerfile.local via docker-compose.prod.yml.
 
 [build]
-install = "npm ci"
+# Include devDependencies so postinstall `nuxt prepare` / `nuxt build` can load modules.
+install = "npm ci --include=dev"
 command = "npm run build"
 
 [start]

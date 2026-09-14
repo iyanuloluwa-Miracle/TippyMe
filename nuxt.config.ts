@@ -4,7 +4,11 @@ export default defineNuxtConfig({
   // Disable heavy DevTools UI in production builds
   devtools: { enabled: process.env.NODE_ENV !== 'production' },
 
-  modules: ['@nuxtjs/tailwindcss', '@pinia/nuxt', '@nuxt/eslint'],
+  modules: [
+    '@nuxtjs/tailwindcss',
+    '@pinia/nuxt',
+    ...(process.env.NODE_ENV === 'production' ? [] : ['@nuxt/eslint']),
+  ],
 
   css: ['~/assets/css/main.css'],
 
