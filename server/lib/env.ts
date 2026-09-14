@@ -17,6 +17,8 @@ export type ServerEnv = {
   OPENROUTER_MODEL?: string;
   LOG_FORMAT?: string;
   ERROR_MONITORING_DSN?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
 };
 
 const WEAK_SECRET_VALUES = new Set([
@@ -216,6 +218,15 @@ export function getServerEnv(): ServerEnv {
       (
         (config.errorMonitoringDsn as string) ||
         process.env.ERROR_MONITORING_DSN
+      )?.trim() || undefined,
+    GOOGLE_CLIENT_ID:
+      (
+        (config.googleClientId as string) || process.env.GOOGLE_CLIENT_ID
+      )?.trim() || undefined,
+    GOOGLE_CLIENT_SECRET:
+      (
+        (config.googleClientSecret as string) ||
+        process.env.GOOGLE_CLIENT_SECRET
       )?.trim() || undefined,
   };
 

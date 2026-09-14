@@ -35,6 +35,7 @@ export type User = {
   id: string;
   email: string;
   passwordHash: string | null;
+  googleId?: string | null;
   emailVerifiedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;

@@ -1,31 +1,82 @@
 import mongoose from 'mongoose';
 import { getServerEnv } from '../lib/env';
-import './models';
+import { CreatorProfileModel } from './models';
 
 export type DbSession = mongoose.ClientSession;
 
 const globalForMongo = globalThis as unknown as {
   __tippyMongoReady?: Promise<typeof mongoose>;
+  __tippyMongoIndexesReady?: Promise<void>;
 };
+
+async function ensureCreatorIndexes(): Promise<void> {
+  if (globalForMongo.__tippyMongoIndexesReady) {
+    return globalForMongo.__tippyMongoIndexesReady;
+  }
+
+  globalForMongo.__tippyMongoIndexesReady = (async () => {
+    try {
+      // Old unique+sparse index treated `null` as a value, blocking every
+      // creator after the first. Strip nulls then replace the index.
+      await CreatorProfileModel.updateMany(
+        {
+          $or: [
+            { bachsAccountId: null },
+            { bachsAccountId: '' },
+          ],
+        },
+        { $unset: { bachsAccountId: 1 } },
+      );
+
+      const collection = CreatorProfileModel.collection;
+      const existing = await collection.indexes();
+      for (const idx of existing) {
+        const name = idx.name;
+        if (!name || name === '_id_') continue;
+        const keys = Object.keys(idx.key ?? {});
+        if (
+          keys.length === 1 &&
+          keys[0] === 'bachsAccountId' &&
+          name !== 'bachsAccountId_partial'
+        ) {
+          await collection.dropIndex(name);
+          console.info(`[db] dropped legacy index ${name}`);
+        }
+      }
+
+      await CreatorProfileModel.syncIndexes();
+    } catch (err) {
+      console.warn(
+        `[db] creator index repair skipped: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+    }
+  })();
+
+  return globalForMongo.__tippyMongoIndexesReady;
+}
 
 export async function connectMongo(uri?: string): Promise<typeof mongoose> {
   if (mongoose.connection.readyState === 1) {
+    await ensureCreatorIndexes();
     return mongoose;
   }
   if (!globalForMongo.__tippyMongoReady) {
     const connectionUri = uri || getServerEnv().MONGODB_URI;
-    globalForMongo.__tippyMongoReady = mongoose.connect(connectionUri, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 15_000,
-    });
-    globalForMongo.__tippyMongoReady
-      .then(() => {
-        console.info('[db] mongodb connected');
+    globalForMongo.__tippyMongoReady = mongoose
+      .connect(connectionUri, {
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 15_000,
       })
-      .catch((err: Error) => {
-        globalForMongo.__tippyMongoReady = undefined;
-        console.error(`[db] mongodb connect failed: ${err.message}`);
+      .then(async (conn) => {
+        console.info('[db] mongodb connected');
+        await ensureCreatorIndexes();
+        return conn;
       });
+    globalForMongo.__tippyMongoReady.catch((err: Error) => {
+      globalForMongo.__tippyMongoReady = undefined;
+      globalForMongo.__tippyMongoIndexesReady = undefined;
+      console.error(`[db] mongodb connect failed: ${err.message}`);
+    });
   }
   return globalForMongo.__tippyMongoReady;
 }
@@ -55,6 +106,7 @@ export async function withTransaction<T>(
 
 export async function resetDb(): Promise<void> {
   globalForMongo.__tippyMongoReady = undefined;
+  globalForMongo.__tippyMongoIndexesReady = undefined;
   if (mongoose.connection.readyState !== 0) {
     await mongoose.disconnect();
   }
@@ -85,7 +137,7 @@ export function uniqueViolationFields(err: unknown): string[] {
     'message' in err && typeof (err as { message?: unknown }).message === 'string'
       ? (err as { message: string }).message
       : '';
-  const indexMatch = message.match(/index:\s+[\w.]*?(\w+)_1\b/i);
+  const indexMatch = message.match(/index:\s+[\w.]*?(\w+?)(?:_1|_partial)\b/i);
   if (indexMatch?.[1]) {
     return [indexMatch[1]];
   }

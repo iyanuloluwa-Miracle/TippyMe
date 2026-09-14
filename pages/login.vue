@@ -12,6 +12,7 @@
     switch-label="Sign up"
     switch-to="/signup"
     password-autocomplete="current-password"
+    :google-next="googleNext"
     @submit="onSubmit"
   />
 </template>
@@ -36,6 +37,19 @@ const password = ref('');
 const pending = ref(false);
 const error = ref<string | null>(null);
 
+const googleNext = computed(() =>
+  typeof route.query.next === 'string' ? route.query.next : null,
+);
+
+onMounted(() => {
+  const oauthError = route.query.error;
+  if (oauthError === 'google_denied') {
+    error.value = 'Google sign-in was cancelled. Please try again.';
+  } else if (oauthError === 'google_failed') {
+    error.value = 'Google sign-in failed. Please try again.';
+  }
+});
+
 function redirectAfterAuth() {
   if (typeof route.query.next === 'string') {
     return navigateTo(route.query.next);
@@ -55,7 +69,12 @@ async function onSubmit() {
     await redirectAfterAuth();
   } catch (err) {
     if (err instanceof ApiClientError) {
-      if (err.errorCode === 'INVALID_CREDENTIALS' || err.statusCode === 401) {
+      if (err.errorCode === 'GOOGLE_ONLY') {
+        error.value = 'This account uses Google. Continue with Google.';
+      } else if (
+        err.errorCode === 'INVALID_CREDENTIALS' ||
+        err.statusCode === 401
+      ) {
         error.value = 'Invalid email or password.';
       } else if (err.statusCode === 429 || err.errorCode === 'RATE_LIMITED') {
         error.value = 'Too many attempts. Wait a minute and try again.';
@@ -69,7 +88,7 @@ async function onSubmit() {
       }
     } else {
       error.value =
-        'Cannot reach the API. Is it running on http://localhost:3001?';
+        'Cannot reach the API. Is it running on http://localhost:3000?';
     }
   } finally {
     pending.value = false;

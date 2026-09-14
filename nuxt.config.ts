@@ -33,10 +33,14 @@ export default defineNuxtConfig({
     openrouterModel: process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini',
     logFormat: process.env.LOG_FORMAT || '',
     errorMonitoringDsn: process.env.ERROR_MONITORING_DSN || '',
+    googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+    googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
     public: {
       // Empty → browser uses same-origin `/api` (Nitro handlers).
       apiUrl: process.env.NUXT_PUBLIC_API_URL ?? '',
       appUrl: process.env.NUXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000',
+      // Empty → hide Continue with Google on login/signup.
+      googleClientId: process.env.NUXT_PUBLIC_GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '',
       sabilyticsSiteId: process.env.NUXT_PUBLIC_SABILYTICS_SITE_ID || '',
       sabilyticsDomain: process.env.NUXT_PUBLIC_SABILYTICS_DOMAIN || '',
       sabilyticsScriptUrl: process.env.NUXT_PUBLIC_SABILYTICS_SCRIPT_URL || '',

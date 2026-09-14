@@ -55,6 +55,11 @@
       {{ pending ? pendingLabel : submitLabel }}
     </button>
 
+    <GoogleAuthButton
+      :next="googleNext"
+      :username="googleUsername"
+    />
+
     <p class="mt-6 text-center text-sm font-semibold text-cheer-ink/85">
       {{ switchPrompt }}
       <NuxtLink
@@ -82,12 +87,16 @@ withDefaults(
     switchLabel: string;
     switchTo: string;
     passwordAutocomplete?: 'current-password' | 'new-password';
+    googleNext?: string | null;
+    googleUsername?: string | null;
   }>(),
   {
     pendingLabel: 'Please wait…',
     pending: false,
     error: null,
     passwordAutocomplete: 'current-password',
+    googleNext: null,
+    googleUsername: null,
   },
 );
 

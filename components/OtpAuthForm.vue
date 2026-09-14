@@ -137,6 +137,11 @@
       </template>
     </button>
 
+    <GoogleAuthButton
+      :next="googleNext"
+      :username="googleUsername"
+    />
+
     <p class="mt-6 text-center text-sm font-semibold text-cheer-ink/85">
       Already have an account?
       <NuxtLink
@@ -151,6 +156,14 @@
 
 <script setup lang="ts">
 import { ApiClientError } from '~/services/api';
+
+const props = defineProps<{
+  googleNext?: string | null;
+  googleUsername?: string | null;
+}>();
+
+const googleNext = computed(() => props.googleNext ?? null);
+const googleUsername = computed(() => props.googleUsername ?? null);
 
 const emit = defineEmits<{
   verified: [];

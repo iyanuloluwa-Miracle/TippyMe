@@ -42,6 +42,8 @@ const userSchema = new Schema(
   withId({
     email: { type: String, required: true, unique: true },
     passwordHash: { type: String, default: null },
+    // Omit when unset — sparse unique must not index null for every password user.
+    googleId: { type: String, unique: true, sparse: true },
     emailVerifiedAt: { type: Date, default: null },
     createdAt: { type: Date, default: () => new Date() },
     updatedAt: { type: Date, default: () => new Date() },
@@ -64,7 +66,9 @@ const creatorProfileSchema = new Schema(
     currency: { type: String, required: true, default: 'NGN', maxlength: 3 },
     suggestedTipAmounts: { type: [String], default: null },
     isActive: { type: Boolean, required: true, default: true },
-    bachsAccountId: { type: String, default: null, unique: true, sparse: true },
+    // Omit when unset. A unique sparse index on explicit `null` only allows
+    // one creator without Connect — use a partial string filter instead.
+    bachsAccountId: { type: String },
     fridayPayoutEnabled: { type: Boolean, required: true, default: false },
     goalTitle: { type: String, default: null },
     goalTargetAmount: { type: String, default: null },
@@ -76,6 +80,14 @@ const creatorProfileSchema = new Schema(
 );
 creatorProfileSchema.index({ isActive: 1 });
 creatorProfileSchema.index({ createdAt: 1 });
+creatorProfileSchema.index(
+  { bachsAccountId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { bachsAccountId: { $type: 'string' } },
+    name: 'bachsAccountId_partial',
+  },
+);
 creatorProfileSchema.pre('save', function () {
   this.updatedAt = new Date();
 });

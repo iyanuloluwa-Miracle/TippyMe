@@ -1,5 +1,9 @@
 <template>
-  <OtpAuthForm @verified="onVerified" />
+  <OtpAuthForm
+    :google-next="typeof route.query.next === 'string' ? route.query.next : null"
+    :google-username="claimedUsername"
+    @verified="onVerified"
+  />
 </template>
 
 <script setup lang="ts">

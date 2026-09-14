@@ -32,6 +32,7 @@ import type {
   RequestOtpResponse,
   VerifyOtpResponse,
 } from './auth/auth.types';
+import { exchangeGoogleCode } from './auth/google-oauth';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -52,7 +53,10 @@ export class AuthService {
     const existing = toPlain<User>(
       await UserModel.findOne({ email }).lean<LeanDoc | null>(),
     );
-    if (existing?.emailVerifiedAt && existing.passwordHash) {
+    if (
+      existing?.emailVerifiedAt &&
+      (existing.passwordHash || existing.googleId)
+    ) {
       throw new ApiError(
         409,
         'ACCOUNT_EXISTS',
@@ -340,9 +344,27 @@ export class AuthService {
       await UserModel.findOne({ email }).lean<LeanDoc | null>(),
     );
 
-    if (!user?.passwordHash || !user.emailVerifiedAt) {
+    if (!user) {
+      await this.recordLoginFailure(null, email, 'INVALID_CREDENTIALS', meta);
+      throw new ApiError(
+        401,
+        'INVALID_CREDENTIALS',
+        'Invalid email or password.',
+      );
+    }
+
+    if (!user.passwordHash && user.googleId) {
+      await this.recordLoginFailure(user.id, email, 'GOOGLE_ONLY', meta);
+      throw new ApiError(
+        401,
+        'GOOGLE_ONLY',
+        'This account uses Google. Continue with Google.',
+      );
+    }
+
+    if (!user.passwordHash || !user.emailVerifiedAt) {
       await this.recordLoginFailure(
-        user?.id,
+        user.id,
         email,
         'INVALID_CREDENTIALS',
         meta,
@@ -397,6 +419,133 @@ export class AuthService {
       .catch((err) => {
         console.warn(
           `Security login email failed user=${user.id}: ${err instanceof Error ? err.message : 'unknown'}`,
+        );
+      });
+
+    return {
+      accessToken,
+      response: {
+        ok: true,
+        user: this.toPublicUser({
+          ...user,
+          creatorProfile: await this.findCreatorProfileRef(user.id),
+        }),
+      },
+    };
+  }
+
+  async loginWithGoogle(
+    code: string,
+    meta?: { ipAddress?: string; userAgent?: string },
+  ): Promise<{ response: VerifyOtpResponse; accessToken: string }> {
+    await useDb();
+    const googleUser = await exchangeGoogleCode(code);
+    const email = normalizeEmail(googleUser.email);
+
+    let user = toPlain<User>(
+      await UserModel.findOne({ googleId: googleUser.googleId }).lean<
+        LeanDoc | null
+      >(),
+    );
+
+    if (!user) {
+      const byEmail = toPlain<User>(
+        await UserModel.findOne({ email }).lean<LeanDoc | null>(),
+      );
+
+      if (byEmail) {
+        // Auto-link existing email/password account to this Google identity.
+        if (byEmail.googleId && byEmail.googleId !== googleUser.googleId) {
+          throw new ApiError(
+            409,
+            'GOOGLE_ACCOUNT_CONFLICT',
+            'This email is already linked to a different Google account.',
+          );
+        }
+        await UserModel.updateOne(
+          { _id: byEmail.id },
+          {
+            $set: {
+              googleId: googleUser.googleId,
+              emailVerifiedAt: byEmail.emailVerifiedAt ?? new Date(),
+              updatedAt: new Date(),
+            },
+          },
+        );
+        user = toPlain<User>(
+          await UserModel.findOne({ _id: byEmail.id }).lean<LeanDoc | null>(),
+        );
+      } else {
+        const [created] = await UserModel.create([
+          {
+            email,
+            googleId: googleUser.googleId,
+            passwordHash: null,
+            emailVerifiedAt: new Date(),
+          },
+        ]);
+        const userId = insertedId(created);
+        await AuditLogModel.create([
+          {
+            actorUserId: userId,
+            action: AuditAction.USER_CREATED,
+            entityType: 'User',
+            entityId: userId,
+            metadata: { source: 'google_oauth' },
+            ipAddress: meta?.ipAddress,
+            userAgent: meta?.userAgent,
+          },
+        ]);
+        user = toPlain<User>(
+          await UserModel.findOne({ _id: userId }).lean<LeanDoc | null>(),
+        );
+      }
+    }
+
+    if (!user) {
+      throw new ApiError(
+        500,
+        'GOOGLE_LOGIN_FAILED',
+        'Google sign-in failed. Please try again.',
+      );
+    }
+
+    if (!user.emailVerifiedAt) {
+      await UserModel.updateOne(
+        { _id: user.id },
+        { $set: { emailVerifiedAt: new Date(), updatedAt: new Date() } },
+      );
+      user = { ...user, emailVerifiedAt: new Date() };
+    }
+
+    const [loginAudit] = await AuditLogModel.create([
+      {
+        actorUserId: user.id,
+        action: AuditAction.LOGIN_SUCCESS,
+        entityType: 'User',
+        entityId: user.id,
+        metadata: { method: 'google' },
+        ipAddress: meta?.ipAddress,
+        userAgent: meta?.userAgent,
+      },
+    ]);
+    const auditLogId = insertedId(loginAudit);
+
+    const accessToken = await signAccessToken({
+      sub: user.id,
+      email: user.email,
+    });
+
+    void this.notifications
+      .notifySecurityLogin({
+        userId: user.id,
+        email: user.email,
+        method: 'google',
+        auditLogId,
+      })
+      .catch((err) => {
+        console.warn(
+          `Security login email failed user=${user!.id}: ${err instanceof Error ? err.message : 'unknown'}`,
         );
       });
 
