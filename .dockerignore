@@ -24,3 +24,12 @@ docker-compose*.yml
 tmp-cookies.txt
 tmp-*.json
 tmp-*
+docs
+server/db/seed.ts
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+.vscode
+.idea

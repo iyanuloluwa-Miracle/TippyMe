@@ -14,8 +14,13 @@ import { insertedId, type LeanDoc } from './lean';
 import { AuditAction, PaymentProvider, SocialPlatform } from './enums';
 import type { CreatorProfile } from './types';
 
-/** Shared demo password — use POST /api/auth/login (no OTP). */
-const DEMO_PASSWORD = 'password123';
+/** Local demo password from env — never hardcode (image secret scanners). */
+const DEMO_PASSWORD = process.env.SEED_DEMO_PASSWORD?.trim() ?? '';
+if (!DEMO_PASSWORD || DEMO_PASSWORD.length < 8) {
+  throw new Error(
+    'Set SEED_DEMO_PASSWORD (min 8 chars) before running db:seed.',
+  );
+}
 
 type SeedCreator = {
   email: string;
