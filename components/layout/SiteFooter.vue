@@ -67,7 +67,7 @@
               </li>
               <li>
                 <a
-                  href="mailto:hello@tippy.me"
+                  href="mailto:iyanudina@gmail.com"
                   class="text-sm font-medium text-cheer-ink/70 transition-colors hover:text-cheer-leaf focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf"
                 >
                   Contact
@@ -85,9 +85,9 @@
         <p class="text-sm font-semibold text-cheer-ink/80">
           Questions or support:
           <a
-            href="mailto:hello@tippy.me"
+            href="mailto:iyanudina@gmail.com"
             class="font-semibold text-cheer-leaf underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf"
-          >hello@tippy.me</a>
+          >iyanudina@gmail.com</a>
           ·
           <NuxtLink
             to="/terms"

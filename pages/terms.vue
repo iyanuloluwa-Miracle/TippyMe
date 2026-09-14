@@ -56,9 +56,9 @@
         <p class="mt-2">
           Questions about these terms:
           <a
-            href="mailto:hello@tippy.me"
+            href="mailto:iyanudina@gmail.com"
             class="font-semibold text-cheer-leaf underline-offset-2 hover:underline"
-          >hello@tippy.me</a>.
+          >iyanudina@gmail.com</a>.
         </p>
       </section>
     </div>
