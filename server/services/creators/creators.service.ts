@@ -207,7 +207,7 @@ export class CreatorsService {
         if (linkRows.length > 0) {
           await SocialLinkModel.create(
             linkRows.map((link) => ({ ...link, creatorId: id })),
-            { session },
+            { session, ordered: true },
           );
         }
 
@@ -378,7 +378,7 @@ export class CreatorsService {
       if (linkRows.length > 0) {
         await SocialLinkModel.create(
           linkRows.map((link) => ({ ...link, creatorId: profile.id })),
-          { session },
+          { session, ordered: true },
         );
       }
     });
