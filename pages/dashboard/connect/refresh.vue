@@ -38,7 +38,7 @@ async function refresh() {
   try {
     const result = await api.startConnectOnboarding();
     if (result.onboardingUrl) {
-      window.location.href = result.onboardingUrl;
+      window.open(result.onboardingUrl, '_blank', 'noopener,noreferrer');
       return;
     }
     await navigateTo('/dashboard?connect=1');

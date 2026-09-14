@@ -333,34 +333,13 @@
                 Recent support
               </h2>
             </div>
-            <div class="flex flex-wrap gap-2">
-              <label class="sr-only" for="tip-status">Filter by status</label>
-              <select
-                id="tip-status"
-                v-model="statusFilter"
-                class="rounded-full border border-black/10 bg-white px-3.5 py-2 text-sm font-medium text-cheer-ink transition hover:border-cheer-leaf/30 focus:border-cheer-leaf focus:outline-none focus:ring-2 focus:ring-cheer-leaf/20"
-                @change="onFilterChange"
-              >
-                <option value="">
-                  All statuses
-                </option>
-                <option value="PAID">
-                  Paid
-                </option>
-                <option value="CHECKOUT_PENDING">
-                  Checkout pending
-                </option>
-                <option value="CREATED">
-                  Created
-                </option>
-                <option value="FAILED">
-                  Failed
-                </option>
-                <option value="EXPIRED">
-                  Expired
-                </option>
-              </select>
-            </div>
+            <NuxtLink
+              to="/dashboard/tips"
+              class="text-sm font-semibold text-cheer-leaf transition hover:text-cheer-ink"
+            >
+              View all tips
+              <span aria-hidden="true">→</span>
+            </NuxtLink>
           </div>
 
           <ul
@@ -377,33 +356,8 @@
             v-else
             class="mt-6 rounded-2xl bg-cheer-sand/70 px-4 py-8 text-center text-sm text-cheer-ink/55"
           >
-            No tips match this filter.
+            No tips yet. Share your Tippy page to get started.
           </p>
-
-          <div
-            v-if="tipsPage && tipsPage.totalPages > 1"
-            class="mt-6 flex items-center justify-between gap-3 text-sm"
-          >
-            <button
-              type="button"
-              class="motion-cta rounded-full border border-black/10 bg-white px-4 py-2 font-semibold disabled:opacity-40"
-              :disabled="page <= 1 || tipsLoading"
-              @click="goPage(page - 1)"
-            >
-              Previous
-            </button>
-            <span class="text-cheer-ink/55">
-              Page {{ page }} of {{ tipsPage.totalPages }}
-            </span>
-            <button
-              type="button"
-              class="motion-cta rounded-full border border-black/10 bg-white px-4 py-2 font-semibold disabled:opacity-40"
-              :disabled="page >= tipsPage.totalPages || tipsLoading"
-              @click="goPage(page + 1)"
-            >
-              Next
-            </button>
-          </div>
         </section>
 
         <section
@@ -449,8 +403,6 @@
 import type {
   CreatorDashboard,
   CreatorTip,
-  CreatorTipsPage,
-  TipStatus,
 } from '~/types/api';
 import { ApiClientError } from '~/services/api';
 
@@ -472,10 +424,7 @@ const loading = ref(true);
 const tipsLoading = ref(false);
 const loadError = ref<string | null>(null);
 const dashboard = ref<CreatorDashboard | null>(null);
-const tipsPage = ref<CreatorTipsPage | null>(null);
 const tips = ref<CreatorTip[]>([]);
-const page = ref(1);
-const statusFilter = ref<TipStatus | ''>('');
 
 const greeting = computed(() => {
   const hour = new Date().getHours();
@@ -512,7 +461,7 @@ async function startConnect() {
       dashboard.value.settlement = result.settlement;
     }
     if (result.onboardingUrl) {
-      window.location.href = result.onboardingUrl;
+      window.open(result.onboardingUrl, '_blank', 'noopener,noreferrer');
       return;
     }
     if (result.settlement.automatedFridayPayout !== 'CONFIGURED') {
@@ -608,28 +557,17 @@ async function loadAll() {
 async function loadTips() {
   tipsLoading.value = true;
   try {
-    tipsPage.value = await api.listMyTips({
-      page: page.value,
-      pageSize: 10,
-      status: statusFilter.value || undefined,
+    const result = await api.listMyTips({
+      page: 1,
+      pageSize: 5,
     });
-    tips.value = tipsPage.value.tips;
+    tips.value = result.tips;
   } catch (err) {
     loadError.value =
       err instanceof Error ? err.message : 'Could not load tips.';
   } finally {
     tipsLoading.value = false;
   }
-}
-
-function onFilterChange() {
-  page.value = 1;
-  void loadTips();
-}
-
-function goPage(next: number) {
-  page.value = next;
-  void loadTips();
 }
 
 function formatMoney(amount: string, currency: string) {

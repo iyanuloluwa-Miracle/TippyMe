@@ -79,6 +79,10 @@
               v-if="link.to === '/dashboard'"
               d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-5H10v5H5a1 1 0 0 1-1-1v-9.5Z"
             />
+            <template v-else-if="link.to === '/dashboard/tips'">
+              <path d="M12 3v18" />
+              <path d="M17 8H9.5a2.5 2.5 0 0 0 0 5H14a2.5 2.5 0 0 1 0 5H6" />
+            </template>
             <template v-else>
               <circle
                 cx="12"
