@@ -1,0 +1,12 @@
+# Pxxl: use managed Nuxt/Node runtime (not custom Docker image scan).
+# Local Docker builds still use Dockerfile.local via docker-compose.prod.yml.
+
+[build]
+install = "npm ci"
+command = "npm run build"
+
+[start]
+command = "node .output/server/index.mjs"
+
+[app]
+port = 3000
