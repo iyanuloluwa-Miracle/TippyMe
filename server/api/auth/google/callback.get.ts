@@ -1,14 +1,14 @@
 import { defineApiHandler } from '../../../lib/define-api';
 import { setAuthCookie } from '../../../lib/auth';
 import { ApiError } from '../../../lib/errors';
-import { getServerEnv } from '../../../lib/env';
 import { AuthService } from '../../../services/auth.service';
-import { parseAndValidateOAuthState } from '../../../services/auth/google-oauth';
+import {
+  parseAndValidateOAuthState,
+  sanitizeNextPath,
+} from '../../../services/auth/google-oauth';
 
-function redirectWithError(appUrl: string, code: string): string {
-  const url = new URL('/login', appUrl);
-  url.searchParams.set('error', code);
-  return url.toString();
+function redirectWithError(code: string): string {
+  return `/login?error=${encodeURIComponent(code)}`;
 }
 
 function errorCodeFor(err: unknown): string {
@@ -34,26 +34,36 @@ function errorCodeFor(err: unknown): string {
   return 'google_failed';
 }
 
+/** Build same-host relative /auth/complete URL with a safe next destination. */
+function completeRedirect(opts: {
+  next?: string;
+  hasCreatorProfile: boolean;
+  username?: string;
+}): string {
+  const params = new URLSearchParams();
+  if (opts.next) {
+    params.set('next', opts.next);
+  } else if (opts.hasCreatorProfile) {
+    params.set('next', '/dashboard');
+  } else if (opts.username) {
+    params.set('next', `/onboarding?username=${opts.username}`);
+  } else {
+    params.set('next', '/onboarding');
+  }
+  return `/auth/complete?${params.toString()}`;
+}
+
 export default defineApiHandler(async (event) => {
-  const appUrl = getServerEnv().APP_URL.replace(/\/$/, '');
   const query = getQuery(event);
 
   try {
     if (typeof query.error === 'string' && query.error) {
-      return sendRedirect(
-        event,
-        redirectWithError(appUrl, 'google_denied'),
-        302,
-      );
+      return sendRedirect(event, redirectWithError('google_denied'), 302);
     }
 
     const code = typeof query.code === 'string' ? query.code : '';
     if (!code) {
-      return sendRedirect(
-        event,
-        redirectWithError(appUrl, 'google_failed'),
-        302,
-      );
+      return sendRedirect(event, redirectWithError('google_failed'), 302);
     }
 
     const state =
@@ -69,23 +79,20 @@ export default defineApiHandler(async (event) => {
 
     setAuthCookie(event, accessToken);
 
-    if (payload.next) {
-      return sendRedirect(event, `${appUrl}${payload.next}`, 302);
-    }
-    if (response.user.hasCreatorProfile) {
-      return sendRedirect(event, `${appUrl}/dashboard`, 302);
-    }
-    if (payload.username) {
-      const onboarding = new URL('/onboarding', appUrl);
-      onboarding.searchParams.set('username', payload.username);
-      return sendRedirect(event, onboarding.toString(), 302);
-    }
-    return sendRedirect(event, `${appUrl}/onboarding`, 302);
+    return sendRedirect(
+      event,
+      completeRedirect({
+        next: sanitizeNextPath(payload.next),
+        hasCreatorProfile: response.user.hasCreatorProfile,
+        username: payload.username,
+      }),
+      302,
+    );
   } catch (err) {
     const code = errorCodeFor(err);
     console.warn(
       `Google OAuth callback failed code=${code}: ${err instanceof Error ? err.message : 'unknown'}`,
     );
-    return sendRedirect(event, redirectWithError(appUrl, code), 302);
+    return sendRedirect(event, redirectWithError(code), 302);
   }
 });

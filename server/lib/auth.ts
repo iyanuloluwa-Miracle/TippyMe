@@ -73,10 +73,9 @@ export async function requireUser(event: H3Event): Promise<AuthUserPayload> {
 }
 
 export function setAuthCookie(event: H3Event, token: string): void {
-  const isProd = getServerEnv().NODE_ENV === 'production';
   setCookie(event, AUTH_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: isProd,
+    secure: useSecureCookies(),
     sameSite: 'lax',
     path: '/',
     maxAge: AUTH_COOKIE_MAX_AGE_SEC,
@@ -84,11 +83,18 @@ export function setAuthCookie(event: H3Event, token: string): void {
 }
 
 export function clearAuthCookie(event: H3Event): void {
-  const isProd = getServerEnv().NODE_ENV === 'production';
   deleteCookie(event, AUTH_COOKIE_NAME, {
     httpOnly: true,
-    secure: isProd,
+    secure: useSecureCookies(),
     sameSite: 'lax',
     path: '/',
   });
+}
+
+/** Prefer HTTPS APP_URL so cookies work behind TLS even if NODE_ENV is mis-set. */
+function useSecureCookies(): boolean {
+  const env = getServerEnv();
+  return (
+    env.NODE_ENV === 'production' || env.APP_URL.trim().startsWith('https://')
+  );
 }
