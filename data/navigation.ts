@@ -6,6 +6,12 @@ export const sectionLinks: readonly NavLink[] = [
   { label: 'Trust', to: '/#trust' },
 ] as const;
 
+/** Founder TippyMe page — styled apart from section links in the navbar. */
+export const founderTippyLink: NavLink = {
+  label: 'tippyme.click/dina',
+  to: '/dina',
+};
+
 export const loginLink: NavLink = { label: 'Log in', to: '/login' };
 
 export const signupLink: NavLink = { label: 'Claim your link', to: '/signup' };

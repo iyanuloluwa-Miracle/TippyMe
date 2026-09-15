@@ -49,6 +49,30 @@
             >
               {{ link.label }}
             </NuxtLink>
+
+            <NuxtLink
+              :to="founderTippyLink.to"
+              class="ml-1 inline-flex items-center gap-1.5 rounded-full border border-cheer-leaf/25 bg-cheer-mint/70 px-3 py-1.5 font-mono text-[0.8rem] font-semibold tracking-tight text-cheer-panel transition duration-200 hover:border-cheer-leaf/45 hover:bg-cheer-mint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-white/80"
+              :class="isLinkActive(founderTippyLink.to) ? 'border-cheer-leaf/50 bg-cheer-mint' : ''"
+              :aria-label="`Open ${founderTippyLink.label}`"
+            >
+              <span class="text-cheer-leaf/80" aria-hidden="true">/</span>
+              <span>dina</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="h-3 w-3 text-cheer-leaf"
+                aria-hidden="true"
+              >
+                <path d="M7 17L17 7" />
+                <path d="M8 7h9v9" />
+              </svg>
+            </NuxtLink>
           </nav>
 
           <div class="hidden items-center gap-2 sm:flex">
@@ -142,6 +166,32 @@
                 {{ link.label }}
               </NuxtLink>
             </li>
+            <li class="px-1 pt-2">
+              <NuxtLink
+                :to="founderTippyLink.to"
+                class="flex items-center justify-between gap-3 rounded-xl border border-cheer-leaf/20 bg-cheer-mint/60 px-3 py-3 font-mono text-sm font-semibold tracking-tight text-cheer-panel transition hover:border-cheer-leaf/40 hover:bg-cheer-mint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf"
+                :aria-label="`Open ${founderTippyLink.label}`"
+                @click="closeMenu"
+              >
+                <span>
+                  <span class="text-cheer-ink/45">tippyme.click</span><span class="text-cheer-leaf">/dina</span>
+                </span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="h-4 w-4 shrink-0 text-cheer-leaf"
+                  aria-hidden="true"
+                >
+                  <path d="M7 17L17 7" />
+                  <path d="M8 7h9v9" />
+                </svg>
+              </NuxtLink>
+            </li>
             <li
               v-if="auth.isAuthenticated"
               class="px-1 pt-3"
@@ -176,6 +226,7 @@
 <script setup lang="ts">
 import {
   dashboardLink,
+  founderTippyLink,
   loginLink,
   mobileAuthedNavLinks,
   mobileNavLinks,
