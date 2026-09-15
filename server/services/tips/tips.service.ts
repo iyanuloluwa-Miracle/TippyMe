@@ -208,6 +208,9 @@ export class TipsService {
     } catch (err) {
       await this.markCheckoutFailed(tipId, paymentId, err);
       if (err instanceof BachsProviderError) {
+        console.error(
+          `Payment init failed tip=${tipId} kind=${err.kind} http=${err.httpStatus ?? 'n/a'} code=${err.providerErrorCode ?? 'n/a'}`,
+        );
         throw new ApiError(
           503,
           'PAYMENT_INIT_FAILED',

@@ -167,21 +167,23 @@ export function getServerEnv(): ServerEnv {
     AUTH_SECRET: authSecret,
     OTP_HASH_PEPPER: otpHashPepper,
     MONGODB_URI: mongodbUri,
+    // Prefer process.env: Nuxt may bake runtimeConfig at build; Vercel/Pxxl
+    // often only inject BACHS_* at runtime (same pattern as RESEND / API_URL).
     BACHS_API_KEY:
-      ((config.bachsApiKey as string) || process.env.BACHS_API_KEY)?.trim() ||
+      (process.env.BACHS_API_KEY || (config.bachsApiKey as string))?.trim() ||
       undefined,
     BACHS_API_BASE_URL:
-      ((config.bachsApiBaseUrl as string) || process.env.BACHS_API_BASE_URL)
+      (process.env.BACHS_API_BASE_URL || (config.bachsApiBaseUrl as string))
         ?.trim() || undefined,
     BACHS_WEBHOOK_SECRET:
       (
-        (config.bachsWebhookSecret as string) ||
-        process.env.BACHS_WEBHOOK_SECRET
+        process.env.BACHS_WEBHOOK_SECRET ||
+        (config.bachsWebhookSecret as string)
       )?.trim() || undefined,
     BACHS_PLATFORM_FEE_PERCENT:
       (
-        (config.bachsPlatformFeePercent as string) ||
-        process.env.BACHS_PLATFORM_FEE_PERCENT
+        process.env.BACHS_PLATFORM_FEE_PERCENT ||
+        (config.bachsPlatformFeePercent as string)
       )?.trim() || '5',
     // Prefer process.env: Nuxt bakes runtimeConfig at build; Pxxl/Docker often
     // only inject RESEND_* at runtime (NUXT_RESEND_* would also work).
