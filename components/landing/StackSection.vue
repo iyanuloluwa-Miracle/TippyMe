@@ -1,7 +1,7 @@
 <template>
   <section
     :id="section.id"
-    class="scroll-mt-28 mt-16 sm:mt-20"
+    class="scroll-mt-28 mt-12 sm:mt-14"
     :aria-labelledby="`${section.id}-heading`"
   >
     <UiSectionHeader

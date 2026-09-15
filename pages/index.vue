@@ -1,12 +1,12 @@
 <template>
   <div>
     <LandingHeroSection />
+    <LandingStackSection />
     <LandingProblemSection />
     <LandingHowItWorksSection />
     <LandingFeaturesSection />
     <LandingTestimonialsSection />
     <LandingTrustSection />
-    <LandingStackSection />
     <LandingFaqSection />
   </div>
 </template>
