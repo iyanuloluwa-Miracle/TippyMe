@@ -162,6 +162,14 @@ export class TipsService {
       if (isUniqueViolation(err)) {
         const replay = await this.findByInternalReference(internalReference);
         if (replay) return replay;
+        console.error(
+          `Tip create unique violation (not idempotent replay) ref=${internalReference}`,
+        );
+        throw new ApiError(
+          409,
+          'TIP_CONFLICT',
+          'Unable to start this tip. Please try again.',
+        );
       }
       throw err;
     }

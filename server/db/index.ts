@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { getServerEnv } from '../lib/env';
-import { CreatorProfileModel } from './models';
+import { CreatorProfileModel, PaymentTransactionModel } from './models';
 
 export type DbSession = mongoose.ClientSession;
 
@@ -9,7 +9,7 @@ const globalForMongo = globalThis as unknown as {
   __tippyMongoIndexesReady?: Promise<void>;
 };
 
-async function ensureCreatorIndexes(): Promise<void> {
+async function ensureIndexes(): Promise<void> {
   if (globalForMongo.__tippyMongoIndexesReady) {
     return globalForMongo.__tippyMongoIndexesReady;
   }
@@ -50,6 +50,43 @@ async function ensureCreatorIndexes(): Promise<void> {
         `[db] creator index repair skipped: ${err instanceof Error ? err.message : 'unknown'}`,
       );
     }
+
+    try {
+      // Same null-vs-sparse trap on checkout refs: one pending payment with
+      // providerReference:null blocked every later POST /api/tips (E11000 → 500).
+      await PaymentTransactionModel.updateMany(
+        {
+          $or: [
+            { providerReference: null },
+            { providerReference: '' },
+          ],
+        },
+        { $unset: { providerReference: 1 } },
+      );
+
+      const paymentCollection = PaymentTransactionModel.collection;
+      const paymentIndexes = await paymentCollection.indexes();
+      for (const idx of paymentIndexes) {
+        const name = idx.name;
+        if (!name || name === '_id_') continue;
+        const keys = Object.keys(idx.key ?? {});
+        if (
+          keys.length === 2 &&
+          keys[0] === 'provider' &&
+          keys[1] === 'providerReference' &&
+          name !== 'provider_providerReference_partial'
+        ) {
+          await paymentCollection.dropIndex(name);
+          console.info(`[db] dropped legacy index ${name}`);
+        }
+      }
+
+      await PaymentTransactionModel.syncIndexes();
+    } catch (err) {
+      console.warn(
+        `[db] payment index repair skipped: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+    }
   })();
 
   return globalForMongo.__tippyMongoIndexesReady;
@@ -57,7 +94,7 @@ async function ensureCreatorIndexes(): Promise<void> {
 
 export async function connectMongo(uri?: string): Promise<typeof mongoose> {
   if (mongoose.connection.readyState === 1) {
-    await ensureCreatorIndexes();
+    await ensureIndexes();
     return mongoose;
   }
   if (!globalForMongo.__tippyMongoReady) {
@@ -69,7 +106,7 @@ export async function connectMongo(uri?: string): Promise<typeof mongoose> {
       })
       .then(async (conn) => {
         console.info('[db] mongodb connected');
-        await ensureCreatorIndexes();
+        await ensureIndexes();
         return conn;
       });
     globalForMongo.__tippyMongoReady.catch((err: Error) => {

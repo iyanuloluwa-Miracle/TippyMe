@@ -131,7 +131,9 @@ const paymentTransactionSchema = new Schema(
       required: true,
       enum: Object.values(PaymentProvider),
     },
-    providerReference: { type: String, default: null },
+    // Omit when unset. Sparse unique on explicit `null` only allows one
+    // pending checkout per provider — use a partial string filter instead.
+    providerReference: { type: String },
     amount: { type: String, required: true },
     currency: { type: String, required: true, maxlength: 3 },
     status: {
@@ -149,7 +151,11 @@ const paymentTransactionSchema = new Schema(
 );
 paymentTransactionSchema.index(
   { provider: 1, providerReference: 1 },
-  { unique: true, sparse: true },
+  {
+    unique: true,
+    partialFilterExpression: { providerReference: { $type: 'string' } },
+    name: 'provider_providerReference_partial',
+  },
 );
 paymentTransactionSchema.index({ status: 1, createdAt: 1 });
 paymentTransactionSchema.index({ provider: 1, status: 1 });
