@@ -38,8 +38,9 @@ export interface Testimonial {
 export interface StackTool {
   id: string;
   name: string;
-  role: string;
-  href?: string;
+  href: string;
+  /** Local path under /public — partner wordmark or mark. */
+  logo: string;
 }
 
 export interface FeatureItem {

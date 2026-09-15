@@ -307,35 +307,47 @@ export const testimonials: readonly Testimonial[] = [
 export const stackSection = {
   id: 'stack',
   eyebrow: 'Built with',
-  title: 'The AIB Ship partners behind TippyMe',
+  title: 'The partners behind TippyMe',
   description:
-    'African infrastructure for payments, messaging, local webhooks, and deployment.',
+    'Payments, uploads, deploy, tunnels, avatars, and analytics.',
 } as const;
 
-/** Africa Is Building partner services — front and center for hackathon demos. */
+/** Partner logos for the landing marquee. */
 export const stackPartners: readonly StackTool[] = [
   {
     id: 'bachs',
     name: 'Bachs',
-    role: 'Payments, checkout, and creator payouts',
-    href: 'https://docs.bachs.io',
+    href: 'https://bachs.io/',
+    logo: '/partners/bachs.svg',
   },
   {
-    id: 'resend',
-    name: 'Resend',
-    role: 'Email OTP and transactional messages',
-    href: 'https://resend.com/docs',
-  },
-  {
-    id: 'outray',
-    name: 'OutRay',
-    role: 'Local HTTPS tunnel for Bachs webhooks',
-    href: 'https://outray.dev/docs',
+    id: 'byteship',
+    name: 'Byteship',
+    href: 'https://byteship.dev/',
+    logo: '/partners/byteship.png',
   },
   {
     id: 'pxxl',
     name: 'Pxxl',
-    role: 'Cloud deployment for web, API, and databases',
-    href: 'https://docs.pxxl.app',
+    href: 'https://pxxl.app/',
+    logo: '/partners/pxxl.png',
+  },
+  {
+    id: 'outray',
+    name: 'OutRay',
+    href: 'https://outray.dev/',
+    logo: '/partners/outray.svg',
+  },
+  {
+    id: 'dicebear',
+    name: 'DiceBear',
+    href: 'https://www.dicebear.com/',
+    logo: '/partners/dicebear.svg',
+  },
+  {
+    id: 'sabilytics',
+    name: 'Sabilytics',
+    href: 'https://www.sabilytics.com/',
+    logo: '/partners/sabilytics.png',
   },
 ] as const;
