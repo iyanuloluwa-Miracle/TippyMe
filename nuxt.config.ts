@@ -88,12 +88,4 @@ export default defineNuxtConfig({
     strict: true,
     typeCheck: false,
   },
-
-  // Keep Mongoose out of the Rollup bundle so the Docker runner's
-  // node_modules copy is what loads at runtime.
-  nitro: {
-    rollupConfig: {
-      external: ['mongoose', '@paralleldrive/cuid2', 'decimal.js'],
-    },
-  },
 });
