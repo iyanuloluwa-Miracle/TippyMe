@@ -80,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-const publicPath = useState<string | null>('dashboardPublicPath', () => null);
+const { publicPath, ensureLoaded } = useDashboardNav();
 const mobileOpen = ref(false);
 const route = useRoute();
 
@@ -91,7 +91,7 @@ watch(
   },
 );
 
-onUnmounted(() => {
-  publicPath.value = null;
+onMounted(() => {
+  void ensureLoaded();
 });
 </script>

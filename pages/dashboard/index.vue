@@ -417,8 +417,7 @@ useHead({
 
 const auth = useAuthStore();
 const api = useApi();
-const publicPath = useState<string | null>('dashboardPublicPath', () => null);
-const avatarUrlState = useState<string | null>('dashboardAvatarUrl', () => null);
+const { avatarUrl: avatarUrlState, setFromProfile } = useDashboardNav();
 
 const loading = ref(true);
 const tipsLoading = ref(false);
@@ -461,7 +460,7 @@ async function startConnect() {
       dashboard.value.settlement = result.settlement;
     }
     if (result.onboardingUrl) {
-      window.open(result.onboardingUrl, '_blank', 'noopener,noreferrer');
+      openBachsOnboardingUrl(result.onboardingUrl);
       return;
     }
     if (result.settlement.automatedFridayPayout !== 'CONFIGURED') {
@@ -499,17 +498,13 @@ async function enableFriday() {
 }
 
 watch(
-  () => dashboard.value?.publicPath ?? null,
-  (path) => {
-    publicPath.value = path;
-  },
-  { immediate: true },
-);
-
-watch(
-  () => dashboard.value?.avatarUrl ?? null,
-  (url) => {
-    avatarUrlState.value = url;
+  () => dashboard.value,
+  (dash) => {
+    if (!dash) return;
+    setFromProfile({
+      publicPath: dash.publicPath,
+      avatarUrl: dash.avatarUrl,
+    });
   },
   { immediate: true },
 );
@@ -523,11 +518,6 @@ function onAvatarUploaded(url: string) {
 
 onMounted(async () => {
   await loadAll();
-});
-
-onUnmounted(() => {
-  publicPath.value = null;
-  avatarUrlState.value = null;
 });
 
 async function loadAll() {

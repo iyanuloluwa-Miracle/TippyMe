@@ -439,8 +439,7 @@ useHead({
 
 const auth = useAuthStore();
 const api = useApi();
-const publicPath = useState<string | null>('dashboardPublicPath', () => null);
-const avatarUrlState = useState<string | null>('dashboardAvatarUrl', () => null);
+const { avatarUrl: avatarUrlState, setFromProfile } = useDashboardNav();
 
 const loading = ref(true);
 const loadError = ref<string | null>(null);
@@ -532,8 +531,7 @@ function applyProfile(p: CreatorProfile) {
   goalTitle.value = p.goalTitle ?? '';
   goalTargetAmount.value = p.goalTargetAmount ?? '';
 
-  publicPath.value = p.publicPath;
-  avatarUrlState.value = p.avatarUrl;
+  setFromProfile(p);
 }
 
 async function loadProfile() {

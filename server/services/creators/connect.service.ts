@@ -69,7 +69,7 @@ export class ConnectService {
             bachsAccountId: profile.bachsAccountId,
             fridayPayoutEnabled: profile.fridayPayoutEnabled,
           }),
-          onboardingUrl: link.url,
+          onboardingUrl: this.requireHostedOnboardingUrl(link.url),
           stub: false,
         };
       } catch (err) {
@@ -156,12 +156,31 @@ export class ConnectService {
           bachsAccountId: account.id,
           fridayPayoutEnabled: profile.fridayPayoutEnabled,
         }),
-        onboardingUrl: link.url,
+        onboardingUrl: this.requireHostedOnboardingUrl(link.url),
         stub: false,
       };
     } catch (err) {
       this.throwConnectError(err);
     }
+  }
+
+  /** Reject missing / non-Bachs URLs so the client never navigates to TippyMe /api. */
+  private requireHostedOnboardingUrl(url: string | undefined): string {
+    const trimmed = url?.trim() ?? '';
+    try {
+      const parsed = new URL(trimmed);
+      const host = parsed.hostname.toLowerCase();
+      const onBachs =
+        parsed.protocol === 'https:' &&
+        (host === 'bachs.io' || host.endsWith('.bachs.io'));
+      if (onBachs) return trimmed;
+    } catch {
+      // fall through
+    }
+    throw new BachsProviderError(
+      'PROVIDER',
+      'Bachs Connect did not return a usable hosted onboarding URL',
+    );
   }
 
   /**
