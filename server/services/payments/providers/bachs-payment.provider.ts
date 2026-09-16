@@ -111,12 +111,14 @@ export class BachsPaymentProvider implements PaymentProviderPort {
 
     const timestamp = headerValue(input.headers, 'x-bachs-timestamp');
     const signature = headerValue(input.headers, 'x-bachs-signature');
+    const signatureV2 = headerValue(input.headers, 'x-bachs-signature-v2');
 
     const valid = verifyBachsWebhookSignature({
       rawBody: input.rawBody,
       secret,
       timestampHeader: timestamp,
       signatureHeader: signature,
+      signatureV2Header: signatureV2,
     });
 
     if (!valid) {

@@ -284,6 +284,13 @@ export class ConnectService {
 
   private throwConnectError(err: unknown): never {
     if (err instanceof BachsProviderError) {
+      if (err.kind === 'FORBIDDEN') {
+        throw new ApiError(
+          403,
+          'CONNECT_NOT_ENABLED',
+          'Bachs Connect is not enabled for this platform account. Activate the connect capability and grant this API key connected_accounts:write access, then try again.',
+        );
+      }
       throw new ApiError(
         err.httpStatus && err.httpStatus >= 400 && err.httpStatus < 500
           ? err.httpStatus
