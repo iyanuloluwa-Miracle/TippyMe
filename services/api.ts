@@ -37,7 +37,10 @@ export class ApiClientError extends Error {
  * Thin API client for Nitro /api routes. Public runtime config only — no secrets.
  * Credentials: include for httpOnly session cookies.
  */
-export function createApiClient(apiBaseUrl: string) {
+export function createApiClient(
+  apiBaseUrl: string,
+  defaultHeaders: Record<string, string> = {},
+) {
   const base = apiBaseUrl.replace(/\/$/, '');
 
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -47,6 +50,7 @@ export function createApiClient(apiBaseUrl: string) {
       credentials: 'include',
       headers: {
         Accept: 'application/json',
+        ...defaultHeaders,
         ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
         ...(init?.headers ?? {}),
       },

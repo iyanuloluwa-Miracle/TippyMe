@@ -48,6 +48,7 @@ import {
   type PublicSupporterNoteDto,
 } from './dashboard.types';
 import { buildSettlementStatus } from './settlement.types';
+import { convertCurrencyTotals, type CurrencyTotal } from './currency-conversion';
 import {
   ALLOWED_CURRENCIES,
   BIO_MAX,
@@ -143,6 +144,8 @@ export class CreatorsService {
 
     const week = utcWeekBounds();
 
+    const raised = await convertCurrencyTotals(lifetime.byCurrency, profile.currency);
+
     return {
       profile: toCreatorProfileDto(profile),
       tipsThisWeek: {
@@ -153,7 +156,7 @@ export class CreatorsService {
         weekStart: week.weekStart,
         weekEnd: week.weekEnd,
       },
-      supportGoal: toSupportGoalDto(profile, lifetime.sum),
+      supportGoal: toSupportGoalDto(profile, raised),
       recentSupporterNotes,
     };
   }
@@ -466,6 +469,11 @@ export class CreatorsService {
       this.attachPaymentStatus(toPlainList<Tip>(recentMessageDocs)),
     ]);
 
+    const [lifetimeSum, periodSum] = await Promise.all([
+      convertCurrencyTotals(lifetime.byCurrency, profile.currency),
+      convertCurrencyTotals(period.byCurrency, profile.currency),
+    ]);
+
     const successfulTipCount = lifetime.count;
     const conversionRate =
       lifetimeViewCount > 0
@@ -480,9 +488,10 @@ export class CreatorsService {
       publicPath: `/${profile.username}`,
       publicUrl: `${appUrl}/${profile.username}`,
       totals: {
-        successfulSupport: decimalToAmountString(lifetime.sum),
+        successfulSupport: decimalToAmountString(lifetimeSum),
+        converted: lifetime.byCurrency.some((row) => row.currency !== profile.currency),
         successfulTipCount,
-        periodSupport: decimalToAmountString(period.sum),
+        periodSupport: decimalToAmountString(periodSum),
         periodTipCount: period.count,
         periodKey,
         periodLabel,
@@ -499,7 +508,7 @@ export class CreatorsService {
             ? null
             : Math.round(conversionRate * 1000) / 10,
       },
-      supportGoal: toSupportGoalDto(profile, lifetime.sum),
+      supportGoal: toSupportGoalDto(profile, lifetimeSum),
       recentTips: recentTips.map(toCreatorTipDto),
       recentMessages: recentMessages
         .filter((t) => Boolean(t.message?.trim()))
@@ -641,21 +650,26 @@ export class CreatorsService {
   /** PAID-tip sum and count for a tip filter, mirroring the old SQL aggregates. */
   private async aggregateTipTotals(
     match: Record<string, unknown>,
-  ): Promise<{ sum: Decimal; count: number }> {
-    const [row] = await TipModel.aggregate<{ total: unknown; n: number }>([
+  ): Promise<{ byCurrency: CurrencyTotal[]; count: number }> {
+    const rows = await TipModel.aggregate<{ _id: string; total: unknown; n: number }>([
       { $match: match },
       {
         $group: {
-          _id: null,
+          _id: '$currency',
           total: { $sum: { $toDecimal: '$amount' } },
           n: { $sum: 1 },
         },
       },
     ]);
 
+    const byCurrency = rows.map((row) => ({
+      currency: row._id,
+      sum: new Decimal(String(row.total)),
+      count: row.n,
+    }));
     return {
-      sum: row?.total == null ? new Decimal(0) : new Decimal(String(row.total)),
-      count: row?.n ?? 0,
+      byCurrency,
+      count: byCurrency.reduce((count, row) => count + row.count, 0),
     };
   }
 

@@ -158,6 +158,7 @@ export interface CreatorTip {
 
 export interface CreatorDashboardTotals {
   successfulSupport: string;
+  converted: boolean;
   successfulTipCount: number;
   periodSupport: string;
   periodTipCount: number;

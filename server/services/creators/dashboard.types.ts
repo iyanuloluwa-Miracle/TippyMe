@@ -25,6 +25,8 @@ export interface CreatorTipDto {
 export interface DashboardTotalsDto {
   /** Sum of PAID tip amounts (decimal string). */
   successfulSupport: string;
+  /** True when one or more tips were converted at current reference rates. */
+  converted: boolean;
   successfulTipCount: number;
   /** PAID tip sum for the current UTC calendar month. */
   periodSupport: string;

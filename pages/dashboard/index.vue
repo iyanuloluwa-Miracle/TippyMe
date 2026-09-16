@@ -105,6 +105,9 @@
             <p class="mt-2 text-5xl font-extrabold tabular-nums tracking-tight sm:text-6xl lg:text-[4.25rem] lg:leading-none">
               {{ formatMoney(dashboard.totals.successfulSupport, dashboard.currency) }}
             </p>
+            <p v-if="dashboard.totals.converted" class="mt-2 text-xs text-white/50">
+              Approximate value using current exchange rates. Individual tips retain their original currency.
+            </p>
             <p class="mt-3 text-base text-white/50">
               Across
               <span class="font-bold text-cheer-mint">{{ dashboard.totals.successfulTipCount }}</span>

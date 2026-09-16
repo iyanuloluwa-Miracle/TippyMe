@@ -30,5 +30,8 @@ export function useApi() {
     base = resolveBrowserBase(publicUrl);
   }
 
-  return createApiClient(base);
+  // Native fetch does not forward the incoming browser cookie during SSR.
+  // Pass it explicitly so route middleware can restore the session on refresh.
+  const headers = import.meta.server ? useRequestHeaders(['cookie']) : {};
+  return createApiClient(base, headers);
 }

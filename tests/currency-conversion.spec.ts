@@ -1,0 +1,31 @@
+import { afterEach, expect, it, vi } from 'vitest';
+import Decimal from 'decimal.js';
+import { convertCurrencyTotals } from '../server/services/creators/currency-conversion';
+
+afterEach(() => vi.unstubAllGlobals());
+
+it('converts each original currency before adding dashboard totals', async () => {
+  const fetchRate = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ rate: 1500 }),
+  });
+  vi.stubGlobal('fetch', fetchRate);
+
+  const total = await convertCurrencyTotals([
+    { currency: 'USD', sum: new Decimal('10'), count: 1 },
+    { currency: 'NGN', sum: new Decimal('2000'), count: 1 },
+  ], 'NGN');
+
+  expect(total.toFixed(2)).toBe('17000.00');
+  expect(fetchRate).toHaveBeenCalledWith(
+    'https://api.frankfurter.dev/v2/rate/USD/NGN',
+    expect.any(Object),
+  );
+});
+
+it('fails rather than displaying an unconverted amount when rates are unavailable', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }));
+  await expect(convertCurrencyTotals([
+    { currency: 'GHS', sum: new Decimal('10'), count: 1 },
+  ], 'KES')).rejects.toMatchObject({ statusCode: 503 });
+});

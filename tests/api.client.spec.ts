@@ -3,6 +3,25 @@ import { createApiClient } from '../services/api';
 import type { ApiClientError } from '../services/api';
 
 describe('createApiClient', () => {
+  it('forwards the incoming session cookie when rendering on the server', async () => {
+    const originalFetch = globalThis.fetch;
+    let calledInit: RequestInit | undefined;
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      calledInit = init;
+      return new Response(JSON.stringify({ user: null }), { status: 200 });
+    }) as typeof fetch;
+    try {
+      await createApiClient('http://localhost:3000', {
+        cookie: 'tippyme_session=session-token',
+      }).getMe();
+      expect(calledInit?.headers).toMatchObject({
+        cookie: 'tippyme_session=session-token',
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it('builds health path against api base with credentials', async () => {
     const originalFetch = globalThis.fetch;
     let calledUrl = '';
