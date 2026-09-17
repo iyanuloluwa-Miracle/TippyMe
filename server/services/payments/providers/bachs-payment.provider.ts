@@ -270,6 +270,9 @@ export class BachsPaymentProvider implements PaymentProviderPort {
     const ps = paymentStatus?.toLowerCase();
     const cs = chargeStatus?.toLowerCase();
 
+    if (ps === 'refunded' || cs === 'refunded') return 'refunded';
+    if (ps === 'disputed' || cs === 'disputed' || cs === 'chargeback') return 'disputed';
+
     if (
       s === BACHS_CHECKOUT_STATUS.COMPLETED ||
       ps === 'succeeded' ||

@@ -21,6 +21,7 @@ export interface CreatorProfileDto {
   avatarUrl: string | null;
   supportMessage: string | null;
   currency: string;
+  payoutCountry: string | null;
   suggestedTipAmounts: string[];
   isActive: boolean;
   goalTitle: string | null;
@@ -66,6 +67,7 @@ export interface UpdateCreatorProfileInput {
 export interface UpdateCreatorSettingsInput {
   supportMessage?: string | null;
   currency?: string;
+  payoutCountry?: string;
   suggestedTipAmounts?: string[];
   goalTitle?: string | null;
   goalTargetAmount?: string | null;
@@ -98,6 +100,7 @@ export function toCreatorProfileDto(
     avatarUrl: profile.avatarUrl,
     supportMessage: profile.supportMessage,
     currency: profile.currency,
+    payoutCountry: profile.payoutCountry ?? null,
     suggestedTipAmounts: parseSuggestedTipAmounts(profile.suggestedTipAmounts),
     isActive: profile.isActive,
     goalTitle: profile.goalTitle ?? null,

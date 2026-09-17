@@ -1,5 +1,9 @@
 import { createId } from '@paralleldrive/cuid2';
-import mongoose, { type Model, type ClientSession } from 'mongoose';
+import mongoose, { Schema, type Model, type ClientSession } from 'mongoose';
+import type {
+  User, CreatorProfile, TipPageView, SocialLink, PaymentTransaction,
+  Tip, WebhookEvent, OtpChallenge, Notification, AuditLog,
+} from './types';
 import {
   AuditAction,
   NotificationProvider,
@@ -12,7 +16,7 @@ import {
   TipStatus,
 } from './enums';
 
-const { Schema, model, models } = mongoose;
+const { model, models } = mongoose;
 
 const cuid = () => createId();
 
@@ -52,7 +56,7 @@ const userSchema = new Schema(
 );
 userSchema.index({ createdAt: 1 });
 userSchema.pre('save', function () {
-  this.updatedAt = new Date();
+  (this as { updatedAt: Date }).updatedAt = new Date();
 });
 
 const creatorProfileSchema = new Schema(
@@ -64,6 +68,7 @@ const creatorProfileSchema = new Schema(
     avatarUrl: { type: String, default: null },
     supportMessage: { type: String, default: null },
     currency: { type: String, required: true, default: 'NGN', maxlength: 3 },
+    payoutCountry: { type: String, default: null },
     suggestedTipAmounts: { type: [String], default: null },
     isActive: { type: Boolean, required: true, default: true },
     // Omit when unset. A unique sparse index on explicit `null` only allows
@@ -89,7 +94,7 @@ creatorProfileSchema.index(
   },
 );
 creatorProfileSchema.pre('save', function () {
-  this.updatedAt = new Date();
+  (this as { updatedAt: Date }).updatedAt = new Date();
 });
 
 const tipPageViewSchema = new Schema(
@@ -120,7 +125,7 @@ const socialLinkSchema = new Schema(
 socialLinkSchema.index({ creatorId: 1, platform: 1, url: 1 }, { unique: true });
 socialLinkSchema.index({ creatorId: 1, sortOrder: 1 });
 socialLinkSchema.pre('save', function () {
-  this.updatedAt = new Date();
+  (this as { updatedAt: Date }).updatedAt = new Date();
 });
 
 const paymentTransactionSchema = new Schema(
@@ -144,6 +149,7 @@ const paymentTransactionSchema = new Schema(
     },
     metadata: { type: Schema.Types.Mixed, default: null },
     rawProviderStatus: { type: String, default: null },
+    lastReconciledAt: { type: Date, default: null },
     createdAt: { type: Date, default: () => new Date() },
     updatedAt: { type: Date, default: () => new Date() },
   }),
@@ -161,7 +167,7 @@ paymentTransactionSchema.index({ status: 1, createdAt: 1 });
 paymentTransactionSchema.index({ provider: 1, status: 1 });
 paymentTransactionSchema.index({ createdAt: 1 });
 paymentTransactionSchema.pre('save', function () {
-  this.updatedAt = new Date();
+  (this as { updatedAt: Date }).updatedAt = new Date();
 });
 
 const tipSchema = new Schema(
@@ -197,7 +203,7 @@ tipSchema.index({ creatorId: 1, status: 1, createdAt: 1 });
 tipSchema.index({ creatorId: 1, amount: 1 });
 tipSchema.index({ status: 1, createdAt: 1 });
 tipSchema.pre('save', function () {
-  this.updatedAt = new Date();
+  (this as { updatedAt: Date }).updatedAt = new Date();
 });
 
 const webhookEventSchema = new Schema(
@@ -271,7 +277,7 @@ notificationSchema.index({ userId: 1, createdAt: 1 });
 notificationSchema.index({ providerMessageId: 1 });
 notificationSchema.index({ status: 1, createdAt: 1 });
 notificationSchema.pre('save', function () {
-  this.updatedAt = new Date();
+  (this as { updatedAt: Date }).updatedAt = new Date();
 });
 
 const auditLogSchema = new Schema(
@@ -296,26 +302,34 @@ auditLogSchema.index({ action: 1, createdAt: 1 });
 auditLogSchema.index({ entityType: 1, entityId: 1 });
 auditLogSchema.index({ createdAt: 1 });
 
+const rateLimitSchema = new Schema({
+  _id: { type: String, required: true },
+  count: { type: Number, required: true, default: 0 },
+  expiresAt: { type: Date, required: true },
+});
+rateLimitSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
 function getModel<T>(name: string, schema: Schema): Model<T> {
-  return (models[name] as Model<T>) || model<T>(name, schema);
+  return (models[name] as Model<T>) || (model(name, schema) as unknown as Model<T>);
 }
 
-export const UserModel = getModel('User', userSchema);
-export const CreatorProfileModel = getModel(
+export const UserModel = getModel<User>('User', userSchema);
+export const CreatorProfileModel = getModel<CreatorProfile>(
   'CreatorProfile',
   creatorProfileSchema,
 );
-export const TipPageViewModel = getModel('TipPageView', tipPageViewSchema);
-export const SocialLinkModel = getModel('SocialLink', socialLinkSchema);
-export const PaymentTransactionModel = getModel(
+export const TipPageViewModel = getModel<TipPageView>('TipPageView', tipPageViewSchema);
+export const SocialLinkModel = getModel<SocialLink>('SocialLink', socialLinkSchema);
+export const PaymentTransactionModel = getModel<PaymentTransaction>(
   'PaymentTransaction',
   paymentTransactionSchema,
 );
-export const TipModel = getModel('Tip', tipSchema);
-export const WebhookEventModel = getModel('WebhookEvent', webhookEventSchema);
-export const OtpChallengeModel = getModel('OtpChallenge', otpChallengeSchema);
-export const NotificationModel = getModel('Notification', notificationSchema);
-export const AuditLogModel = getModel('AuditLog', auditLogSchema);
+export const TipModel = getModel<Tip>('Tip', tipSchema);
+export const WebhookEventModel = getModel<WebhookEvent>('WebhookEvent', webhookEventSchema);
+export const OtpChallengeModel = getModel<OtpChallenge>('OtpChallenge', otpChallengeSchema);
+export const NotificationModel = getModel<Notification>('Notification', notificationSchema);
+export const AuditLogModel = getModel<AuditLog>('AuditLog', auditLogSchema);
+export const RateLimitModel = getModel<{ id: string; count: number; expiresAt: Date }>('RateLimit', rateLimitSchema);
 
 export type { ClientSession };
 

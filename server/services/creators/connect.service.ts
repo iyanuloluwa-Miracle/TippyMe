@@ -46,8 +46,8 @@ export class ConnectService {
     const refreshUrl = `${appUrl}/dashboard/connect/refresh`;
 
     // Already linked — mint a fresh hosted link if live Bachs is configured.
-    if (profile.bachsAccountId) {
-      if (!this.http.isConfigured || profile.bachsAccountId.startsWith('acct_stub_')) {
+    if (profile.bachsAccountId && !profile.bachsAccountId.startsWith('acct_stub_')) {
+      if (!this.http.isConfigured) {
         return {
           settlement: buildSettlementStatus({
             bachsAccountId: profile.bachsAccountId,
@@ -85,7 +85,7 @@ export class ConnectService {
         {
           $set: {
             bachsAccountId: stubId,
-            fridayPayoutEnabled: true,
+            fridayPayoutEnabled: false,
             updatedAt: new Date(),
           },
         },
@@ -97,19 +97,20 @@ export class ConnectService {
       return {
         settlement: buildSettlementStatus({
           bachsAccountId: stubId,
-          fridayPayoutEnabled: true,
+          fridayPayoutEnabled: false,
         }),
         onboardingUrl: null,
         stub: true,
       };
     }
 
+    const payoutCountry = this.payoutCountry(profile);
     try {
       const account = await this.http.createConnectedAccount(
         {
           contact_email: profile.user.email,
           display_name: profile.displayName.slice(0, 120),
-          country: 'NG',
+          country: payoutCountry,
           entity_type: 'individual',
           configuration: {
             recipient: {
@@ -183,13 +184,21 @@ export class ConnectService {
     );
   }
 
+  private payoutCountry(profile: CreatorProfile): string {
+    const country = profile.payoutCountry ?? (profile.currency === 'NGN' ? 'NG' : null);
+    if (!country) {
+      throw new ApiError(400, 'PAYOUT_COUNTRY_REQUIRED', 'Choose your payout country in profile settings before connecting Bachs.');
+    }
+    return country;
+  }
+
   /**
    * After hosted return/refresh — optionally enable Friday weekly payouts.
    */
   async enableFridayPayout(userId: string): Promise<CreatorSettlementStatusDto> {
     await useDb();
     const profile = await this.requireProfileWithUser(userId);
-    if (!profile.bachsAccountId) {
+    if (!profile.bachsAccountId || profile.bachsAccountId.startsWith('acct_stub_')) {
       throw new ApiError(
         400,
         'CONNECT_REQUIRED',
@@ -209,12 +218,12 @@ export class ConnectService {
           },
         });
       } catch (err) {
-        // Non-fatal: schedule may require payout destination first.
         console.warn(
           `Friday payout schedule request failed for ${profile.bachsAccountId}: ${
             err instanceof Error ? err.message : 'unknown'
           }`,
         );
+        this.throwConnectError(err);
       }
     }
 

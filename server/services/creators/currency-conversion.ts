@@ -37,3 +37,11 @@ export async function convertCurrencyTotals(
   ));
   return values.reduce((total, value) => total.plus(value), new Decimal(0));
 }
+
+export async function convertAmount(
+  amount: string,
+  from: string,
+  to: string,
+): Promise<string> {
+  return new Decimal(amount).mul(await exchangeRate(from, to)).toFixed(2);
+}

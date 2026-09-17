@@ -1,44 +1,41 @@
+import { RateLimitModel, isUniqueViolation, useDb } from '../db';
 import { ApiError } from './errors';
 
-type Bucket = {
-  count: number;
-  resetAt: number;
-};
-
-const buckets = new Map<string, Bucket>();
-
-/**
- * Simple in-memory rate limiter (single-instance MVP).
- * Returns retryAfterSeconds when limited, otherwise null.
- */
-export function consumeRateLimit(
+/** Shared fixed-window counters in MongoDB, consistent across app instances. */
+export async function consumeRateLimit(
   key: string,
   limit: number,
   ttlMs: number,
-): number | null {
+): Promise<number | null> {
+  await useDb();
   const now = Date.now();
-  const existing = buckets.get(key);
-
-  if (!existing || existing.resetAt <= now) {
-    buckets.set(key, { count: 1, resetAt: now + ttlMs });
-    return null;
+  const windowStart = Math.floor(now / ttlMs) * ttlMs;
+  const resetAt = windowStart + ttlMs;
+  const id = `${key}:${windowStart}`;
+  let row;
+  try {
+    row = await RateLimitModel.findOneAndUpdate(
+      { _id: id },
+      { $inc: { count: 1 }, $setOnInsert: { expiresAt: new Date(resetAt) } },
+      { upsert: true, returnDocument: 'after' },
+    );
+  } catch (err) {
+    if (!isUniqueViolation(err)) throw err;
+    row = await RateLimitModel.findOneAndUpdate(
+      { _id: id }, { $inc: { count: 1 } }, { returnDocument: 'after' },
+    );
   }
-
-  if (existing.count >= limit) {
-    return Math.max(1, Math.ceil((existing.resetAt - now) / 1000));
-  }
-
-  existing.count += 1;
-  buckets.set(key, existing);
-  return null;
+  return (row?.count ?? limit + 1) > limit
+    ? Math.max(1, Math.ceil((resetAt - now) / 1000))
+    : null;
 }
 
-export function assertRateLimit(
+export async function assertRateLimit(
   key: string,
   limit: number,
   ttlMs: number,
-): void {
-  const retryAfterSeconds = consumeRateLimit(key, limit, ttlMs);
+): Promise<void> {
+  const retryAfterSeconds = await consumeRateLimit(key, limit, ttlMs);
   if (retryAfterSeconds != null) {
     throw new ApiError(
       429,

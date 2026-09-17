@@ -129,6 +129,15 @@ export function createApiClient(
         method: 'POST',
       }),
 
+    requestPasswordReset: (email: string) =>
+      request<{ ok: true }>('/api/auth/request-password-reset', {
+        method: 'POST', body: JSON.stringify({ email }),
+      }),
+    resetPassword: (email: string, code: string, password: string) =>
+      request<{ ok: true }>('/api/auth/reset-password', {
+        method: 'POST', body: JSON.stringify({ email, code, password }),
+      }),
+
     checkUsername: (username: string) =>
       request<UsernameAvailability>(
         `/api/creators/username-available?username=${encodeURIComponent(username)}`,
@@ -194,6 +203,7 @@ export function createApiClient(
     updateMyCreatorSettings: (payload: {
       supportMessage?: string | null;
       currency?: string;
+      payoutCountry?: string;
       suggestedTipAmounts?: string[];
       goalTitle?: string | null;
       goalTargetAmount?: string | null;

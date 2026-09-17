@@ -38,6 +38,7 @@ export interface CreatorProfile {
   avatarUrl: string | null;
   supportMessage: string | null;
   currency: string;
+  payoutCountry: string | null;
   suggestedTipAmounts: string[];
   isActive: boolean;
   goalTitle: string | null;
@@ -93,6 +94,8 @@ export type TipStatus =
   | 'CREATED'
   | 'CHECKOUT_PENDING'
   | 'PAID'
+  | 'REFUNDED'
+  | 'DISPUTED'
   | 'FAILED'
   | 'EXPIRED';
 

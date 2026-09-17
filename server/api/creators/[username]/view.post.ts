@@ -14,7 +14,7 @@ export default defineApiHandler(async (event) => {
   const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown';
   const key = `tip-page-view:${normalizeKey(username)}:${ip}`;
 
-  if (consumeRateLimit(key, VIEW_LIMIT, VIEW_TTL_MS) != null) {
+  if (await consumeRateLimit(key, VIEW_LIMIT, VIEW_TTL_MS) != null) {
     return { recorded: false as const };
   }
 

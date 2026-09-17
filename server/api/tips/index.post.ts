@@ -14,7 +14,7 @@ const IDEMPOTENCY_RE = /^[a-zA-Z0-9_-]+$/;
 
 export default defineApiHandler(async (event) => {
   const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown';
-  assertRateLimit(`tips:create:${ip}`, TIPS_CREATE_LIMIT, AUTH_THROTTLE_TTL_MS);
+  await assertRateLimit(`tips:create:${ip}`, TIPS_CREATE_LIMIT, AUTH_THROTTLE_TTL_MS);
 
   const body = await readBody<CreateTipInput>(event);
 

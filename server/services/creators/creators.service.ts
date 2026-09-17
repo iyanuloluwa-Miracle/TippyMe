@@ -48,7 +48,7 @@ import {
   type PublicSupporterNoteDto,
 } from './dashboard.types';
 import { buildSettlementStatus } from './settlement.types';
-import { convertCurrencyTotals, type CurrencyTotal } from './currency-conversion';
+import { convertAmount, convertCurrencyTotals, type CurrencyTotal } from './currency-conversion';
 import {
   ALLOWED_CURRENCIES,
   BIO_MAX,
@@ -310,6 +310,7 @@ export class CreatorsService {
     const data: {
       supportMessage?: string | null;
       currency?: AllowedCurrency;
+      payoutCountry?: string;
       suggestedTipAmounts?: string[];
       goalTitle?: string | null;
       goalTargetAmount?: string | null;
@@ -323,6 +324,17 @@ export class CreatorsService {
     }
     if (dto.currency !== undefined) {
       data.currency = this.requireValidCurrency(dto.currency);
+    }
+    if (dto.payoutCountry !== undefined) {
+      const country = dto.payoutCountry.trim().toUpperCase();
+      if (!['NG', 'GH', 'KE', 'ZA'].includes(country)) {
+        throw new ApiError(400, 'INVALID_PAYOUT_COUNTRY', 'Choose a supported payout country.');
+      }
+      const linkedCountry = profile.payoutCountry ?? (profile.currency === 'NGN' ? 'NG' : null);
+      if (profile.bachsAccountId && !profile.bachsAccountId.startsWith('acct_stub_') && country !== linkedCountry) {
+        throw new ApiError(409, 'PAYOUT_COUNTRY_LOCKED', 'Contact support to change the country of a linked payout account.');
+      }
+      data.payoutCountry = country;
     }
     if (dto.suggestedTipAmounts !== undefined) {
       data.suggestedTipAmounts = this.normalizeTipAmounts(
@@ -343,6 +355,25 @@ export class CreatorsService {
     }
     if (dto.goalActive !== undefined) {
       data.goalActive = Boolean(dto.goalActive);
+    }
+
+    // A currency-only edit must preserve the value of existing presets and
+    // goals. Explicitly changed amounts are treated as values in the new currency.
+    if (data.currency && data.currency !== profile.currency) {
+      const previousAmounts = profile.suggestedTipAmounts ?? [];
+      const submittedAmounts = data.suggestedTipAmounts ?? previousAmounts;
+      if (
+        submittedAmounts.length === previousAmounts.length &&
+        submittedAmounts.every((amount, index) => amount === previousAmounts[index])
+      ) {
+        data.suggestedTipAmounts = await Promise.all(previousAmounts.map((amount) =>
+          convertAmount(amount, profile.currency, data.currency!),
+        ));
+      }
+      const previousGoal = profile.goalTargetAmount;
+      if (previousGoal && (data.goalTargetAmount === undefined || data.goalTargetAmount === previousGoal)) {
+        data.goalTargetAmount = await convertAmount(previousGoal, profile.currency, data.currency);
+      }
     }
 
     await CreatorProfileModel.updateOne(

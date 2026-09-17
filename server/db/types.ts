@@ -50,6 +50,7 @@ export type CreatorProfile = {
   avatarUrl: string | null;
   supportMessage: string | null;
   currency: string;
+  payoutCountry?: string | null;
   suggestedTipAmounts: string[] | null;
   isActive: boolean;
   bachsAccountId: string | null;
@@ -98,6 +99,7 @@ export type PaymentTransaction = {
   status: PaymentStatus;
   metadata: Record<string, unknown> | null;
   rawProviderStatus: string | null;
+  lastReconciledAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };

@@ -298,6 +298,18 @@
           </div>
 
           <div>
+            <label for="edit-payout-country" class="block text-sm text-cheer-ink">Payout country</label>
+            <select id="edit-payout-country" v-model="payoutCountry" class="mt-1.5 w-full rounded-xl border border-black/10 bg-[#f7f4ff] px-3.5 py-2.5 text-base" :disabled="settingsPending">
+              <option value="">Choose your country</option>
+              <option value="NG">Nigeria</option>
+              <option value="GH">Ghana</option>
+              <option value="KE">Kenya</option>
+              <option value="ZA">South Africa</option>
+            </select>
+            <p class="mt-1 text-xs text-cheer-ink/50">Choose where your Bachs payout account is based. This can be changed only before connecting payouts.</p>
+          </div>
+
+          <div>
             <label
               for="edit-support"
               class="block text-sm text-cheer-ink"
@@ -458,6 +470,7 @@ let usernameCheckSeq = 0;
 const socialLinks = ref<{ platform: SocialPlatform; url: string }[]>([]);
 const supportMessage = ref('');
 const currency = ref('NGN');
+const payoutCountry = ref('');
 const tipAmounts = ref(['1000.00', '2500.00', '5000.00']);
 const goalActive = ref(false);
 const goalTitle = ref('');
@@ -516,6 +529,7 @@ function applyProfile(p: CreatorProfile) {
   }));
   supportMessage.value = p.supportMessage ?? '';
   currency.value = p.currency || 'NGN';
+  payoutCountry.value = p.payoutCountry ?? '';
   tipAmounts.value =
     p.suggestedTipAmounts.length > 0
       ? [...p.suggestedTipAmounts]
@@ -703,6 +717,7 @@ async function saveSettings() {
     const { profile: updated } = await api.updateMyCreatorSettings({
       supportMessage: supportMessage.value.trim() || null,
       currency: currency.value,
+      payoutCountry: payoutCountry.value || undefined,
       suggestedTipAmounts: amounts,
       goalActive: goalActive.value,
       goalTitle: goalActive.value ? goalTitle.value.trim() || null : null,

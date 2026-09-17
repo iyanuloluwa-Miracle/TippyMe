@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { getServerEnv } from '../lib/env';
-import { CreatorProfileModel, PaymentTransactionModel } from './models';
+import { CreatorProfileModel, PaymentTransactionModel, RateLimitModel } from './models';
 
 export type DbSession = mongoose.ClientSession;
 
@@ -15,6 +15,7 @@ async function ensureIndexes(): Promise<void> {
   }
 
   globalForMongo.__tippyMongoIndexesReady = (async () => {
+    await RateLimitModel.createIndexes();
     try {
       // Old unique+sparse index treated `null` as a value, blocking every
       // creator after the first. Strip nulls then replace the index.
@@ -196,6 +197,7 @@ export {
   OtpChallengeModel,
   NotificationModel,
   AuditLogModel,
+  RateLimitModel,
   toPlain,
   toPlainList,
 } from './models';

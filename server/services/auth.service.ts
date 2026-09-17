@@ -41,6 +41,70 @@ export class AuthService {
     private readonly notifications = new TransactionalNotificationsService(),
   ) {}
 
+  async requestPasswordReset(emailRaw: string): Promise<{ ok: true }> {
+    await useDb();
+    const email = normalizeEmail(emailRaw);
+    const user = toPlain<User>(await UserModel.findOne({ email }).lean<LeanDoc | null>());
+    // Give the same response for unknown and Google-only accounts.
+    if (!user?.passwordHash) return { ok: true };
+
+    const purpose = OtpPurpose.PASSWORD_RESET;
+    const recent = toPlain<OtpChallenge>(await OtpChallengeModel.findOne({ email, purpose })
+      .sort({ createdAt: -1 }).lean<LeanDoc | null>());
+    if (recent && Date.now() - recent.createdAt.getTime() < OTP_RESEND_COOLDOWN_MS) {
+      return { ok: true };
+    }
+
+    await OtpChallengeModel.updateMany(
+      { email, purpose, consumedAt: null },
+      { $set: { consumedAt: new Date() } },
+    );
+    const code = generateOtpCode();
+    const [challenge] = await OtpChallengeModel.create([{
+      userId: user.id,
+      email,
+      codeHash: hashOtp(code, this.requirePepper()),
+      purpose,
+      expiresAt: new Date(Date.now() + OTP_TTL_MS),
+      maxAttempts: OTP_MAX_ATTEMPTS,
+    }]);
+    const challengeId = insertedId(challenge);
+    try {
+      await this.notifications.notifyOtp({ userId: user.id, email, code, challengeId, purpose });
+    } catch {
+      await OtpChallengeModel.updateOne({ _id: challengeId }, { $set: { consumedAt: new Date() } });
+      // Keep the public response identical; delivery failures are logged by notifications.
+    }
+    return { ok: true };
+  }
+
+  async resetPassword(emailRaw: string, codeRaw: string, password: string): Promise<{ ok: true }> {
+    await useDb();
+    if (password.length < 8) {
+      throw new ApiError(400, 'INVALID_PASSWORD', 'Password must be at least 8 characters.');
+    }
+    const email = normalizeEmail(emailRaw);
+    const code = normalizeOtp(codeRaw);
+    const challenge = toPlain<OtpChallenge>(await OtpChallengeModel.findOne({
+      email, purpose: OtpPurpose.PASSWORD_RESET,
+    }).sort({ createdAt: -1 }).lean<LeanDoc | null>());
+    const invalid = () => new ApiError(400, 'INVALID_RESET_CODE', 'Invalid or expired reset code.');
+    if (!challenge || challenge.consumedAt || challenge.expiresAt.getTime() <= Date.now() ||
+        challenge.attemptCount >= challenge.maxAttempts) throw invalid();
+    if (!verifyOtpHash(code, challenge.codeHash, this.requirePepper())) {
+      await OtpChallengeModel.updateOne({ _id: challenge.id, consumedAt: null }, { $inc: { attemptCount: 1 } });
+      throw invalid();
+    }
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const consumed = await OtpChallengeModel.updateOne(
+      { _id: challenge.id, consumedAt: null, attemptCount: { $lt: challenge.maxAttempts } },
+      { $set: { consumedAt: new Date() } },
+    );
+    if (consumed.modifiedCount !== 1) throw invalid();
+    await UserModel.updateOne({ _id: challenge.userId, email }, { $set: { passwordHash, updatedAt: new Date() } });
+    return { ok: true };
+  }
+
   async requestOtp(
     emailRaw: string,
     meta?: { ipAddress?: string; userAgent?: string },

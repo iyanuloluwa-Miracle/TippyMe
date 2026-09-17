@@ -181,7 +181,10 @@ export class TipsService {
 
     let init;
     try {
-      const destination = creator.bachsAccountId?.trim() || null;
+      const connectedAccount = creator.bachsAccountId?.trim() || null;
+      const destination = connectedAccount?.startsWith('acct_stub_')
+        ? null
+        : connectedAccount;
       const platformFee = destination
         ? computePlatformFee(amountResult.amount)
         : null;

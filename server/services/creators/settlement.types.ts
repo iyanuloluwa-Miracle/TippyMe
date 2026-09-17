@@ -37,7 +37,7 @@ export function buildSettlementStatus(input: {
   bachsAccountId: string | null | undefined;
   fridayPayoutEnabled?: boolean;
 }): CreatorSettlementStatusDto {
-  const linked = Boolean(input.bachsAccountId?.trim());
+  const linked = Boolean(input.bachsAccountId?.trim()) && !input.bachsAccountId?.startsWith('acct_stub_');
   const friday = Boolean(input.fridayPayoutEnabled);
 
   if (!linked) {

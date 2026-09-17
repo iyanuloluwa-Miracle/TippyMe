@@ -61,18 +61,19 @@ export function securityLoginEmail(params: { method: string; atIso: string }): {
   return { subject, text, html };
 }
 
-export function otpEmail(code: string): {
+export function otpEmail(code: string, purpose?: string): {
   subject: string;
   text: string;
   html: string;
 } {
-  const subject = 'Verify your TippyMe email';
-  const text = `Your TippyMe verification code is ${code}. It expires in 10 minutes. If you did not request this, ignore this email.`;
+  const reset = purpose === 'PASSWORD_RESET';
+  const subject = reset ? 'Reset your TippyMe password' : 'Verify your TippyMe email';
+  const text = `Your TippyMe ${reset ? 'password reset' : 'verification'} code is ${code}. It expires in 10 minutes. If you did not request this, ignore this email.`;
   const html = `
 <!DOCTYPE html>
 <html>
 <body style="font-family: system-ui, sans-serif; color: #1a1228;">
-  <p>Your TippyMe verification code is:</p>
+  <p>Your TippyMe ${reset ? 'password reset' : 'verification'} code is:</p>
   <p style="font-size: 28px; font-weight: 700; letter-spacing: 0.2em;">${escapeHtml(code)}</p>
   <p>This code expires in 10 minutes. If you did not request it, you can ignore this email.</p>
 </body>

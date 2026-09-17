@@ -144,6 +144,7 @@ const formattedAmount = computed(() => {
 const headline = computed(() => {
   if (!tip.value) return '';
   if (tip.value.status === 'PAID') return 'Support received';
+  if (tip.value.status === 'REFUNDED' || tip.value.status === 'DISPUTED') return 'Payment reversed';
   if (tip.value.status === 'FAILED' || tip.value.status === 'EXPIRED') {
     return 'Payment didn’t complete';
   }
@@ -153,6 +154,7 @@ const headline = computed(() => {
 const title = computed(() => {
   if (!tip.value) return '';
   if (tip.value.status === 'PAID') return 'You’re all set';
+  if (tip.value.status === 'REFUNDED' || tip.value.status === 'DISPUTED') return 'Contact support about this payment';
   if (tip.value.status === 'FAILED' || tip.value.status === 'EXPIRED') {
     return 'Try again when you’re ready';
   }
@@ -163,6 +165,9 @@ const body = computed(() => {
   if (!tip.value) return '';
   if (tip.value.status === 'PAID') {
     return `${tip.value.creator.displayName} will see your support shortly.`;
+  }
+  if (tip.value.status === 'REFUNDED' || tip.value.status === 'DISPUTED') {
+    return 'This payment has been reversed or disputed. Contact support if you need help.';
   }
   if (tip.value.status === 'FAILED' || tip.value.status === 'EXPIRED') {
     return 'No charge was completed for this tip.';
@@ -183,7 +188,7 @@ onBeforeUnmount(() => {
 });
 
 function isTerminal(status: TipStatus) {
-  return status === 'PAID' || status === 'FAILED' || status === 'EXPIRED';
+  return status === 'PAID' || status === 'FAILED' || status === 'EXPIRED' || status === 'REFUNDED' || status === 'DISPUTED';
 }
 
 function stopPolling() {

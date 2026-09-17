@@ -9,7 +9,7 @@ import {
 
 export default defineApiHandler(async (event) => {
   const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown';
-  assertRateLimit(
+  await assertRateLimit(
     `auth:request-otp:${ip}`,
     AUTH_REQUEST_OTP_LIMIT,
     AUTH_THROTTLE_TTL_MS,

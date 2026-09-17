@@ -191,11 +191,7 @@ export class BachsHttpClient {
     );
   }
 
-  /**
-   * Best-effort Friday weekly payout schedule on a Connect balance.
-   * Failures are non-fatal — TippyMe still records fridayPayoutEnabled locally
-   * when the caller chooses to.
-   */
+  /** Set the Friday schedule on the connected Bachs balance. */
   async updateBalanceSettings(
     accountId: string,
     body: BachsBalanceSettingsBody,

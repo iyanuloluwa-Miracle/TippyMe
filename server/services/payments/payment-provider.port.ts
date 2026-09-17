@@ -44,6 +44,8 @@ export interface VerifyPaymentInput {
 export type PaymentVerificationStatus =
   | 'pending'
   | 'succeeded'
+  | 'refunded'
+  | 'disputed'
   | 'failed'
   | 'cancelled'
   | 'expired'

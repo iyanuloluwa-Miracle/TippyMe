@@ -10,13 +10,16 @@ import type { PaymentVerificationStatus } from './payment-provider.port';
  * Terminal states are sticky — a PAID tip must not become FAILED from a stale webhook.
  */
 const TIP_TERMINAL: ReadonlySet<TipStatusT> = new Set([
-  TipStatus.PAID,
+  TipStatus.REFUNDED,
+  TipStatus.DISPUTED,
   TipStatus.FAILED,
   TipStatus.EXPIRED,
 ]);
 
 const PAYMENT_TERMINAL: ReadonlySet<PaymentStatusT> = new Set([
   PaymentStatus.SUCCEEDED,
+  PaymentStatus.REFUNDED,
+  PaymentStatus.DISPUTED,
   PaymentStatus.FAILED,
   PaymentStatus.CANCELLED,
   PaymentStatus.EXPIRED,
@@ -39,6 +42,10 @@ export function mapVerificationToStatuses(
         tipStatus: TipStatus.PAID,
         paymentStatus: PaymentStatus.SUCCEEDED,
       };
+    case 'refunded':
+      return { tipStatus: TipStatus.REFUNDED, paymentStatus: PaymentStatus.REFUNDED };
+    case 'disputed':
+      return { tipStatus: TipStatus.DISPUTED, paymentStatus: PaymentStatus.DISPUTED };
     case 'failed':
       return {
         tipStatus: TipStatus.FAILED,
@@ -66,6 +73,9 @@ export function mapVerificationToStatuses(
  */
 export function canTransitionTip(from: TipStatusT, to: TipStatusT): boolean {
   if (from === to) return false;
+  if (from === TipStatus.PAID) {
+    return to === TipStatus.REFUNDED || to === TipStatus.DISPUTED;
+  }
   if (isTipTerminal(from)) return false;
   return (
     to === TipStatus.PAID || to === TipStatus.FAILED || to === TipStatus.EXPIRED

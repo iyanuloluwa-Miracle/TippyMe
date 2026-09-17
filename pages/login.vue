@@ -1,4 +1,5 @@
 <template>
+  <div>
   <AuthForm
     v-model:email="email"
     v-model:password="password"
@@ -15,6 +16,12 @@
     :google-next="googleNext"
     @submit="onSubmit"
   />
+  <div class="mx-auto mt-4 max-w-md text-center">
+    <NuxtLink to="/forgot-password" class="text-sm font-semibold text-cheer-leaf hover:underline">
+      Forgot your password?
+    </NuxtLink>
+  </div>
+  </div>
 </template>
 
 <script setup lang="ts">

@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import Decimal from 'decimal.js';
-import { convertCurrencyTotals } from '../server/services/creators/currency-conversion';
+import { convertAmount, convertCurrencyTotals } from '../server/services/creators/currency-conversion';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -28,4 +28,9 @@ it('fails rather than displaying an unconverted amount when rates are unavailabl
   await expect(convertCurrencyTotals([
     { currency: 'GHS', sum: new Decimal('10'), count: 1 },
   ], 'KES')).rejects.toMatchObject({ statusCode: 503 });
+});
+
+it('converts an existing goal target when the currency changes', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ rate: 0.01 }) }));
+  expect(await convertAmount('50000.00', 'NGN', 'USD')).toBe('500.00');
 });

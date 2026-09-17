@@ -284,7 +284,7 @@ export class TransactionalNotificationsService {
     challengeId: string;
     purpose: string;
   }): Promise<TransactionalSendResult> {
-    const copy = otpEmail(params.code);
+    const copy = otpEmail(params.code, params.purpose);
     return this.send({
       type: NotificationTypeEnum.EMAIL_OTP,
       to: params.email,
