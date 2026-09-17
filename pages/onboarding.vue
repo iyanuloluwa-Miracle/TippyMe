@@ -125,16 +125,49 @@
           </p>
         </div>
         <div>
-          <p class="block text-sm text-cheer-ink">Profile photo</p>
+          <p class="block text-sm text-cheer-ink">Choose an avatar</p>
+          <div
+            class="mt-2 grid grid-cols-4 gap-2 sm:grid-cols-6"
+            role="radiogroup"
+            aria-label="Choose an avatar"
+          >
+            <button
+              v-for="option in presetAvatars"
+              :key="option.id"
+              type="button"
+              role="radio"
+              class="overflow-hidden rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf disabled:opacity-60"
+              :class="avatarUrl === option.url ? 'ring-2 ring-cheer-leaf' : 'ring-1 ring-black/10'"
+              :aria-checked="avatarUrl === option.url"
+              :aria-label="`Avatar ${option.id}`"
+              :disabled="pending"
+              @click="selectPresetAvatar(option.url)"
+            >
+              <img
+                :src="option.url"
+                alt=""
+                class="aspect-square w-full object-cover"
+                width="128"
+                height="128"
+              >
+            </button>
+          </div>
+          <p class="mt-4 text-sm text-cheer-ink">Or upload your own photo</p>
           <div class="mt-2">
             <CreatorAvatarUploader
-              v-model="avatarUrl"
+              :model-value="uploadedAvatarUrl"
               :seed="username || displayName || 'creator'"
               :alt="displayName || 'Profile photo'"
               size="lg"
+              :show-generated-fallback="false"
               :disabled="pending"
+              hint="JPEG, PNG, WebP or GIF — up to 5MB"
+              @update:model-value="onUploadedAvatar"
             />
           </div>
+          <p class="mt-2 text-xs text-cheer-ink/50">
+            Choose an avatar or upload a photo to finish setup.
+          </p>
         </div>
       </div>
       <p v-if="error" class="mt-3 text-sm text-red-700" role="alert">
@@ -152,7 +185,7 @@
         <button
           type="button"
           class="flex-1 rounded-full bg-cheer-leaf px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-          :disabled="pending || !displayName.trim()"
+          :disabled="pending || !displayName.trim() || !hasAvatar"
           @click="goSocial"
         >
           Continue
@@ -303,7 +336,7 @@
         <button
           type="button"
           class="flex-1 rounded-full bg-cheer-leaf px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-          :disabled="pending"
+          :disabled="pending || !hasAvatar"
           @click="submitOnboarding"
         >
           {{ pending ? 'Creating…' : 'Create Tippy page' }}
@@ -355,6 +388,7 @@
 <script setup lang="ts">
 import type { CreatorProfile, SocialPlatform } from '~/types/api';
 import { ApiClientError } from '~/services/api';
+import { presetAvatarOptions } from '~/utils/avatar';
 import { normalizeClaimUsername } from '~/utils/username-claim';
 
 definePageMeta({
@@ -387,6 +421,13 @@ let usernameCheckSeq = 0;
 const displayName = ref('');
 const bio = ref('');
 const avatarUrl = ref<string | null>(null);
+const presetAvatars = presetAvatarOptions();
+const hasAvatar = computed(() => Boolean(avatarUrl.value?.trim()));
+const uploadedAvatarUrl = computed(() => {
+  const selected = avatarUrl.value?.trim();
+  if (!selected) return null;
+  return presetAvatars.some((option) => option.url === selected) ? null : selected;
+});
 const supportMessage = ref('Thanks for supporting my work — every tip helps.');
 const currency = ref('NGN');
 const tipAmounts = ref(['1000.00', '2500.00', '5000.00']);
@@ -556,10 +597,24 @@ function goProfile() {
   step.value = 'profile';
 }
 
+function selectPresetAvatar(url: string) {
+  avatarUrl.value = url;
+  error.value = null;
+}
+
+function onUploadedAvatar(url: string | null) {
+  avatarUrl.value = url;
+  error.value = null;
+}
+
 function goSocial() {
   error.value = null;
   if (!displayName.value.trim()) {
     error.value = 'Display name is required.';
+    return;
+  }
+  if (!hasAvatar.value) {
+    error.value = 'Choose an avatar or upload a photo.';
     return;
   }
   step.value = 'social';
@@ -624,8 +679,12 @@ function mapError(err: unknown): string {
 }
 
 async function submitOnboarding() {
-  pending.value = true;
   error.value = null;
+  if (!hasAvatar.value) {
+    error.value = 'Choose an avatar or upload a photo.';
+    return;
+  }
+  pending.value = true;
   try {
     const links = socialLinks.value
       .filter((l) => l.url.trim())

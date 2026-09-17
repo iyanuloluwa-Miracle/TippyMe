@@ -16,6 +16,7 @@
         @click="openPicker"
       >
         <img
+          v-if="previewSrc"
           :src="previewSrc"
           :alt="alt"
           class="h-full w-full object-cover"
@@ -23,10 +24,16 @@
           :height="pixelSize"
         >
         <span
+          v-else
+          class="flex h-full w-full items-center justify-center px-2 text-center text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-cheer-ink/70"
+        >
+          Upload
+        </span>
+        <span
           class="absolute inset-0 flex items-center justify-center bg-black/45 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
           :class="uploading ? 'opacity-100' : ''"
         >
-          {{ uploading ? 'Uploading…' : 'Change' }}
+          {{ uploading ? 'Uploading…' : overlayLabel }}
         </span>
       </button>
       <input
@@ -78,6 +85,8 @@ const props = withDefaults(
     persist?: boolean;
     disabled?: boolean;
     hint?: string;
+    /** When false, an empty value shows an upload placeholder instead of a generated face. */
+    showGeneratedFallback?: boolean;
   }>(),
   {
     modelValue: null,
@@ -87,6 +96,7 @@ const props = withDefaults(
     persist: false,
     disabled: false,
     hint: 'JPEG, PNG, WebP or GIF — up to 5MB',
+    showGeneratedFallback: true,
   },
 );
 
@@ -109,11 +119,20 @@ const roundedClass = 'rounded-2xl';
 
 const previewSrc = computed(() => {
   if (localPreview.value) return localPreview.value;
+  const custom = props.modelValue?.trim();
+  if (custom) return custom;
+  if (!props.showGeneratedFallback) return null;
   return resolveAvatarUrl(props.modelValue, props.seed, pixelSize.value);
 });
 
+const overlayLabel = computed(() => (previewSrc.value ? 'Change' : 'Upload'));
+
 const ariaLabel = computed(() =>
-  uploading.value ? 'Uploading profile photo' : 'Change profile photo',
+  uploading.value
+    ? 'Uploading profile photo'
+    : previewSrc.value
+      ? 'Change profile photo'
+      : 'Upload profile photo',
 );
 
 function openPicker() {

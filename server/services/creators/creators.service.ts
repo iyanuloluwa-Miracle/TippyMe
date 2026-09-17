@@ -177,6 +177,15 @@ export class CreatorsService {
       );
     }
 
+    const avatarUrl = dto.avatarUrl?.trim();
+    if (!avatarUrl) {
+      throw new ApiError(
+        400,
+        'AVATAR_REQUIRED',
+        'Choose an avatar or upload a photo before creating your page.',
+      );
+    }
+
     const username = this.requireValidUsername(dto.username);
     const availability = await this.checkUsernameAvailability(username);
     if (!availability.available) {
@@ -197,7 +206,7 @@ export class CreatorsService {
               username,
               displayName: dto.displayName.trim(),
               bio: dto.bio?.trim() || null,
-              avatarUrl: dto.avatarUrl?.trim() || null,
+              avatarUrl,
               supportMessage: dto.supportMessage?.trim() || null,
               currency: (dto.currency ?? 'NGN').toUpperCase(),
               suggestedTipAmounts,

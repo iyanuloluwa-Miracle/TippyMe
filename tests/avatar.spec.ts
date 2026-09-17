@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dicebearAvatarUrl, resolveAvatarUrl } from '../utils/avatar';
+import { dicebearAvatarUrl, presetAvatarOptions, resolveAvatarUrl } from '../utils/avatar';
 import { normalizeClaimUsername } from '../utils/username-claim';
 
 describe('avatar helpers', () => {
@@ -23,6 +23,17 @@ describe('avatar helpers', () => {
     expect(resolveAvatarUrl(null, 'abdul')).toBe(
       'https://api.dicebear.com/10.x/lorelei/png?seed=abdul&size=128',
     );
+  });
+
+  it('returns a stable gallery of selectable avatars', () => {
+    const options = presetAvatarOptions();
+    expect(options).toHaveLength(12);
+    expect(new Set(options.map((option) => option.url)).size).toBe(12);
+    expect(options[0]).toEqual({
+      id: 'ada',
+      url: dicebearAvatarUrl('ada'),
+    });
+    expect(presetAvatarOptions()).toEqual(options);
   });
 });
 
