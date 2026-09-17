@@ -12,7 +12,7 @@ import {
   withTransaction,
 } from '../../db';
 import type { LeanDoc } from '../../db/lean';
-import { AuditAction, PaymentProvider, TipStatus } from '../../db/enums';
+import { AuditAction, PaymentProvider, PaymentStatus, TipStatus } from '../../db/enums';
 import type {
   CreatorProfile,
   PaymentProvider as PaymentProviderT,
@@ -189,6 +189,12 @@ export class WebhookFulfilmentService {
     if (applied.notified && mapped.tipStatus === TipStatus.PAID) {
       await this.notifyCreatorTipReceived(tip.id);
     }
+    if (
+      applied.updated &&
+      (mapped.tipStatus === TipStatus.REFUNDED || mapped.tipStatus === TipStatus.DISPUTED)
+    ) {
+      await this.notifyCreatorTipReversed(tip.id, mapped.tipStatus);
+    }
 
     return {
       ok: true,
@@ -288,6 +294,10 @@ export class WebhookFulfilmentService {
                 providerReference: params.verified.providerReference,
                 rawProviderStatus: params.verified.rawStatus,
                 updatedAt: new Date(),
+                ...(params.mapped.paymentStatus === PaymentStatus.REFUNDED ||
+                params.mapped.paymentStatus === PaymentStatus.DISPUTED
+                  ? { 'metadata.payoutReversal': 'MANUAL_REQUIRED' }
+                  : {}),
               },
             },
             { session },
@@ -311,6 +321,10 @@ export class WebhookFulfilmentService {
                 to: params.mapped.tipStatus,
                 via: params.eventType,
                 providerEventId: params.providerEventId,
+                ...(params.mapped.tipStatus === TipStatus.REFUNDED ||
+                params.mapped.tipStatus === TipStatus.DISPUTED
+                  ? { payoutReversal: 'MANUAL_REQUIRED' }
+                  : {}),
               },
             },
           ],
@@ -485,6 +499,29 @@ export class WebhookFulfilmentService {
       // Never reverse payment success because email failed.
       console.error(
         `Failed to notify creator for tip=${tipId}: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+    }
+  }
+
+  private async notifyCreatorTipReversed(tipId: string, status: 'REFUNDED' | 'DISPUTED') {
+    try {
+      const tip = toPlain<Tip>(
+        await TipModel.findOne({ _id: tipId }).lean<LeanDoc | null>(),
+      );
+      if (!tip) return;
+      const hydrated = await this.hydrateTip(tip);
+      if (!hydrated.creator) return;
+      await this.notifications.notifyTipReversed({
+        tipId: hydrated.id,
+        userId: hydrated.creator.user.id,
+        email: hydrated.creator.user.email,
+        amount: decimalToAmountString(hydrated.amount),
+        currency: hydrated.currency,
+        status,
+      });
+    } catch (err) {
+      console.error(
+        `Failed to notify creator of reversal tip=${tipId}: ${err instanceof Error ? err.message : 'unknown'}`,
       );
     }
   }

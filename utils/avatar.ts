@@ -26,19 +26,80 @@ export function presetAvatarOptions(size = 128): PresetAvatar[] {
   }));
 }
 
-/** Deterministic DiceBear avatar URL for a seed (username, display name, etc.). */
+const DICEBEAR_UPSTREAM = DICEBEAR_BASE;
+
+/** Same-origin path. The server fetches and caches the illustration. */
 export function dicebearAvatarUrl(seed: string, size = 128): string {
   const normalized = seed.trim() || 'anonymous';
-  return `${DICEBEAR_BASE}?seed=${encodeURIComponent(normalized)}&size=${size}`;
+  return `/api/avatars/${encodeURIComponent(normalized)}?size=${size}`;
 }
 
-/** Prefer a custom avatar URL; otherwise fall back to DiceBear. */
+/** Upstream URL used only by the avatar proxy. */
+export function dicebearUpstreamUrl(seed: string, size = 128): string {
+  const normalized = seed.trim() || 'anonymous';
+  return `${DICEBEAR_UPSTREAM}?seed=${encodeURIComponent(normalized)}&size=${size}`;
+}
+
+function presetSeedFromPath(pathname: string): string | null {
+  const raw = pathname.slice('/api/avatars/'.length).split('/')[0]?.split('?')[0] ?? '';
+  const seed = decodeURIComponent(raw);
+  return (PRESET_AVATAR_SEEDS as readonly string[]).includes(seed) ? seed : null;
+}
+
+/** Preset gallery paths, or an uploaded photo URL. Rejects arbitrary strings and hotlinks. */
+export function isAllowedAvatarUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed || trimmed.length > 500) return false;
+  if (trimmed.startsWith('/api/avatars/')) return presetSeedFromPath(trimmed) != null;
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return false;
+  }
+  if (parsed.username || parsed.password) return false;
+  if (parsed.pathname.startsWith('/api/avatars/')) return presetSeedFromPath(parsed.pathname) != null;
+  if (parsed.protocol !== 'https:') return false;
+  const host = parsed.hostname.toLowerCase();
+  if (host === 'api.dicebear.com' || host.endsWith('.dicebear.com')) return false;
+  const uploadedPhoto = /\/avatars\/[^/]+\/.+\.(png|jpe?g|webp|gif)$/i.test(parsed.pathname);
+  const byteshipHost = host === 'byteship.dev' || host.endsWith('.byteship.dev') || host.includes('byteship');
+  return uploadedPhoto && (byteshipHost || parsed.pathname.includes('/avatars/'));
+}
+
+/** Turn a saved DiceBear preset URL into the same-origin path. Other URLs are unchanged. */
+export function normalizeSavedAvatarUrl(url: string): string {
+  const trimmed = url.trim();
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.hostname === 'api.dicebear.com' || parsed.hostname.endsWith('.dicebear.com')) {
+      const diceSeed = parsed.searchParams.get('seed')?.trim() ?? '';
+      if ((PRESET_AVATAR_SEEDS as readonly string[]).includes(diceSeed)) {
+        return dicebearAvatarUrl(diceSeed);
+      }
+    }
+  } catch {
+    // Relative preset paths stay as they are.
+  }
+  return trimmed;
+}
+
+/** Prefer a saved photo. Old DiceBear hotlinks are rewritten to the same-origin proxy. */
 export function resolveAvatarUrl(
   avatarUrl: string | null | undefined,
   seed: string,
   size = 128,
 ): string {
   const custom = avatarUrl?.trim();
-  if (custom) return custom;
-  return dicebearAvatarUrl(seed, size);
+  if (!custom) return dicebearAvatarUrl(seed, size);
+  try {
+    const parsed = new URL(custom);
+    if (parsed.hostname === 'api.dicebear.com' || parsed.hostname.endsWith('.dicebear.com')) {
+      const diceSeed = parsed.searchParams.get('seed')?.trim();
+      if (diceSeed) return dicebearAvatarUrl(diceSeed, size);
+    }
+  } catch {
+    // Relative preset paths are already same-origin.
+  }
+  return custom;
 }

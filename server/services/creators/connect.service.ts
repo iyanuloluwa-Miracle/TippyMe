@@ -185,7 +185,7 @@ export class ConnectService {
   }
 
   private payoutCountry(profile: CreatorProfile): string {
-    const country = profile.payoutCountry ?? (profile.currency === 'NGN' ? 'NG' : null);
+    const country = profile.payoutCountry ?? null;
     if (!country) {
       throw new ApiError(400, 'PAYOUT_COUNTRY_REQUIRED', 'Choose your payout country in profile settings before connecting Bachs.');
     }

@@ -6,6 +6,35 @@ export type CurrencyTotal = { currency: string; sum: Decimal; count: number };
 const rateCache = new Map<string, { rate: Decimal; expiresAt: number }>();
 const RATE_TTL_MS = 60 * 60 * 1000;
 
+async function readStoredRate(key: string): Promise<Decimal | null> {
+  try {
+    const mongoose = (await import('mongoose')).default;
+    if (mongoose.connection.readyState !== 1) return null;
+    const { ExchangeRateModel } = await import('../../db/models');
+    const row = await ExchangeRateModel.findById(key).lean<{ rate?: string } | null>();
+    const rate = new Decimal(row?.rate ?? NaN);
+    return rate.isFinite() && rate.isPositive() ? rate : null;
+  } catch {
+    return null;
+  }
+}
+
+async function storeRate(key: string, rate: Decimal): Promise<void> {
+  rateCache.set(key, { rate, expiresAt: Date.now() + RATE_TTL_MS });
+  try {
+    const mongoose = (await import('mongoose')).default;
+    if (mongoose.connection.readyState !== 1) return;
+    const { ExchangeRateModel } = await import('../../db/models');
+    await ExchangeRateModel.updateOne(
+      { _id: key },
+      { $set: { rate: rate.toString(), updatedAt: new Date() } },
+      { upsert: true },
+    );
+  } catch {
+    // The in-memory rate is still usable for this process.
+  }
+}
+
 async function exchangeRate(from: string, to: string): Promise<Decimal> {
   if (from === to) return new Decimal(1);
   const key = `${from}/${to}`;
@@ -21,9 +50,20 @@ async function exchangeRate(from: string, to: string): Promise<Decimal> {
     const data = (await response.json()) as { rate?: number };
     const rate = new Decimal(data.rate ?? NaN);
     if (!rate.isFinite() || !rate.isPositive()) throw new Error('Invalid exchange rate');
-    rateCache.set(key, { rate, expiresAt: Date.now() + RATE_TTL_MS });
+    await storeRate(key, rate);
     return rate;
   } catch {
+    if (cached?.rate) return cached.rate;
+    const inverse = rateCache.get(`${to}/${from}`);
+    if (inverse?.rate.isPositive()) return new Decimal(1).div(inverse.rate);
+    const stored = (await readStoredRate(key)) ?? await (async () => {
+      const inverseStored = await readStoredRate(`${to}/${from}`);
+      return inverseStored ? new Decimal(1).div(inverseStored) : null;
+    })();
+    if (stored) {
+      rateCache.set(key, { rate: stored, expiresAt: Date.now() + RATE_TTL_MS });
+      return stored;
+    }
     throw new ApiError(503, 'EXCHANGE_RATE_UNAVAILABLE', 'Currency conversion is temporarily unavailable. Please try again.');
   }
 }

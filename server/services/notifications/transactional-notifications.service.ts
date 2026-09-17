@@ -15,6 +15,7 @@ import {
   otpEmail,
   securityLoginEmail,
   tipReceivedEmail,
+  tipReversedEmail,
 } from './email-templates';
 
 export interface TransactionalSendResult {
@@ -224,6 +225,34 @@ export class TransactionalNotificationsService {
       retryOnce: true,
       existingId:
         byTip?.status === NotificationStatus.FAILED ? byTip.id : undefined,
+    });
+  }
+
+  /** Refund or dispute — status already changed. Payouts are not clawed back here. */
+  async notifyTipReversed(params: {
+    tipId: string;
+    userId: string;
+    email: string;
+    amount: string;
+    currency: string;
+    status: 'REFUNDED' | 'DISPUTED';
+  }): Promise<TransactionalSendResult> {
+    const copy = tipReversedEmail({
+      amount: params.amount,
+      currency: params.currency,
+      status: params.status,
+    });
+    return this.send({
+      type: NotificationTypeEnum.EMAIL_GENERIC,
+      to: params.email,
+      userId: params.userId,
+      subject: copy.subject,
+      html: copy.html,
+      text: copy.text,
+      idempotencyKey: `tip_reversed_${params.tipId}_${params.status}`,
+      metadata: { tipId: params.tipId, status: params.status, payoutReversal: 'MANUAL_REQUIRED' },
+      critical: false,
+      retryOnce: true,
     });
   }
 

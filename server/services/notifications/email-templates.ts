@@ -23,6 +23,28 @@ export function tipReceivedEmail(params: {
   return { subject, text, html };
 }
 
+export function tipReversedEmail(params: {
+  amount: string;
+  currency: string;
+  status: 'REFUNDED' | 'DISPUTED';
+}): { subject: string; text: string; html: string } {
+  const reversed = params.status === 'REFUNDED' ? 'refunded' : 'disputed';
+  const subject = params.status === 'REFUNDED'
+    ? 'A support payment was refunded'
+    : 'A support payment was disputed';
+  const text = `A ${params.amount} ${params.currency} support payment was ${reversed}. It is no longer counted as received. If that money was already paid out to you, contact support so it can be recovered. TippyMe does not reverse payouts automatically.`;
+  const html = `
+<!DOCTYPE html>
+<html>
+<body style="font-family: system-ui, sans-serif; color: #1a1228; line-height: 1.5;">
+  <p>A support payment was ${reversed}.</p>
+  <p style="font-size: 22px; font-weight: 700;">${escapeHtml(params.amount)} ${escapeHtml(params.currency)}</p>
+  <p style="color: #6b5f8a;">It is no longer counted as received. If that money was already paid out to you, contact support so it can be recovered. TippyMe does not reverse payouts automatically.</p>
+</body>
+</html>`.trim();
+  return { subject, text, html };
+}
+
 export function accountVerifiedEmail(): {
   subject: string;
   text: string;

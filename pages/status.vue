@@ -3,7 +3,7 @@
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">API status</h1>
       <p class="mt-2 text-sm text-[var(--cheer-ink)]/65">
-        Calls NestJS <code class="rounded bg-black/5 px-1">GET /api/health</code>
+        Calls <code class="rounded bg-black/5 px-1">GET /api/ready</code> for database readiness. Container health uses <code class="rounded bg-black/5 px-1">GET /api/health</code>.
       </p>
     </div>
 
@@ -34,7 +34,7 @@ import type { HealthResponse } from '~/types/api';
 
 useHead({ title: 'Status — TippyMe' });
 
-const { getHealth } = useApi();
+const { getReady } = useApi();
 
 const health = ref<HealthResponse | null>(null);
 const error = ref<string | null>(null);
@@ -59,7 +59,7 @@ async function refresh() {
   pending.value = true;
   error.value = null;
   try {
-    health.value = await getHealth();
+    health.value = await getReady();
   } catch (e) {
     health.value = null;
     error.value = e instanceof Error ? e.message : 'Failed to reach API';

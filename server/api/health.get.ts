@@ -1,22 +1,14 @@
 import { defineApiHandler } from '../lib/define-api';
-import { useDb } from '../db';
-import { ApiError } from '../lib/errors';
 
 /**
- * Readiness check: only report healthy when the database can answer a ping.
+ * Process liveness only. Docker uses this path, so a database blip must not
+ * make the container look dead and get restarted.
  */
-export default defineApiHandler(async () => {
-  try {
-    const connection = await useDb();
-    await connection.connection.db?.admin().ping();
-    if (!connection.connection.db) throw new Error('Database unavailable');
-  } catch {
-    throw new ApiError(503, 'DATABASE_UNAVAILABLE', 'Database is unavailable.');
-  }
+export default defineApiHandler(() => {
   return {
     status: 'ok' as const,
     service: 'cheer-web',
-    database: 'up' as const,
+    database: 'skipped' as const,
     timestamp: new Date().toISOString(),
   };
 });

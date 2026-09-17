@@ -18,14 +18,21 @@ export type AuthUserPayload = {
   email: string;
 };
 
+type SessionClaims = AuthUserPayload & {
+  passwordChangedAt: number;
+};
+
 function secretKey(): Uint8Array {
   return new TextEncoder().encode(getServerEnv().AUTH_SECRET);
 }
 
 export async function signAccessToken(
-  payload: AuthUserPayload,
+  payload: AuthUserPayload & { passwordChangedAt?: Date | null },
 ): Promise<string> {
-  return new SignJWT({ email: payload.email })
+  const pwd = payload.passwordChangedAt
+    ? Math.floor(payload.passwordChangedAt.getTime() / 1000)
+    : 0;
+  return new SignJWT({ email: payload.email, pwd })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(payload.sub)
     .setIssuedAt()
@@ -35,7 +42,7 @@ export async function signAccessToken(
 
 export async function verifyAccessToken(
   token: string,
-): Promise<AuthUserPayload> {
+): Promise<SessionClaims> {
   try {
     const { payload } = await jwtVerify(token, secretKey());
     const sub = payload.sub;
@@ -43,7 +50,11 @@ export async function verifyAccessToken(
     if (typeof sub !== 'string' || typeof email !== 'string') {
       throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
     }
-    return { sub, email };
+    return {
+      sub,
+      email,
+      passwordChangedAt: typeof payload.pwd === 'number' ? payload.pwd : 0,
+    };
   } catch (err) {
     if (err instanceof ApiError) throw err;
     throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
@@ -69,7 +80,24 @@ export async function requireUser(event: H3Event): Promise<AuthUserPayload> {
   if (!token) {
     throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
   }
-  return verifyAccessToken(token);
+  const session = await verifyAccessToken(token);
+  try {
+    const { UserModel, useDb } = await import('../db');
+    await useDb();
+    const user = await UserModel.findById(session.sub).select('passwordChangedAt').lean<{
+      passwordChangedAt?: Date | null;
+    } | null>();
+    const stored = user?.passwordChangedAt
+      ? Math.floor(new Date(user.passwordChangedAt).getTime() / 1000)
+      : 0;
+    if (!user || session.passwordChangedAt < stored) {
+      throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
+    }
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    throw new ApiError(503, 'DATABASE_UNAVAILABLE', 'Database is unavailable.');
+  }
+  return { sub: session.sub, email: session.email };
 }
 
 export function setAuthCookie(event: H3Event, token: string): void {

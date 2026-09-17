@@ -49,6 +49,7 @@ import {
 } from './dashboard.types';
 import { buildSettlementStatus } from './settlement.types';
 import { convertAmount, convertCurrencyTotals, type CurrencyTotal } from './currency-conversion';
+import { isAllowedAvatarUrl, normalizeSavedAvatarUrl } from '../../../utils/avatar';
 import {
   ALLOWED_CURRENCIES,
   BIO_MAX,
@@ -177,14 +178,7 @@ export class CreatorsService {
       );
     }
 
-    const avatarUrl = dto.avatarUrl?.trim();
-    if (!avatarUrl) {
-      throw new ApiError(
-        400,
-        'AVATAR_REQUIRED',
-        'Choose an avatar or upload a photo before creating your page.',
-      );
-    }
+    const avatarUrl = this.requireAvatarUrl(dto.avatarUrl);
 
     const username = this.requireValidUsername(dto.username);
     const availability = await this.checkUsernameAvailability(username);
@@ -268,8 +262,7 @@ export class CreatorsService {
       data.bio = dto.bio === null ? null : this.requireValidBio(dto.bio);
     }
     if (dto.avatarUrl !== undefined) {
-      data.avatarUrl =
-        dto.avatarUrl === null ? null : dto.avatarUrl.trim() || null;
+      data.avatarUrl = this.requireAvatarUrl(dto.avatarUrl);
     }
     if (dto.username !== undefined) {
       const username = this.requireValidUsername(dto.username);
@@ -324,6 +317,7 @@ export class CreatorsService {
       goalTitle?: string | null;
       goalTargetAmount?: string | null;
       goalActive?: boolean;
+      amountBasis?: CreatorProfile['amountBasis'];
     } = {};
     if (dto.supportMessage !== undefined) {
       data.supportMessage =
@@ -339,7 +333,7 @@ export class CreatorsService {
       if (!['NG', 'GH', 'KE', 'ZA'].includes(country)) {
         throw new ApiError(400, 'INVALID_PAYOUT_COUNTRY', 'Choose a supported payout country.');
       }
-      const linkedCountry = profile.payoutCountry ?? (profile.currency === 'NGN' ? 'NG' : null);
+      const linkedCountry = profile.payoutCountry ?? null;
       if (profile.bachsAccountId && !profile.bachsAccountId.startsWith('acct_stub_') && country !== linkedCountry) {
         throw new ApiError(409, 'PAYOUT_COUNTRY_LOCKED', 'Contact support to change the country of a linked payout account.');
       }
@@ -366,23 +360,42 @@ export class CreatorsService {
       data.goalActive = Boolean(dto.goalActive);
     }
 
-    // A currency-only edit must preserve the value of existing presets and
-    // goals. Explicitly changed amounts are treated as values in the new currency.
+    // Convert from the original amounts so NGN -> USD -> NGN does not compound rounding.
+    const basis = profile.amountBasis ?? {
+      currency: profile.currency,
+      suggestedTipAmounts: profile.suggestedTipAmounts,
+      goalTargetAmount: profile.goalTargetAmount,
+    };
     if (data.currency && data.currency !== profile.currency) {
       const previousAmounts = profile.suggestedTipAmounts ?? [];
       const submittedAmounts = data.suggestedTipAmounts ?? previousAmounts;
-      if (
-        submittedAmounts.length === previousAmounts.length &&
-        submittedAmounts.every((amount, index) => amount === previousAmounts[index])
-      ) {
-        data.suggestedTipAmounts = await Promise.all(previousAmounts.map((amount) =>
-          convertAmount(amount, profile.currency, data.currency!),
+      const amountsUnchanged = submittedAmounts.length === previousAmounts.length &&
+        submittedAmounts.every((amount, index) => amount === previousAmounts[index]);
+      const previousGoal = profile.goalTargetAmount;
+      const goalUnchanged = data.goalTargetAmount === undefined || data.goalTargetAmount === previousGoal;
+      if (amountsUnchanged) {
+        data.suggestedTipAmounts = await Promise.all((basis.suggestedTipAmounts ?? []).map((amount) =>
+          convertAmount(amount, basis.currency, data.currency!),
         ));
       }
-      const previousGoal = profile.goalTargetAmount;
-      if (previousGoal && (data.goalTargetAmount === undefined || data.goalTargetAmount === previousGoal)) {
-        data.goalTargetAmount = await convertAmount(previousGoal, profile.currency, data.currency);
+      if (basis.goalTargetAmount && goalUnchanged) {
+        data.goalTargetAmount = await convertAmount(basis.goalTargetAmount, basis.currency, data.currency);
       }
+      data.amountBasis = amountsUnchanged && goalUnchanged
+        ? basis
+        : {
+            currency: data.currency,
+            suggestedTipAmounts: data.suggestedTipAmounts ?? basis.suggestedTipAmounts,
+            goalTargetAmount: data.goalTargetAmount ?? basis.goalTargetAmount,
+          };
+    } else if (data.suggestedTipAmounts || data.goalTargetAmount !== undefined) {
+      data.amountBasis = {
+        currency: profile.currency,
+        suggestedTipAmounts: data.suggestedTipAmounts ?? basis.suggestedTipAmounts,
+        goalTargetAmount: data.goalTargetAmount !== undefined
+          ? data.goalTargetAmount
+          : basis.goalTargetAmount,
+      };
     }
 
     await CreatorProfileModel.updateOne(
@@ -772,6 +785,18 @@ export class CreatorsService {
       );
     }
     return profile;
+  }
+
+  private requireAvatarUrl(raw: string | null | undefined): string {
+    const avatarUrl = normalizeSavedAvatarUrl(raw?.trim() ?? '');
+    if (!avatarUrl || !isAllowedAvatarUrl(avatarUrl)) {
+      throw new ApiError(
+        400,
+        'AVATAR_REQUIRED',
+        'Choose an avatar or upload a photo before continuing.',
+      );
+    }
+    return avatarUrl;
   }
 
   private requireValidDisplayName(raw: string): string {

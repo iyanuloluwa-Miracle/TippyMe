@@ -665,7 +665,7 @@ async function saveIdentity() {
       displayName: displayName.value.trim(),
       bio: bio.value.trim() || null,
       username: username.value,
-      avatarUrl: avatarUrl.value?.trim() || null,
+      ...(avatarUrl.value?.trim() ? { avatarUrl: avatarUrl.value.trim() } : {}),
     });
     applyProfile(updated);
     identitySuccess.value = 'Identity saved.';

@@ -49,6 +49,7 @@ const userSchema = new Schema(
     // Omit when unset — sparse unique must not index null for every password user.
     googleId: { type: String, unique: true, sparse: true },
     emailVerifiedAt: { type: Date, default: null },
+    passwordChangedAt: { type: Date, default: null },
     createdAt: { type: Date, default: () => new Date() },
     updatedAt: { type: Date, default: () => new Date() },
   }),
@@ -78,6 +79,7 @@ const creatorProfileSchema = new Schema(
     goalTitle: { type: String, default: null },
     goalTargetAmount: { type: String, default: null },
     goalActive: { type: Boolean, required: true, default: false },
+    amountBasis: { type: Schema.Types.Mixed, default: null },
     createdAt: { type: Date, default: () => new Date() },
     updatedAt: { type: Date, default: () => new Date() },
   }),
@@ -302,6 +304,12 @@ auditLogSchema.index({ action: 1, createdAt: 1 });
 auditLogSchema.index({ entityType: 1, entityId: 1 });
 auditLogSchema.index({ createdAt: 1 });
 
+const exchangeRateSchema = new Schema({
+  _id: { type: String, required: true },
+  rate: { type: String, required: true },
+  updatedAt: { type: Date, required: true },
+});
+
 const rateLimitSchema = new Schema({
   _id: { type: String, required: true },
   count: { type: Number, required: true, default: 0 },
@@ -330,6 +338,7 @@ export const OtpChallengeModel = getModel<OtpChallenge>('OtpChallenge', otpChall
 export const NotificationModel = getModel<Notification>('Notification', notificationSchema);
 export const AuditLogModel = getModel<AuditLog>('AuditLog', auditLogSchema);
 export const RateLimitModel = getModel<{ id: string; count: number; expiresAt: Date }>('RateLimit', rateLimitSchema);
+export const ExchangeRateModel = getModel<{ id: string; rate: string; updatedAt: Date }>('ExchangeRate', exchangeRateSchema);
 
 export type { ClientSession };
 

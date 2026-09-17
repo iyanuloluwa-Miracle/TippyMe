@@ -283,10 +283,6 @@ useHead(() => ({
         || 'Send support and a message through TippyMe.',
     },
   ],
-  link: [
-    { rel: 'preconnect', href: 'https://api.dicebear.com', crossorigin: '' },
-    { rel: 'dns-prefetch', href: 'https://api.dicebear.com' },
-  ],
 }));
 
 // Analytics after first paint — never block rendering.

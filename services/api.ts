@@ -95,6 +95,7 @@ export function createApiClient(
 
   return {
     getHealth: () => request<HealthResponse>('/api/health'),
+    getReady: () => request<HealthResponse>('/api/ready'),
 
     requestOtp: (email: string) =>
       request<{

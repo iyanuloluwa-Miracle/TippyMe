@@ -34,3 +34,15 @@ it('converts an existing goal target when the currency changes', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ rate: 0.01 }) }));
   expect(await convertAmount('50000.00', 'NGN', 'USD')).toBe('500.00');
 });
+
+it('uses the last known rate when the rate service is later unavailable', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ rate: 2 }),
+  }));
+  expect(await convertAmount('10.00', 'USD', 'EUR')).toBe('20.00');
+
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }));
+  vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 2 * 60 * 60 * 1000);
+  expect(await convertAmount('10.00', 'USD', 'EUR')).toBe('20.00');
+});

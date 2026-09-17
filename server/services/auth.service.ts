@@ -72,8 +72,9 @@ export class AuthService {
     try {
       await this.notifications.notifyOtp({ userId: user.id, email, code, challengeId, purpose });
     } catch {
-      await OtpChallengeModel.updateOne({ _id: challengeId }, { $set: { consumedAt: new Date() } });
-      // Keep the public response identical; delivery failures are logged by notifications.
+      await OtpChallengeModel.deleteOne({ _id: challengeId });
+      // Keep the public response identical. Deleting the challenge lets the user retry
+      // instead of sitting through a cooldown for an email that was never sent.
     }
     return { ok: true };
   }
@@ -95,13 +96,22 @@ export class AuthService {
       await OtpChallengeModel.updateOne({ _id: challenge.id, consumedAt: null }, { $inc: { attemptCount: 1 } });
       throw invalid();
     }
+    const passwordChangedAt = new Date();
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-    const consumed = await OtpChallengeModel.updateOne(
-      { _id: challenge.id, consumedAt: null, attemptCount: { $lt: challenge.maxAttempts } },
-      { $set: { consumedAt: new Date() } },
-    );
-    if (consumed.modifiedCount !== 1) throw invalid();
-    await UserModel.updateOne({ _id: challenge.userId, email }, { $set: { passwordHash, updatedAt: new Date() } });
+    await withTransaction(async (session) => {
+      const consumed = await OtpChallengeModel.updateOne(
+        { _id: challenge.id, consumedAt: null, attemptCount: { $lt: challenge.maxAttempts } },
+        { $set: { consumedAt: passwordChangedAt } },
+        { session },
+      );
+      if (consumed.modifiedCount !== 1) throw invalid();
+      const updated = await UserModel.updateOne(
+        { _id: challenge.userId, email },
+        { $set: { passwordHash, passwordChangedAt, updatedAt: passwordChangedAt } },
+        { session },
+      );
+      if (updated.matchedCount !== 1) throw invalid();
+    });
     return { ok: true };
   }
 
@@ -375,6 +385,7 @@ export class AuthService {
     const accessToken = await signAccessToken({
       sub: verified.id,
       email: verified.email,
+      passwordChangedAt: verified.passwordChangedAt,
     });
 
     void this.notifications
@@ -471,6 +482,7 @@ export class AuthService {
     const accessToken = await signAccessToken({
       sub: user.id,
       email: user.email,
+      passwordChangedAt: user.passwordChangedAt,
     });
 
     void this.notifications
@@ -598,6 +610,7 @@ export class AuthService {
     const accessToken = await signAccessToken({
       sub: user.id,
       email: user.email,
+      passwordChangedAt: user.passwordChangedAt,
     });
 
     void this.notifications

@@ -37,6 +37,7 @@ export type User = {
   passwordHash: string | null;
   googleId?: string | null;
   emailVerifiedAt: Date | null;
+  passwordChangedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -58,6 +59,12 @@ export type CreatorProfile = {
   goalTitle: string | null;
   goalTargetAmount: string | null;
   goalActive: boolean;
+  /** Amounts before currency conversion, so later switches do not compound rounding. */
+  amountBasis?: {
+    currency: string;
+    suggestedTipAmounts: string[] | null;
+    goalTargetAmount: string | null;
+  } | null;
   createdAt: Date;
   updatedAt: Date;
 };
