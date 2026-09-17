@@ -145,15 +145,62 @@ export function otpEmail(code: string, purpose?: string): {
   html: string;
 } {
   const reset = purpose === 'PASSWORD_RESET';
-  const subject = reset ? 'Reset your TippyMe password' : 'Verify your TippyMe email';
-  const text = `Your TippyMe ${reset ? 'password reset' : 'verification'} code is ${code}. It expires in 10 minutes. If you did not request this, ignore this email.`;
+  const subject = reset
+    ? 'Reset your TippyMe password'
+    : 'Your TippyMe verification code';
+  const title = reset ? 'Password reset code' : 'One Time Password (OTP)';
+  const instruction = reset
+    ? 'Use this code to reset your TippyMe password. It is valid for 10 minutes. Please do not share it with anyone.'
+    : 'Here is your one time passcode to complete authentication. It is valid for 10 minutes. Please do not share it with anyone.';
+  const text = [
+    'TippyMe',
+    title,
+    '',
+    instruction,
+    '',
+    code,
+    '',
+    'Best regards,',
+    'The TippyMe Team',
+    '',
+    'If you did not request this, you can ignore this email.',
+  ].join('\n');
   const html = `
 <!DOCTYPE html>
 <html>
-<body style="font-family: system-ui, sans-serif; color: #1a1228;">
-  <p>Your TippyMe ${reset ? 'password reset' : 'verification'} code is:</p>
-  <p style="font-size: 28px; font-weight: 700; letter-spacing: 0.2em;">${escapeHtml(code)}</p>
-  <p>This code expires in 10 minutes. If you did not request it, you can ignore this email.</p>
+<body style="margin:0;padding:0;background:#ffffff;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;">
+    <tr>
+      <td align="center" style="padding:32px 24px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;font-family:system-ui,-apple-system,sans-serif;color:#1a1228;line-height:1.5;text-align:center;">
+          <tr>
+            <td style="padding-bottom:8px;font-size:22px;font-weight:700;color:#9362ff;">TippyMe</td>
+          </tr>
+          <tr>
+            <td style="padding-bottom:20px;font-size:16px;font-weight:700;color:#1a1228;">${title}</td>
+          </tr>
+          <tr>
+            <td style="border-top:1px solid #e5e0f0;padding-top:24px;font-size:15px;color:#1a1228;">${instruction}</td>
+          </tr>
+          <tr>
+            <td style="padding:28px 0;font-size:36px;font-weight:700;letter-spacing:0.2em;color:#1a1228;">${escapeHtml(code)}</td>
+          </tr>
+          <tr>
+            <td style="padding-bottom:24px;font-size:14px;color:#6b5f8a;">Valid for 10 minutes · Do not share this code</td>
+          </tr>
+          <tr>
+            <td style="border-top:1px solid #e5e0f0;padding-top:24px;font-size:15px;color:#1a1228;">
+              Best regards,<br />
+              The TippyMe Team
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-top:20px;font-size:13px;color:#6b5f8a;">If you did not request this, you can ignore this email.</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`.trim();
   return { subject, text, html };
