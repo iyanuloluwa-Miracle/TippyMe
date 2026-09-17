@@ -40,6 +40,7 @@ import { toCreatorProfileDto } from './creators.types';
 import {
   toCreatorTipDto,
   toPublicSupporterNoteDto,
+  raisedAmountForGoal,
   toSupportGoalDto,
   utcMonthBounds,
   utcWeekBounds,
@@ -150,8 +151,7 @@ export class CreatorsService {
     const week = utcWeekBounds();
 
     const raised = await tryConvertCurrencyTotals(lifetime.byCurrency, profile.currency);
-    const sameCurrency = lifetime.byCurrency.find((row) => row.currency === profile.currency);
-    const goalRaised = raised ?? sameCurrency?.sum ?? new Decimal(0);
+    const goalRaised = raisedAmountForGoal(raised, lifetime.byCurrency, profile.currency);
 
     return {
       profile: toCreatorProfileDto(profile),
@@ -164,10 +164,8 @@ export class CreatorsService {
         weekEnd: week.weekEnd,
       },
       supportGoal: (() => {
-        const goal = toSupportGoalDto(profile, goalRaised);
-        if (goal && raised == null && lifetime.byCurrency.some((row) => row.currency !== profile.currency)) {
-          return { ...goal, raisedIncomplete: true };
-        }
+        const goal = toSupportGoalDto(profile, goalRaised.raised);
+        if (goal && goalRaised.incomplete) return { ...goal, raisedIncomplete: true };
         return goal;
       })(),
       recentSupporterNotes,
@@ -545,7 +543,7 @@ export class CreatorsService {
       lifetimeViewCount > 0
         ? Math.min(1, successfulTipCount / lifetimeViewCount)
         : null;
-    const goalRaised = lifetimeSum ?? new Decimal(0);
+    const goalProgress = raisedAmountForGoal(lifetimeSum, lifetime.byCurrency, profile.currency);
 
     return {
       currency: profile.currency,
@@ -579,8 +577,8 @@ export class CreatorsService {
             : Math.round(conversionRate * 1000) / 10,
       },
       supportGoal: (() => {
-        const goal = toSupportGoalDto(profile, goalRaised);
-        if (goal && lifetimeSum == null) return { ...goal, raisedIncomplete: true };
+        const goal = toSupportGoalDto(profile, goalProgress.raised);
+        if (goal && goalProgress.incomplete) return { ...goal, raisedIncomplete: true };
         return goal;
       })(),
       recentTips: recentTips.map(toCreatorTipDto),

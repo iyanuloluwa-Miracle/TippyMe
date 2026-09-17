@@ -1,4 +1,6 @@
+import Decimal from 'decimal.js';
 import { expect, it } from 'vitest';
+import { raisedAmountForGoal } from '../server/services/creators/dashboard.types';
 import { accountCanReceiveDestinationCharges, isDestinationSettled } from '../server/services/creators/payout-readiness';
 import { buildSettlementStatus } from '../server/services/creators/settlement.types';
 import { platformFeePercent } from '../server/services/creators/connect.service';
@@ -62,6 +64,19 @@ it('hides the tip note without a matching confirmation token', () => {
   expect(dto.message).toBeNull();
   expect(dto.supporterName).toBeNull();
   expect(dto.amount).toBe('10.00');
+});
+
+it('keeps the same-currency goal total when conversion is unavailable', () => {
+  const progress = raisedAmountForGoal(
+    null,
+    [
+      { currency: 'NGN', sum: new Decimal('2500') },
+      { currency: 'USD', sum: new Decimal('10') },
+    ],
+    'NGN',
+  );
+  expect(progress.raised.toFixed(2)).toBe('2500.00');
+  expect(progress.incomplete).toBe(true);
 });
 
 it('exposes a finite platform fee percent', () => {

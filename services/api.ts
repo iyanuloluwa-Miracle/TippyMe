@@ -251,11 +251,11 @@ export function createApiClient(
         body: JSON.stringify(payload),
       }),
 
-    generateTipThankYou: (tipId: string) =>
+    generateTipThankYou: (tipId: string, token: string) =>
       request<{
         message: string;
         source: 'openrouter' | 'fallback' | 'cached';
-      }>(`/api/tips/${encodeURIComponent(tipId)}/thank-you`, {
+      }>(`/api/tips/${encodeURIComponent(tipId)}/thank-you?token=${encodeURIComponent(token)}`, {
         method: 'POST',
       }),
 
@@ -306,10 +306,14 @@ export function createApiClient(
       );
     },
 
-    getPaymentStatus: (id: string) =>
-      request<PaymentStatus>(
-        `/api/payments/${encodeURIComponent(id)}/status`,
-      ),
+    getPaymentStatus: (id: string, token?: string) => {
+      const params = new URLSearchParams();
+      if (token) params.set('token', token);
+      const qs = params.toString();
+      return request<PaymentStatus>(
+        `/api/payments/${encodeURIComponent(id)}/status${qs ? `?${qs}` : ''}`,
+      );
+    },
   };
 }
 

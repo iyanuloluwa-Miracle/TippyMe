@@ -82,6 +82,20 @@ export interface SupportGoalDto {
   raisedIncomplete?: boolean;
 }
 
+/** Same-currency sum when conversion fails, so the goal does not drop to zero. */
+export function raisedAmountForGoal(
+  converted: Decimal | null,
+  byCurrency: { currency: string; sum: Decimal }[],
+  profileCurrency: string,
+): { raised: Decimal; incomplete: boolean } {
+  if (converted) return { raised: converted, incomplete: false };
+  const same = byCurrency.find((row) => row.currency === profileCurrency);
+  return {
+    raised: same?.sum ?? new Decimal(0),
+    incomplete: byCurrency.some((row) => row.currency !== profileCurrency),
+  };
+}
+
 export function toSupportGoalDto(
   profile: {
     currency: string;

@@ -214,7 +214,7 @@ function startPolling() {
 
 async function refreshStatus() {
   try {
-    const status = await api.getPaymentStatus(tipId.value);
+    const status = await api.getPaymentStatus(tipId.value, confirmationToken.value);
     if (tip.value) {
       tip.value = { ...tip.value, status: status.tipStatus };
     }
@@ -230,13 +230,13 @@ async function refreshStatus() {
 }
 
 async function loadThankYou() {
-  if (thankYou.value) return;
+  if (thankYou.value || !tip.value?.noteVisible || !confirmationToken.value) return;
   try {
-    if (tip.value?.aiThankYouMessage) {
+    if (tip.value.aiThankYouMessage) {
       thankYou.value = tip.value.aiThankYouMessage;
       return;
     }
-    const result = await api.generateTipThankYou(tipId.value);
+    const result = await api.generateTipThankYou(tipId.value, confirmationToken.value);
     thankYou.value = result.message;
   } catch {
     // Optional polish — confirmation still works without it

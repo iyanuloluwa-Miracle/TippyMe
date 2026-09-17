@@ -5,24 +5,34 @@ import type { CreatorProfile, Tip } from '../../../db/types';
 import { OpenRouterAiService } from '../../../services/ai/openrouter.service';
 import { ApiError } from '../../../lib/errors';
 import { defineApiHandler } from '../../../lib/define-api';
+import { assertRateLimit } from '../../../lib/rate-limit';
+import { AUTH_THROTTLE_TTL_MS } from '../../../services/auth/otp.constants';
+import { confirmationTokenMatches } from '../../../services/tips/confirmation-token';
 import { decimalToAmountString } from '../../../services/tips/tips.types';
 
 /**
  * Generate (or return cached) AI thank-you for a PAID tip.
- * Public — only reveals thank-you text, never emails.
+ * Requires the confirmation token so the note cannot be read from the id alone.
  */
 export default defineApiHandler(async (event) => {
+  const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown';
+  await assertRateLimit(`tips:thank-you:${ip}`, 10, AUTH_THROTTLE_TTL_MS);
+
   const tipId = getRouterParam(event, 'id');
   if (!tipId) {
     throw new ApiError(400, 'INVALID_TIP', 'Tip id is required.');
   }
+
+  const queryToken = getQuery(event).token;
+  const body = await readBody<{ token?: string }>(event).catch(() => null);
+  const token = typeof queryToken === 'string' ? queryToken : body?.token;
 
   await useDb();
   const tip = toPlain<Tip>(
     await TipModel.findOne({ _id: tipId }).lean<LeanDoc | null>(),
   );
 
-  if (!tip) {
+  if (!tip || !confirmationTokenMatches(token, tip.confirmationTokenHash)) {
     throw new ApiError(404, 'TIP_NOT_FOUND', 'Tip not found.');
   }
 
