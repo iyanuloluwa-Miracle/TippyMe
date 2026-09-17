@@ -158,6 +158,13 @@
     </label>
 
     <p
+      v-if="(platformFeePercent ?? 0) > 0"
+      class="text-xs leading-relaxed text-cheer-ink/55"
+    >
+      If this creator’s Bachs payouts are enabled, a {{ platformFeePercent }}% platform fee is deducted from destination-charge tips. Bachs processes the payment. TippyMe confirms it only after verification.
+    </p>
+
+    <p
       v-if="error"
       id="tip-form-error"
       class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
@@ -188,6 +195,7 @@ const props = defineProps<{
   displayName: string;
   currency: string;
   suggestedAmounts: string[];
+  platformFeePercent?: number;
 }>();
 
 const api = useApi();

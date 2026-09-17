@@ -11,9 +11,12 @@ import {
 } from '../../db/enums';
 import { ResendService } from './resend.service';
 import {
+  accountExistsEmail,
   accountVerifiedEmail,
   otpEmail,
   securityLoginEmail,
+  supporterReceiptEmail,
+  supporterReversalEmail,
   tipReceivedEmail,
   tipReversedEmail,
 } from './email-templates';
@@ -253,6 +256,70 @@ export class TransactionalNotificationsService {
       metadata: { tipId: params.tipId, status: params.status, payoutReversal: 'MANUAL_REQUIRED' },
       critical: false,
       retryOnce: true,
+    });
+  }
+
+  async notifySupporterReceipt(params: {
+    tipId: string;
+    email: string;
+    amount: string;
+    currency: string;
+    creatorName: string;
+  }): Promise<TransactionalSendResult> {
+    const copy = supporterReceiptEmail({
+      amount: params.amount,
+      currency: params.currency,
+      creatorName: params.creatorName,
+    });
+    return this.send({
+      type: NotificationTypeEnum.EMAIL_TIP_RECEIPT,
+      to: params.email,
+      subject: copy.subject,
+      html: copy.html,
+      text: copy.text,
+      idempotencyKey: `tip_receipt_${params.tipId}`,
+      metadata: { tipId: params.tipId, audience: 'supporter' },
+      critical: false,
+      retryOnce: true,
+    });
+  }
+
+  async notifySupporterReversed(params: {
+    tipId: string;
+    email: string;
+    amount: string;
+    currency: string;
+    creatorName: string;
+    status: 'REFUNDED' | 'DISPUTED';
+  }): Promise<TransactionalSendResult> {
+    const copy = supporterReversalEmail(params);
+    return this.send({
+      type: NotificationTypeEnum.EMAIL_TIP_REVERSED,
+      to: params.email,
+      subject: copy.subject,
+      html: copy.html,
+      text: copy.text,
+      idempotencyKey: `tip_supporter_reversed_${params.tipId}_${params.status}`,
+      metadata: { tipId: params.tipId, status: params.status, audience: 'supporter' },
+      critical: false,
+      retryOnce: true,
+    });
+  }
+
+  async notifyAccountExists(params: {
+    email: string;
+  }): Promise<TransactionalSendResult> {
+    const copy = accountExistsEmail();
+    return this.send({
+      type: NotificationTypeEnum.EMAIL_ACCOUNT_EXISTS,
+      to: params.email,
+      subject: copy.subject,
+      html: copy.html,
+      text: copy.text,
+      idempotencyKey: `account_exists_${params.email}_${new Date().toISOString().slice(0, 13)}`,
+      metadata: { kind: 'account_exists' },
+      critical: false,
+      retryOnce: false,
     });
   }
 

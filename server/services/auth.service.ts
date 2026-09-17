@@ -131,11 +131,25 @@ export class AuthService {
       existing?.emailVerifiedAt &&
       (existing.passwordHash || existing.googleId)
     ) {
-      throw new ApiError(
-        409,
-        'ACCOUNT_EXISTS',
-        'An account with this email already exists. Please log in.',
-      );
+      if (existing.closedAt) {
+        return {
+          ok: true as const,
+          expiresInSeconds: Math.floor(OTP_TTL_MS / 1000),
+          resendAvailableInSeconds: Math.floor(OTP_RESEND_COOLDOWN_MS / 1000),
+        };
+      }
+      try {
+        await this.notifications.notifyAccountExists({ email });
+      } catch (err) {
+        console.warn(
+          `Account-exists email failed: ${err instanceof Error ? err.message : 'unknown'}`,
+        );
+      }
+      return {
+        ok: true,
+        expiresInSeconds: Math.floor(OTP_TTL_MS / 1000),
+        resendAvailableInSeconds: Math.floor(OTP_RESEND_COOLDOWN_MS / 1000),
+      };
     }
 
     const recent = toPlain<OtpChallenge>(
@@ -466,6 +480,14 @@ export class AuthService {
       );
     }
 
+    if (user.closedAt) {
+      throw new ApiError(
+        403,
+        'ACCOUNT_CLOSED',
+        'This account is closed. Payment records are kept, but the page and sign-in are disabled.',
+      );
+    }
+
     const [loginAudit] = await AuditLogModel.create([
       {
         actorUserId: user.id,
@@ -583,6 +605,14 @@ export class AuthService {
         500,
         'GOOGLE_LOGIN_FAILED',
         'Google sign-in failed. Please try again.',
+      );
+    }
+
+    if (user.closedAt) {
+      throw new ApiError(
+        403,
+        'ACCOUNT_CLOSED',
+        'This account is closed. Payment records are kept, but the page and sign-in are disabled.',
       );
     }
 

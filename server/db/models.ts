@@ -50,6 +50,8 @@ const userSchema = new Schema(
     googleId: { type: String, unique: true, sparse: true },
     emailVerifiedAt: { type: Date, default: null },
     passwordChangedAt: { type: Date, default: null },
+    sessionRevokedAt: { type: Date, default: null },
+    closedAt: { type: Date, default: null },
     createdAt: { type: Date, default: () => new Date() },
     updatedAt: { type: Date, default: () => new Date() },
   }),
@@ -75,6 +77,8 @@ const creatorProfileSchema = new Schema(
     // Omit when unset. A unique sparse index on explicit `null` only allows
     // one creator without Connect — use a partial string filter instead.
     bachsAccountId: { type: String },
+    bachsPayoutsReady: { type: Boolean, required: true, default: false },
+    bachsPayoutsCheckedAt: { type: Date, default: null },
     fridayPayoutEnabled: { type: Boolean, required: true, default: false },
     goalTitle: { type: String, default: null },
     goalTargetAmount: { type: String, default: null },
@@ -182,6 +186,7 @@ const tipSchema = new Schema(
     isAnonymous: { type: Boolean, required: true, default: false },
     supporterName: { type: String, default: null },
     supporterEmail: { type: String, default: null },
+    confirmationTokenHash: { type: String, default: null },
     status: {
       type: String,
       required: true,

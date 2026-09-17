@@ -1,6 +1,7 @@
 import type { EventHandler, EventHandlerRequest, H3Event } from 'h3';
 import { defineEventHandler, setHeader, setResponseStatus } from 'h3';
 import { ApiError } from './errors';
+import { reportServerError } from './error-monitor';
 
 /**
  * Wrap Nitro handlers so ApiError becomes Nest-compatible JSON
@@ -27,6 +28,10 @@ export function defineApiHandler<T extends EventHandlerRequest, R>(
             : {}),
         };
       }
+      reportServerError(err, {
+        path: event.path,
+        method: event.method,
+      });
       throw err;
     }
   }) as EventHandler<T, R | Record<string, unknown>>;

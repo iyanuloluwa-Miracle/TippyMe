@@ -1,6 +1,10 @@
 # Phase 10 — Payout and settlement
 
-**Decision: do not implement TippyMe-initiated payouts or a TippyMe wallet in MVP.**
+**Current behavior:** TippyMe does not hold a withdrawable wallet and does not start payouts itself.
+
+Connect onboarding, destination charges, and Friday schedules are implemented. Destination charges run only when Bachs reports transfers or payouts as enabled. A stored `acct_` id alone is onboarding, not connected. Tips taken before that stay labeled as held by TippyMe. There is no later transfer job.
+
+The historical "not implemented" checklist below described an earlier Nest/Postgres snapshot. Treat this header as the source of truth.
 
 TippyMe is not a bank. Successful tip totals on the dashboard are TippyMe business records. They are **not** a withdrawable balance.
 

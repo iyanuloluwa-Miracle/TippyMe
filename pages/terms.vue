@@ -8,7 +8,7 @@
         Terms of use
       </h1>
       <p class="mt-3 text-sm font-semibold text-cheer-ink/80">
-        Last updated: September 8, 2026
+          Last updated: September 17, 2026
       </p>
     </header>
 
@@ -27,7 +27,10 @@
           Payments
         </h2>
         <p class="mt-2">
-          Support payments are processed by Bachs. By continuing to checkout, supporters agree to Bachs’ payment terms. TippyMe confirms a tip as paid only after Bachs verifies the payment.
+          Support payments are processed by Bachs. By continuing to checkout, supporters agree to Bachs’ payment terms. TippyMe confirms a tip as paid only after Bachs verifies the payment. TippyMe is not a bank and does not hold a withdrawable wallet.
+        </p>
+        <p class="mt-2">
+          When a creator’s Bachs payouts are enabled, tips settle by destination charge and TippyMe keeps a platform fee (shown on the support page and creator dashboard, default 5%). Tips taken before payouts are enabled stay with TippyMe and are not the creator’s withdrawable balance. Refunds and disputes are processed by Bachs and are no longer counted as received.
         </p>
       </section>
 
@@ -45,7 +48,7 @@
           Accounts
         </h2>
         <p class="mt-2">
-          Creators must provide accurate account information and keep login credentials secure. Supporters do not need a TippyMe account to send support.
+          Creators must provide accurate account information and keep login credentials secure. Supporters do not need a TippyMe account to send support. Creators can pause a public page or close an account. Closing signs the creator out and keeps payment records needed for Bachs history. It does not delete those records.
         </p>
       </section>
 

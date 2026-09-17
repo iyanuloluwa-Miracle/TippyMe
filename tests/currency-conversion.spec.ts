@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import Decimal from 'decimal.js';
-import { convertAmount, convertCurrencyTotals } from '../server/services/creators/currency-conversion';
+import { convertAmount, convertCurrencyTotals, tryConvertCurrencyTotals } from '../server/services/creators/currency-conversion';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -23,7 +23,15 @@ it('converts each original currency before adding dashboard totals', async () =>
   );
 });
 
-it('fails rather than displaying an unconverted amount when rates are unavailable', async () => {
+it('returns null instead of failing the dashboard when a rate is missing', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }));
+  const total = await tryConvertCurrencyTotals([
+    { currency: 'GHS', sum: new Decimal('10'), count: 1 },
+  ], 'KES');
+  expect(total).toBeNull();
+});
+
+it('still rejects a required conversion when rates are unavailable', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }));
   await expect(convertCurrencyTotals([
     { currency: 'GHS', sum: new Decimal('10'), count: 1 },

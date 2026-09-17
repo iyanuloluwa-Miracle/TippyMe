@@ -26,10 +26,12 @@ import {
 } from '../payments/bachs/bachs.errors';
 import { PaymentsService } from '../payments/payments.service';
 import { computePlatformFee } from '../creators/connect.service';
+import { ConnectService } from '../creators/connect.service';
 import { amountValidationMessage, validateTipAmount } from './amount';
+import { createConfirmationToken, confirmationTokenMatches } from './confirmation-token';
 import { sanitizeSupporterName, sanitizeTipMessage } from './message';
 import type { CreateTipInput, PublicTipDto } from './tips.types';
-import { toPublicTipDto } from './tips.types';
+import { toPublicTipDto, toStatusOnlyTipDto } from './tips.types';
 
 export class TipsService {
   constructor(private readonly payments = new PaymentsService()) {}
@@ -42,7 +44,7 @@ export class TipsService {
   async createTip(
     dto: CreateTipInput,
     opts?: { idempotencyKeyHeader?: string; ip?: string; userAgent?: string },
-  ): Promise<{ tip: PublicTipDto; checkoutUrl: string }> {
+  ): Promise<{ tip: PublicTipDto; checkoutUrl: string; confirmationToken?: string }> {
     await useDb();
     const creator = toPlain<CreatorProfile>(
       await CreatorProfileModel.findOne({
@@ -72,6 +74,7 @@ export class TipsService {
     const supporterEmail = dto.supporterEmail.trim().toLowerCase();
     const customerName =
       supporterName || (isAnonymous ? 'Anonymous supporter' : 'Supporter');
+    const confirmation = createConfirmationToken();
 
     const idempotencyKey =
       dto.idempotencyKey?.trim() ||
@@ -125,6 +128,7 @@ export class TipsService {
               isAnonymous,
               supporterName,
               supporterEmail,
+              confirmationTokenHash: confirmation.hash,
               status: TipStatus.CREATED,
               paymentTransactionId: newPaymentId,
             },
@@ -179,15 +183,20 @@ export class TipsService {
       '',
     );
 
+    let destination: string | null = null;
     let init;
     try {
+      const connect = new ConnectService();
+      const payoutsReady = await connect.refreshPayoutReadiness(creator);
       const connectedAccount = creator.bachsAccountId?.trim() || null;
-      const destination = connectedAccount?.startsWith('acct_stub_')
-        ? null
-        : connectedAccount;
+      destination =
+        payoutsReady && connectedAccount && !connectedAccount.startsWith('acct_stub_')
+          ? connectedAccount
+          : null;
       const platformFee = destination
         ? computePlatformFee(amountResult.amount)
         : null;
+      const confirmUrl = `${appUrl}/support/confirm/${tipId}?token=${encodeURIComponent(confirmation.token)}`;
 
       init = await this.payments.initializePayment({
         tipId,
@@ -196,7 +205,7 @@ export class TipsService {
         amount: amountResult.amount,
         currency,
         creatorUsername: creator.username,
-        successUrl: `${appUrl}/support/confirm/${tipId}`,
+        successUrl: confirmUrl,
         cancelUrl: `${appUrl}/${creator.username}`,
         customerEmail: supporterEmail,
         customerName,
@@ -205,7 +214,7 @@ export class TipsService {
         metadata: {
           tip_id: tipId,
           creator_username: creator.username,
-          ...(destination ? { settled_via: 'destination_charge' } : {}),
+          ...(destination ? { settled_via: 'destination_charge', settledVia: 'destination_charge' } : { settledVia: 'platform_hold' }),
         },
       });
     } catch (err) {
@@ -242,6 +251,7 @@ export class TipsService {
               source: 'tip_create',
               creatorUsername: creator.username,
               checkoutUrl: init.checkoutUrl,
+              settledVia: destination ? 'destination_charge' : 'platform_hold',
               providerMeta: init.metadata ?? {},
             },
             updatedAt: new Date(),
@@ -300,13 +310,16 @@ export class TipsService {
       return tip;
     });
 
+    const checkoutUrl = appendConfirmationToken(init.checkoutUrl, confirmation.token);
+
     return {
       tip: toPublicTipDto({ ...updated, creator }),
-      checkoutUrl: init.checkoutUrl,
+      checkoutUrl,
+      confirmationToken: confirmation.token,
     };
   }
 
-  async getPublicTip(tipId: string): Promise<PublicTipDto> {
+  async getPublicTip(tipId: string, confirmationToken?: string): Promise<PublicTipDto> {
     await useDb();
     const tip = toPlain<Tip>(
       await TipModel.findOne({ _id: tipId }).lean<LeanDoc | null>(),
@@ -321,7 +334,10 @@ export class TipsService {
       throw new ApiError(404, 'TIP_NOT_FOUND', 'Tip not found.');
     }
 
-    return toPublicTipDto({ ...tip, creator });
+    if (confirmationTokenMatches(confirmationToken, tip.confirmationTokenHash)) {
+      return toPublicTipDto({ ...tip, creator });
+    }
+    return toStatusOnlyTipDto({ ...tip, creator });
   }
 
   private async markCheckoutFailed(
@@ -435,8 +451,21 @@ export class TipsService {
       `${appUrl}/support/checkout/${encodeURIComponent(tip.id)}`;
 
     return {
-      tip: toPublicTipDto({ ...tip, creator }),
+      tip: toStatusOnlyTipDto({ ...tip, creator }),
       checkoutUrl,
     };
   }
+}
+
+function appendConfirmationToken(checkoutUrl: string, token: string): string {
+  try {
+    const url = new URL(checkoutUrl);
+    if (url.pathname.includes('/support/checkout/')) {
+      url.searchParams.set('token', token);
+      return url.toString();
+    }
+  } catch {
+    return checkoutUrl;
+  }
+  return checkoutUrl;
 }

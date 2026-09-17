@@ -10,8 +10,8 @@ import { ApiError } from './errors';
 import { getServerEnv } from './env';
 
 export const AUTH_COOKIE_NAME = 'tippyme_session';
-export const AUTH_JWT_EXPIRES_IN = '7d';
-const AUTH_COOKIE_MAX_AGE_SEC = 7 * 24 * 60 * 60;
+export const AUTH_JWT_EXPIRES_IN = '24h';
+const AUTH_COOKIE_MAX_AGE_SEC = 24 * 60 * 60;
 
 export type AuthUserPayload = {
   sub: string;
@@ -20,6 +20,7 @@ export type AuthUserPayload = {
 
 type SessionClaims = AuthUserPayload & {
   passwordChangedAt: number;
+  issuedAt: number;
 };
 
 function secretKey(): Uint8Array {
@@ -54,6 +55,7 @@ export async function verifyAccessToken(
       sub,
       email,
       passwordChangedAt: typeof payload.pwd === 'number' ? payload.pwd : 0,
+      issuedAt: typeof payload.iat === 'number' ? payload.iat : 0,
     };
   } catch (err) {
     if (err instanceof ApiError) throw err;
@@ -84,13 +86,18 @@ export async function requireUser(event: H3Event): Promise<AuthUserPayload> {
   try {
     const { UserModel, useDb } = await import('../db');
     await useDb();
-    const user = await UserModel.findById(session.sub).select('passwordChangedAt').lean<{
+    const user = await UserModel.findById(session.sub).select('passwordChangedAt sessionRevokedAt closedAt').lean<{
       passwordChangedAt?: Date | null;
+      sessionRevokedAt?: Date | null;
+      closedAt?: Date | null;
     } | null>();
     const stored = user?.passwordChangedAt
       ? Math.floor(new Date(user.passwordChangedAt).getTime() / 1000)
       : 0;
-    if (!user || session.passwordChangedAt < stored) {
+    const revoked = user?.sessionRevokedAt
+      ? Math.floor(new Date(user.sessionRevokedAt).getTime() / 1000)
+      : 0;
+    if (!user || user.closedAt || session.passwordChangedAt < stored || (revoked > 0 && session.issuedAt < revoked)) {
       throw new ApiError(401, 'UNAUTHORIZED', 'Authentication required.');
     }
   } catch (err) {

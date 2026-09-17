@@ -46,7 +46,7 @@
         for {{ tip.creator.displayName }}
       </p>
       <NuxtLink
-        :to="`/support/confirm/${tip.id}`"
+        :to="confirmPath"
         class="mt-8 inline-flex w-full items-center justify-center rounded-full bg-cheer-leaf px-6 py-3 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf focus-visible:ring-offset-2"
       >
         Continue
@@ -80,6 +80,14 @@ const loading = ref(true);
 const error = ref<string | null>(null);
 const tip = ref<PublicTip | null>(null);
 
+const confirmPath = computed(() => {
+  const token = typeof route.query.token === 'string' ? route.query.token : '';
+  const id = tip.value?.id ?? tipId.value;
+  return token
+    ? `/support/confirm/${id}?token=${encodeURIComponent(token)}`
+    : `/support/confirm/${id}`;
+});
+
 const formattedAmount = computed(() => {
   if (!tip.value) return '';
   const n = Number(tip.value.amount);
@@ -101,7 +109,7 @@ async function load() {
   loading.value = true;
   error.value = null;
   try {
-    const result = await api.getPublicTip(tipId.value);
+    const result = await api.getPublicTip(tipId.value, typeof route.query.token === 'string' ? route.query.token : undefined);
     tip.value = result.tip;
   } catch (err) {
     if (err instanceof ApiClientError && err.statusCode === 404) {

@@ -90,23 +90,26 @@ describe('buildSettlementStatus', () => {
     expect(status.message.toLowerCase()).toContain('friday');
   });
 
-  it('still refuses Tippy wallets when Connect id is present', () => {
+  it('still refuses Tippy wallets when Connect id is present but payouts are not enabled', () => {
     const status = buildSettlementStatus({
       bachsAccountId: 'acct_test',
       fridayPayoutEnabled: false,
     });
-    expect(status.readiness).toBe('CONNECTED');
+    expect(status.readiness).toBe('ONBOARDING');
     expect(status.bachsConnectAccountId).toBe('acct_test');
     expect(status.tippyHoldsWithdrawableBalance).toBe(false);
-    expect(status.destinationChargesEnabled).toBe(true);
+    expect(status.destinationChargesEnabled).toBe(false);
     expect(status.automatedFridayPayout).toBe('NOT_ENABLED');
   });
 
-  it('marks Friday payout CONFIGURED when enabled', () => {
+  it('marks Friday payout CONFIGURED only when payouts are enabled', () => {
     const status = buildSettlementStatus({
       bachsAccountId: 'acct_test',
       fridayPayoutEnabled: true,
+      payoutsReady: true,
     });
+    expect(status.readiness).toBe('CONNECTED');
+    expect(status.destinationChargesEnabled).toBe(true);
     expect(status.automatedFridayPayout).toBe('CONFIGURED');
     expect(status.message.toLowerCase()).toContain('friday');
   });

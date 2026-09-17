@@ -6,6 +6,7 @@ import {
   SocialLinkModel,
   TipModel,
   TipPageViewModel,
+  UserModel,
   isUniqueViolation,
   toPlain,
   toPlainList,
@@ -20,6 +21,7 @@ import type {
   PaymentTransaction,
   SocialLink,
   Tip,
+  User,
 } from '../../db/types';
 import { AuditAction, SocialPlatform, TipStatus } from '../../db/enums';
 import { ApiError } from '../../lib/errors';
@@ -48,7 +50,9 @@ import {
   type PublicSupporterNoteDto,
 } from './dashboard.types';
 import { buildSettlementStatus } from './settlement.types';
-import { convertAmount, convertCurrencyTotals, type CurrencyTotal } from './currency-conversion';
+import { ConnectService, platformFeePercent } from './connect.service';
+import { isDestinationSettled } from './payout-readiness';
+import { convertAmount, tryConvertCurrencyTotals, type CurrencyTotal } from './currency-conversion';
 import { isAllowedAvatarUrl, normalizeSavedAvatarUrl } from '../../../utils/avatar';
 import {
   ALLOWED_CURRENCIES,
@@ -145,7 +149,9 @@ export class CreatorsService {
 
     const week = utcWeekBounds();
 
-    const raised = await convertCurrencyTotals(lifetime.byCurrency, profile.currency);
+    const raised = await tryConvertCurrencyTotals(lifetime.byCurrency, profile.currency);
+    const sameCurrency = lifetime.byCurrency.find((row) => row.currency === profile.currency);
+    const goalRaised = raised ?? sameCurrency?.sum ?? new Decimal(0);
 
     return {
       profile: toCreatorProfileDto(profile),
@@ -157,8 +163,15 @@ export class CreatorsService {
         weekStart: week.weekStart,
         weekEnd: week.weekEnd,
       },
-      supportGoal: toSupportGoalDto(profile, raised),
+      supportGoal: (() => {
+        const goal = toSupportGoalDto(profile, goalRaised);
+        if (goal && raised == null && lifetime.byCurrency.some((row) => row.currency !== profile.currency)) {
+          return { ...goal, raisedIncomplete: true };
+        }
+        return goal;
+      })(),
       recentSupporterNotes,
+      platformFeePercent: platformFeePercent(),
     };
   }
 
@@ -517,21 +530,22 @@ export class CreatorsService {
       }),
     ]);
 
-    const [recentTips, recentMessages] = await Promise.all([
+    const [recentTips, recentMessages, split, payoutsReady, lifetimeSum, periodSum] = await Promise.all([
       this.attachPaymentStatus(toPlainList<Tip>(recentTipDocs)),
       this.attachPaymentStatus(toPlainList<Tip>(recentMessageDocs)),
+      this.splitPaidSettlement(creatorId),
+      new ConnectService().refreshPayoutReadiness(profile),
+      tryConvertCurrencyTotals(lifetime.byCurrency, profile.currency),
+      tryConvertCurrencyTotals(period.byCurrency, profile.currency),
     ]);
 
-    const [lifetimeSum, periodSum] = await Promise.all([
-      convertCurrencyTotals(lifetime.byCurrency, profile.currency),
-      convertCurrencyTotals(period.byCurrency, profile.currency),
-    ]);
-
+    const needsConversion = lifetime.byCurrency.some((row) => row.currency !== profile.currency);
     const successfulTipCount = lifetime.count;
     const conversionRate =
       lifetimeViewCount > 0
         ? Math.min(1, successfulTipCount / lifetimeViewCount)
         : null;
+    const goalRaised = lifetimeSum ?? new Decimal(0);
 
     return {
       currency: profile.currency,
@@ -541,13 +555,16 @@ export class CreatorsService {
       publicPath: `/${profile.username}`,
       publicUrl: `${appUrl}/${profile.username}`,
       totals: {
-        successfulSupport: decimalToAmountString(lifetimeSum),
-        converted: lifetime.byCurrency.some((row) => row.currency !== profile.currency),
+        successfulSupport: lifetimeSum == null ? null : decimalToAmountString(lifetimeSum),
+        converted: needsConversion && lifetimeSum != null,
         successfulTipCount,
-        periodSupport: decimalToAmountString(periodSum),
+        periodSupport: periodSum == null ? null : decimalToAmountString(periodSum),
         periodTipCount: period.count,
         periodKey,
         periodLabel,
+        byCurrency: toCurrencyAmounts(lifetime.byCurrency),
+        settledByCurrency: split.settled,
+        heldByCurrency: split.held,
       },
       linkViews: {
         lifetime: lifetimeViewCount,
@@ -561,7 +578,11 @@ export class CreatorsService {
             ? null
             : Math.round(conversionRate * 1000) / 10,
       },
-      supportGoal: toSupportGoalDto(profile, lifetimeSum),
+      supportGoal: (() => {
+        const goal = toSupportGoalDto(profile, goalRaised);
+        if (goal && lifetimeSum == null) return { ...goal, raisedIncomplete: true };
+        return goal;
+      })(),
       recentTips: recentTips.map(toCreatorTipDto),
       recentMessages: recentMessages
         .filter((t) => Boolean(t.message?.trim()))
@@ -569,7 +590,9 @@ export class CreatorsService {
       settlement: buildSettlementStatus({
         bachsAccountId: profile.bachsAccountId,
         fridayPayoutEnabled: profile.fridayPayoutEnabled,
+        payoutsReady,
       }),
+      platformFeePercent: platformFeePercent(),
     };
   }
 
@@ -698,6 +721,58 @@ export class CreatorsService {
         'You do not have access to this creator profile.',
       );
     }
+  }
+
+  /** Split verified PAID tips into destination-settled vs platform-held. */
+  private async splitPaidSettlement(creatorId: string): Promise<{
+    settled: { currency: string; amount: string; count: number }[];
+    held: { currency: string; amount: string; count: number }[];
+  }> {
+    const tips = await TipModel.find({ creatorId, status: TipStatus.PAID })
+      .select('amount currency paymentTransactionId')
+      .lean<LeanDoc[]>();
+    const paymentIds = tips
+      .map((tip) => tip.paymentTransactionId)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0);
+    const payments = paymentIds.length
+      ? await PaymentTransactionModel.find({ _id: { $in: paymentIds } })
+          .select('metadata')
+          .lean<LeanDoc[]>()
+      : [];
+    const settledIds = new Set(
+      payments
+        .filter((payment) =>
+          isDestinationSettled(payment.metadata as Record<string, unknown> | null),
+        )
+        .map((payment) => String(payment._id)),
+    );
+
+    const buckets = {
+      settled: new Map<string, { sum: Decimal; count: number }>(),
+      held: new Map<string, { sum: Decimal; count: number }>(),
+    };
+    for (const tip of tips) {
+      const currency = String(tip.currency);
+      const amount = new Decimal(String(tip.amount));
+      const key =
+        typeof tip.paymentTransactionId === 'string' &&
+        settledIds.has(tip.paymentTransactionId)
+          ? 'settled'
+          : 'held';
+      const current = buckets[key].get(currency) ?? { sum: new Decimal(0), count: 0 };
+      current.sum = current.sum.plus(amount);
+      current.count += 1;
+      buckets[key].set(currency, current);
+    }
+
+    const toList = (map: Map<string, { sum: Decimal; count: number }>) =>
+      [...map.entries()].map(([currency, value]) => ({
+        currency,
+        amount: value.sum.toFixed(2),
+        count: value.count,
+      }));
+
+    return { settled: toList(buckets.settled), held: toList(buckets.held) };
   }
 
   /** PAID-tip sum and count for a tip filter, mirroring the old SQL aggregates. */
@@ -1009,4 +1084,82 @@ export class CreatorsService {
       };
     });
   }
+
+  async setPageActive(userId: string, active: boolean): Promise<CreatorProfileDto> {
+    await useDb();
+    const profile = await this.requireOwnedProfile(userId);
+    const user = toPlain<User>(
+      await UserModel.findOne({ _id: userId }).select('closedAt').lean<LeanDoc | null>(),
+    );
+    if (user?.closedAt) {
+      throw new ApiError(403, 'ACCOUNT_CLOSED', 'This account is closed.');
+    }
+    await CreatorProfileModel.updateOne(
+      { _id: profile.id },
+      { $set: { isActive: active, updatedAt: new Date() } },
+    );
+    const updated = await this.findProfileWithLinks({ _id: profile.id });
+    if (!updated) throw new Error('Creator profile update did not return a row.');
+    return toCreatorProfileDto(updated);
+  }
+
+  async exportTipsCsv(userId: string): Promise<string> {
+    await useDb();
+    const profile = await this.requireOwnedProfile(userId);
+    const tips = toPlainList<Tip>(
+      await TipModel.find({ creatorId: profile.id }).sort({ createdAt: -1 }).lean<LeanDoc[]>(),
+    );
+    const header = ['createdAt', 'status', 'amount', 'currency', 'anonymous', 'supporterName', 'message'];
+    const lines = tips.map((tip) => [
+      tip.createdAt.toISOString(),
+      tip.status,
+      tip.amount,
+      tip.currency,
+      tip.isAnonymous ? 'yes' : 'no',
+      tip.isAnonymous ? '' : (tip.supporterName ?? ''),
+      tip.message ?? '',
+    ].map(csvCell).join(','));
+    return [header.join(','), ...lines].join('\n');
+  }
+
+  async closeAccount(userId: string): Promise<void> {
+    await useDb();
+    const profile = await this.requireOwnedProfile(userId);
+    const now = new Date();
+    await withTransaction(async (session) => {
+      await CreatorProfileModel.updateOne(
+        { _id: profile.id },
+        { $set: { isActive: false, updatedAt: now } },
+        { session },
+      );
+      await UserModel.updateOne(
+        { _id: userId },
+        { $set: { closedAt: now, sessionRevokedAt: now, updatedAt: now } },
+        { session },
+      );
+      await AuditLogModel.create(
+        [{
+          actorUserId: userId,
+          action: AuditAction.PROFILE_UPDATED,
+          entityType: 'User',
+          entityId: userId,
+          metadata: { event: 'account_closed' },
+        }],
+        { session },
+      );
+    });
+  }
+}
+
+function csvCell(value: string): string {
+  if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
+  return value;
+}
+
+function toCurrencyAmounts(rows: CurrencyTotal[]) {
+  return rows.map((row) => ({
+    currency: row.currency,
+    amount: row.sum.toFixed(2),
+    count: row.count,
+  }));
 }

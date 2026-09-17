@@ -2,6 +2,7 @@ import { PaymentsService } from '../../services/payments/payments.service';
 import { WebhookFulfilmentService } from '../../services/webhooks/webhook-fulfilment.service';
 import { ApiError } from '../../lib/errors';
 import { defineApiHandler } from '../../lib/define-api';
+import { assertRateLimit } from '../../lib/rate-limit';
 
 /**
  * Bachs webhook receiver.
@@ -13,6 +14,9 @@ export default defineApiHandler(async (event) => {
   if (!rawBody || (Buffer.isBuffer(rawBody) && rawBody.length === 0)) {
     throw new ApiError(400, 'WEBHOOK_MALFORMED', 'Empty webhook payload.');
   }
+
+  const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'unknown';
+  await assertRateLimit(`webhooks:bachs:${ip}`, 120, 60_000);
 
   const headers = getRequestHeaders(event);
   const payments = new PaymentsService();

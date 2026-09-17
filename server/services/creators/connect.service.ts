@@ -15,10 +15,13 @@ import {
   bachsPublicMessage,
 } from '../payments/bachs/bachs.errors';
 import { BachsHttpClient } from '../payments/bachs/bachs-http.client';
+import { accountCanReceiveDestinationCharges } from './payout-readiness';
 import {
   buildSettlementStatus,
   type CreatorSettlementStatusDto,
 } from './settlement.types';
+
+const PAYOUTS_CACHE_MS = 15 * 60 * 1000;
 
 export interface ConnectOnboardResult {
   settlement: CreatorSettlementStatusDto;
@@ -47,14 +50,12 @@ export class ConnectService {
 
     // Already linked — mint a fresh hosted link if live Bachs is configured.
     if (profile.bachsAccountId && !profile.bachsAccountId.startsWith('acct_stub_')) {
+      const payoutsReady = await this.refreshPayoutReadiness(profile, { force: true });
       if (!this.http.isConfigured) {
         return {
-          settlement: buildSettlementStatus({
-            bachsAccountId: profile.bachsAccountId,
-            fridayPayoutEnabled: profile.fridayPayoutEnabled,
-          }),
+          settlement: this.settlementFor(profile, payoutsReady),
           onboardingUrl: null,
-          stub: profile.bachsAccountId.startsWith('acct_stub_'),
+          stub: false,
         };
       }
 
@@ -65,10 +66,7 @@ export class ConnectService {
           refresh_url: refreshUrl,
         });
         return {
-          settlement: buildSettlementStatus({
-            bachsAccountId: profile.bachsAccountId,
-            fridayPayoutEnabled: profile.fridayPayoutEnabled,
-          }),
+          settlement: this.settlementFor(profile, payoutsReady),
           onboardingUrl: this.requireHostedOnboardingUrl(link.url),
           stub: false,
         };
@@ -85,6 +83,8 @@ export class ConnectService {
         {
           $set: {
             bachsAccountId: stubId,
+            bachsPayoutsReady: false,
+            bachsPayoutsCheckedAt: new Date(),
             fridayPayoutEnabled: false,
             updatedAt: new Date(),
           },
@@ -138,7 +138,14 @@ export class ConnectService {
 
       await CreatorProfileModel.updateOne(
         { _id: profile.id },
-        { $set: { bachsAccountId: account.id, updatedAt: new Date() } },
+        {
+          $set: {
+            bachsAccountId: account.id,
+            bachsPayoutsReady: false,
+            bachsPayoutsCheckedAt: new Date(),
+            updatedAt: new Date(),
+          },
+        },
       );
 
       await this.audit(userId, profile.id, {
@@ -156,6 +163,7 @@ export class ConnectService {
         settlement: buildSettlementStatus({
           bachsAccountId: account.id,
           fridayPayoutEnabled: profile.fridayPayoutEnabled,
+          payoutsReady: false,
         }),
         onboardingUrl: this.requireHostedOnboardingUrl(link.url),
         stub: false,
@@ -198,11 +206,12 @@ export class ConnectService {
   async enableFridayPayout(userId: string): Promise<CreatorSettlementStatusDto> {
     await useDb();
     const profile = await this.requireProfileWithUser(userId);
-    if (!profile.bachsAccountId || profile.bachsAccountId.startsWith('acct_stub_')) {
+    const payoutsReady = await this.refreshPayoutReadiness(profile, { force: true });
+    if (!profile.bachsAccountId || profile.bachsAccountId.startsWith('acct_stub_') || !payoutsReady) {
       throw new ApiError(
         400,
         'CONNECT_REQUIRED',
-        'Link Bachs Connect before enabling Friday payouts.',
+        'Finish Bachs onboarding so payouts are enabled before scheduling Friday payouts.',
       );
     }
 
@@ -240,15 +249,67 @@ export class ConnectService {
     return buildSettlementStatus({
       bachsAccountId: profile.bachsAccountId,
       fridayPayoutEnabled: true,
+      payoutsReady: true,
     });
   }
 
   async getSettlement(userId: string): Promise<CreatorSettlementStatusDto> {
     await useDb();
     const profile = await this.requireProfileWithUser(userId);
+    const payoutsReady = await this.refreshPayoutReadiness(profile);
+    return this.settlementFor(profile, payoutsReady);
+  }
+
+  /**
+   * Refresh Bachs capability status. A provider outage keeps the last known
+   * ready flag so a blip does not look like the creator disconnected.
+   */
+  async refreshPayoutReadiness(
+    profile: CreatorProfile,
+    opts?: { force?: boolean },
+  ): Promise<boolean> {
+    const accountId = profile.bachsAccountId?.trim() || '';
+    if (!accountId || accountId.startsWith('acct_stub_')) return false;
+
+    const checkedAt = profile.bachsPayoutsCheckedAt
+      ? new Date(profile.bachsPayoutsCheckedAt).getTime()
+      : 0;
+    const fresh = checkedAt > 0 && Date.now() - checkedAt < PAYOUTS_CACHE_MS;
+    if (!opts?.force && fresh) return Boolean(profile.bachsPayoutsReady);
+    if (!this.http.isConfigured) return Boolean(profile.bachsPayoutsReady);
+
+    try {
+      const account = await this.http.getConnectedAccount(accountId);
+      const ready = accountCanReceiveDestinationCharges(account);
+      await CreatorProfileModel.updateOne(
+        { _id: profile.id },
+        {
+          $set: {
+            bachsPayoutsReady: ready,
+            bachsPayoutsCheckedAt: new Date(),
+            updatedAt: new Date(),
+          },
+        },
+      );
+      return ready;
+    } catch (err) {
+      console.warn(
+        `Bachs payout readiness check failed for ${accountId}: ${
+          err instanceof Error ? err.message : 'unknown'
+        }`,
+      );
+      return Boolean(profile.bachsPayoutsReady);
+    }
+  }
+
+  private settlementFor(
+    profile: CreatorProfile,
+    payoutsReady: boolean,
+  ): CreatorSettlementStatusDto {
     return buildSettlementStatus({
       bachsAccountId: profile.bachsAccountId,
       fridayPayoutEnabled: profile.fridayPayoutEnabled,
+      payoutsReady,
     });
   }
 
@@ -319,18 +380,17 @@ export class ConnectService {
   }
 }
 
+export function platformFeePercent(): number {
+  const envPercent = Number(getServerEnv().BACHS_PLATFORM_FEE_PERCENT ?? '5');
+  return Number.isFinite(envPercent) ? Math.max(0, envPercent) : 5;
+}
+
 /** Compute platform fee decimal string from tip amount (default 5%). */
 export function computePlatformFee(
   amount: string,
   percent?: number,
 ): string {
-  const envPercent = Number(getServerEnv().BACHS_PLATFORM_FEE_PERCENT ?? '5');
-  const pct =
-    percent != null && Number.isFinite(percent)
-      ? percent
-      : Number.isFinite(envPercent)
-        ? envPercent
-        : 5;
+  const pct = percent != null && Number.isFinite(percent) ? percent : platformFeePercent();
   const n = Number(amount);
   if (!Number.isFinite(n) || n <= 0) return '0.00';
   const fee = (n * Math.max(0, pct)) / 100;

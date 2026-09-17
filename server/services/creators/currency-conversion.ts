@@ -64,7 +64,11 @@ async function exchangeRate(from: string, to: string): Promise<Decimal> {
       rateCache.set(key, { rate: stored, expiresAt: Date.now() + RATE_TTL_MS });
       return stored;
     }
-    throw new ApiError(503, 'EXCHANGE_RATE_UNAVAILABLE', 'Currency conversion is temporarily unavailable. Please try again.');
+    throw new ApiError(
+      503,
+      'EXCHANGE_RATE_UNAVAILABLE',
+      `No reliable exchange rate from ${from} to ${to}. Amounts were left unchanged.`,
+    );
   }
 }
 
@@ -76,6 +80,19 @@ export async function convertCurrencyTotals(
     sum.mul(await exchangeRate(currency, targetCurrency)),
   ));
   return values.reduce((total, value) => total.plus(value), new Decimal(0));
+}
+
+/** Null when any required rate is missing. Callers must not treat that as zero. */
+export async function tryConvertCurrencyTotals(
+  totals: CurrencyTotal[],
+  targetCurrency: string,
+): Promise<Decimal | null> {
+  if (totals.length === 0) return new Decimal(0);
+  try {
+    return await convertCurrencyTotals(totals, targetCurrency);
+  } catch {
+    return null;
+  }
 }
 
 export async function convertAmount(

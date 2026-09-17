@@ -495,6 +495,15 @@ export class WebhookFulfilmentService {
         isAnonymous: hydrated.isAnonymous,
         supporterName: hydrated.supporterName,
       });
+      if (hydrated.supporterEmail) {
+        await this.notifications.notifySupporterReceipt({
+          tipId: hydrated.id,
+          email: hydrated.supporterEmail,
+          amount: decimalToAmountString(hydrated.amount),
+          currency: hydrated.currency,
+          creatorName: hydrated.creator.displayName,
+        });
+      }
     } catch (err) {
       // Never reverse payment success because email failed.
       console.error(
@@ -519,6 +528,16 @@ export class WebhookFulfilmentService {
         currency: hydrated.currency,
         status,
       });
+      if (hydrated.supporterEmail) {
+        await this.notifications.notifySupporterReversed({
+          tipId: hydrated.id,
+          email: hydrated.supporterEmail,
+          amount: decimalToAmountString(hydrated.amount),
+          currency: hydrated.currency,
+          creatorName: hydrated.creator.displayName,
+          status,
+        });
+      }
     } catch (err) {
       console.error(
         `Failed to notify creator of reversal tip=${tipId}: ${err instanceof Error ? err.message : 'unknown'}`,

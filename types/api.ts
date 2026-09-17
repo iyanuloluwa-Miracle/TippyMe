@@ -73,6 +73,7 @@ export interface PublicCreatorPage {
   tipsThisWeek: TipsThisWeek;
   supportGoal: SupportGoal | null;
   recentSupporterNotes: PublicSupporterNote[];
+  platformFeePercent: number;
 }
 
 export interface SupportGoal {
@@ -82,6 +83,7 @@ export interface SupportGoal {
   raisedAmount: string;
   currency: string;
   percent: number;
+  raisedIncomplete?: boolean;
 }
 
 export interface UsernameAvailability {
@@ -104,6 +106,7 @@ export interface PublicTip {
   status: TipStatus;
   amount: string;
   currency: string;
+  noteVisible: boolean;
   message: string | null;
   aiThankYouMessage: string | null;
   isAnonymous: boolean;
@@ -119,6 +122,7 @@ export interface PublicTip {
 export interface CreateTipResponse {
   tip: PublicTip;
   checkoutUrl: string;
+  confirmationToken?: string;
 }
 
 export interface PaymentStatus {
@@ -160,13 +164,22 @@ export interface CreatorTip {
 }
 
 export interface CreatorDashboardTotals {
-  successfulSupport: string;
+  successfulSupport: string | null;
   converted: boolean;
   successfulTipCount: number;
-  periodSupport: string;
+  periodSupport: string | null;
   periodTipCount: number;
   periodKey: string;
   periodLabel: string;
+  byCurrency: CurrencyAmount[];
+  settledByCurrency: CurrencyAmount[];
+  heldByCurrency: CurrencyAmount[];
+}
+
+export interface CurrencyAmount {
+  currency: string;
+  amount: string;
+  count: number;
 }
 
 export interface CreatorDashboard {
@@ -189,10 +202,11 @@ export interface CreatorDashboard {
   recentTips: CreatorTip[];
   recentMessages: CreatorTip[];
   settlement: CreatorSettlementStatus;
+  platformFeePercent: number;
 }
 
 export interface CreatorSettlementStatus {
-  readiness: 'NOT_CONFIGURED' | 'CONNECTED';
+  readiness: 'NOT_CONFIGURED' | 'ONBOARDING' | 'CONNECTED';
   bachsConnectAccountId: string | null;
   tippyHoldsWithdrawableBalance: false;
   tippyInitiatedPayoutAvailable: false;

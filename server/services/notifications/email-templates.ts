@@ -45,6 +45,62 @@ export function tipReversedEmail(params: {
   return { subject, text, html };
 }
 
+export function supporterReceiptEmail(params: {
+  amount: string;
+  currency: string;
+  creatorName: string;
+}): { subject: string; text: string; html: string } {
+  const subject = `Receipt for your support of ${params.creatorName}`;
+  const text = `Your ${params.amount} ${params.currency} support payment to ${params.creatorName} was verified by Bachs. This is a receipt, not a promise that the creator has already been paid out.`;
+  const html = `
+<!DOCTYPE html>
+<html>
+<body style="font-family: system-ui, sans-serif; color: #1a1228; line-height: 1.5;">
+  <p>Your support payment was verified.</p>
+  <p style="font-size: 22px; font-weight: 700;">${escapeHtml(params.amount)} ${escapeHtml(params.currency)}</p>
+  <p style="color: #6b5f8a;">Paid to support ${escapeHtml(params.creatorName)}. Bachs verified the payment. This receipt is not a payout confirmation for the creator.</p>
+</body>
+</html>`.trim();
+  return { subject, text, html };
+}
+
+export function supporterReversalEmail(params: {
+  amount: string;
+  currency: string;
+  creatorName: string;
+  status: 'REFUNDED' | 'DISPUTED';
+}): { subject: string; text: string; html: string } {
+  const reversed = params.status === 'REFUNDED' ? 'refunded' : 'disputed';
+  const subject = params.status === 'REFUNDED'
+    ? 'Your support payment was refunded'
+    : 'Your support payment was disputed';
+  const text = `Your ${params.amount} ${params.currency} support payment to ${params.creatorName} was ${reversed}. It is no longer counted as received. Bachs handles the money movement. TippyMe does not hold a withdrawable wallet.`;
+  const html = `
+<!DOCTYPE html>
+<html>
+<body style="font-family: system-ui, sans-serif; color: #1a1228; line-height: 1.5;">
+  <p>Your support payment was ${reversed}.</p>
+  <p style="font-size: 22px; font-weight: 700;">${escapeHtml(params.amount)} ${escapeHtml(params.currency)}</p>
+  <p style="color: #6b5f8a;">This was for ${escapeHtml(params.creatorName)}. It is no longer counted as received. If money already reached the creator’s Bachs balance, recovery is handled through Bachs, not a TippyMe wallet.</p>
+</body>
+</html>`.trim();
+  return { subject, text, html };
+}
+
+export function accountExistsEmail(): { subject: string; text: string; html: string } {
+  const subject = 'Sign in to TippyMe';
+  const text = 'An account with this email already exists. Sign in instead of creating a new one. If you did not request this, you can ignore the email.';
+  const html = `
+<!DOCTYPE html>
+<html>
+<body style="font-family: system-ui, sans-serif; color: #1a1228; line-height: 1.5;">
+  <p>An account with this email already exists.</p>
+  <p style="color: #6b5f8a;">Sign in instead of requesting a new code. If you did not try to sign up, you can ignore this email.</p>
+</body>
+</html>`.trim();
+  return { subject, text, html };
+}
+
 export function accountVerifiedEmail(): {
   subject: string;
   text: string;

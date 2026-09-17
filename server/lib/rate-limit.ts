@@ -1,5 +1,6 @@
 import { RateLimitModel, isUniqueViolation, useDb } from '../db';
 import { ApiError } from './errors';
+import { getServerEnv } from './env';
 
 type Bucket = { count: number; resetAt: number };
 const memoryBuckets = new Map<string, Bucket>();
@@ -65,6 +66,13 @@ export async function consumeRateLimit(
       throw err;
     }
     console.error(`Rate limit store unavailable, using local fallback: ${err instanceof Error ? err.message : 'unknown'}`);
+    if ((getServerEnv().NODE_ENV ?? 'development') === 'production') {
+      throw new ApiError(
+        503,
+        'RATE_LIMIT_UNAVAILABLE',
+        'Too many requests right now. Please try again shortly.',
+      );
+    }
     return consumeMemory(key, limit, ttlMs, now);
   }
 }

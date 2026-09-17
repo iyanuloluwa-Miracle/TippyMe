@@ -228,6 +228,15 @@ export function createApiClient(
         { method: 'POST' },
       ),
 
+    setPageActive: (active: boolean) =>
+      request<{ profile: CreatorProfile }>('/api/creators/me/visibility', {
+        method: 'PATCH',
+        body: JSON.stringify({ active }),
+      }),
+
+    closeAccount: () =>
+      request<{ ok: true }>('/api/creators/me/close', { method: 'POST' }),
+
     polishBio: (payload: {
       displayName: string;
       draft?: string;
@@ -288,10 +297,14 @@ export function createApiClient(
         body: JSON.stringify(payload),
       }),
 
-    getPublicTip: (tipId: string) =>
-      request<{ tip: PublicTip }>(
-        `/api/tips/${encodeURIComponent(tipId)}/public`,
-      ),
+    getPublicTip: (tipId: string, token?: string) => {
+      const params = new URLSearchParams();
+      if (token) params.set('token', token);
+      const qs = params.toString();
+      return request<{ tip: PublicTip }>(
+        `/api/tips/${encodeURIComponent(tipId)}/public${qs ? `?${qs}` : ''}`,
+      );
+    },
 
     getPaymentStatus: (id: string) =>
       request<PaymentStatus>(

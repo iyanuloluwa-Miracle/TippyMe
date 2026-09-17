@@ -86,4 +86,29 @@ export default defineNuxtConfig({
     strict: true,
     typeCheck: false,
   },
+
+  routeRules: {
+    '/**': {
+      headers: {
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+        ...(process.env.NODE_ENV === 'production'
+          ? { 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' }
+          : {}),
+        'Content-Security-Policy': [
+          "default-src 'self'",
+          "script-src 'self' 'unsafe-inline' https://www.sabilytics.com",
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+          "font-src 'self' https://fonts.gstatic.com data:",
+          "img-src 'self' data: blob: https:",
+          "connect-src 'self' https://www.sabilytics.com",
+          "frame-ancestors 'none'",
+          "base-uri 'self'",
+          "form-action 'self' https://bachs.io https://*.bachs.io",
+        ].join('; '),
+      },
+    },
+  },
 });

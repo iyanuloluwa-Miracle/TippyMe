@@ -4,6 +4,8 @@ Research and architecture for **TippyMe** (AIB Ship 2026).
 
 Live runtime: single Nuxt 3 + Nitro app at the repo root — SSR pages and `/api` handlers. See [architecture.md](./architecture.md).
 
+Phase documents that mention NestJS, PostgreSQL, Prisma, Drizzle, or SendByte are **historical**. Do not use them as the deploy or security runbook. Current sources of truth: [architecture.md](./architecture.md), [product-requirements.md](./product-requirements.md), and [production-checklist.md](./production-checklist.md).
+
 ## Index
 
 | Document | Description |

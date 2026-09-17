@@ -119,6 +119,10 @@ const route = useRoute();
 const api = useApi();
 
 const tipId = computed(() => String(route.params.tipId || ''));
+const confirmationToken = computed(() => {
+  const token = route.query.token;
+  return typeof token === 'string' ? token : undefined;
+});
 const loading = ref(true);
 const error = ref<string | null>(null);
 const tip = ref<PublicTip | null>(null);
@@ -167,7 +171,8 @@ const body = computed(() => {
     return `${tip.value.creator.displayName} will see your support shortly.`;
   }
   if (tip.value.status === 'REFUNDED' || tip.value.status === 'DISPUTED') {
-    return 'This payment has been reversed or disputed. Contact support if you need help.';
+    const verb = tip.value.status === 'REFUNDED' ? 'refunded' : 'disputed';
+    return `This ${tip.value.amount} ${tip.value.currency} payment was ${verb}. It is no longer counted as received. Bachs handles the money. TippyMe does not hold a withdrawable balance.`;
   }
   if (tip.value.status === 'FAILED' || tip.value.status === 'EXPIRED') {
     return 'No charge was completed for this tip.';
@@ -242,7 +247,7 @@ async function load() {
   loading.value = true;
   error.value = null;
   try {
-    const result = await api.getPublicTip(tipId.value);
+    const result = await api.getPublicTip(tipId.value, confirmationToken.value);
     tip.value = result.tip;
     if (result.tip.status === 'PAID') {
       thankYou.value = result.tip.aiThankYouMessage;

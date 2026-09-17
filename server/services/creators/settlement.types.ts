@@ -6,7 +6,7 @@
  * TippyMe never exposes a withdrawable TippyMe wallet.
  */
 
-export type SettlementReadiness = 'NOT_CONFIGURED' | 'CONNECTED';
+export type SettlementReadiness = 'NOT_CONFIGURED' | 'ONBOARDING' | 'CONNECTED';
 
 /** Friday auto-payout via Bachs balance_settings on the Connect account. */
 export type AutomatedFridayPayoutStatus =
@@ -27,7 +27,7 @@ export interface CreatorSettlementStatusDto {
    */
   tippyInitiatedPayoutAvailable: false;
   automatedFridayPayout: AutomatedFridayPayoutStatus;
-  /** Destination charges active when Connect id is linked. */
+  /** Destination charges only after Bachs enables transfers or payouts. */
   destinationChargesEnabled: boolean;
   /** Human-readable status for the dashboard. */
   message: string;
@@ -36,9 +36,12 @@ export interface CreatorSettlementStatusDto {
 export function buildSettlementStatus(input: {
   bachsAccountId: string | null | undefined;
   fridayPayoutEnabled?: boolean;
+  /** True only after Bachs reports transfers or payouts as enabled. */
+  payoutsReady?: boolean;
 }): CreatorSettlementStatusDto {
   const linked = Boolean(input.bachsAccountId?.trim()) && !input.bachsAccountId?.startsWith('acct_stub_');
-  const friday = Boolean(input.fridayPayoutEnabled);
+  const ready = linked && Boolean(input.payoutsReady);
+  const friday = ready && Boolean(input.fridayPayoutEnabled);
 
   if (!linked) {
     return {
@@ -53,6 +56,19 @@ export function buildSettlementStatus(input: {
     };
   }
 
+  if (!ready) {
+    return {
+      readiness: 'ONBOARDING',
+      bachsConnectAccountId: input.bachsAccountId!.trim(),
+      tippyHoldsWithdrawableBalance: false,
+      tippyInitiatedPayoutAvailable: false,
+      automatedFridayPayout: 'NOT_ENABLED',
+      destinationChargesEnabled: false,
+      message:
+        'Bachs account started, but payouts are not enabled yet. Finish onboarding before new tips settle to your balance. Until then, verified tips stay with TippyMe and are not your withdrawable money.',
+    };
+  }
+
   return {
     readiness: 'CONNECTED',
     bachsConnectAccountId: input.bachsAccountId!.trim(),
@@ -61,7 +77,7 @@ export function buildSettlementStatus(input: {
     automatedFridayPayout: friday ? 'CONFIGURED' : 'NOT_ENABLED',
     destinationChargesEnabled: true,
     message: friday
-      ? 'Bachs Connect linked. Tips settle to your Bachs balance via destination charges. Automatic Friday payouts are configured on Bachs — TippyMe does not hold a withdrawable wallet.'
-      : 'Bachs Connect linked. Tips settle to your Bachs balance via destination charges. TippyMe does not hold a withdrawable wallet. Enable Friday payouts from the settlement panel.',
+      ? 'Bachs payouts are enabled. New tips settle to your Bachs balance via destination charges. Automatic Friday payouts are configured on Bachs. TippyMe does not hold a withdrawable wallet.'
+      : 'Bachs payouts are enabled. New tips settle to your Bachs balance via destination charges. TippyMe does not hold a withdrawable wallet. Enable Friday payouts from the settlement panel.',
   };
 }

@@ -23,13 +23,13 @@ Public creator URL shape: `cheer.cash/{username}` (e.g. `cheer.cash/dina`).
 
 ## Creator flow
 
-Sign up → verify email (SendByte OTP) → create profile → choose unique username → configure profile → share TippyMe URL → receive tips → dashboard (totals, tip count, recent tips, messages, anonymity, payment status). Payout/settlement via Bachs Connect is a future capability (see `docs/PHASE-10-PAYOUT.md`); TippyMe does not hold a withdrawable wallet.
+Sign up → verify email (Resend OTP) → create profile → choose unique username → configure profile → share TippyMe URL → receive tips → dashboard (verified totals by currency, settled vs platform-held, messages, anonymity, payment status). Payout readiness is Bachs Connect: destination charges run only after Bachs enables payouts. TippyMe does not hold a withdrawable wallet.
 
 ---
 
 ## Supporter flow
 
-Open `/{username}` → view creator → choose amount → optional message → anonymous toggle → NestJS creates tip + Bachs checkout → complete payment on Bachs → TippyMe verifies via webhook → success screen.
+Open `/{username}` → view creator → choose amount → optional message → anonymous toggle → Nitro creates tip + Bachs checkout → complete payment on Bachs → TippyMe verifies via webhook → success screen with a confirmation token.
 
 ---
 
@@ -39,7 +39,7 @@ Open `/{username}` → view creator → choose amount → optional message → a
 - Supporter accounts  
 - Social feed / comments beyond tip messages  
 - Native mobile apps  
-- Multi-currency complexity beyond what Bachs account enables  
+- Multi-currency conversion as a source of truth. Per-currency totals are real. Converted totals are approximate and only shown when a rate exists.  
 
 ---
 
@@ -54,13 +54,14 @@ Details: [bachs-integration.md](./bachs-integration.md)
 
 ---
 
-## Communications (SendByte)
+## Communications (Resend)
 
-- Email verification OTP  
-- Password reset OTP (if feature ships)  
-- Transactional creator notifications  
+- Email verification OTP
+- Password reset OTP
+- Existing-account sign-in notice (signup does not reveal whether the email exists in the API response)
+- Transactional creator and supporter notifications
 
-Details: [sendbyte-integration.md](./sendbyte-integration.md)
+Email is Resend, not SendByte. See [architecture.md](./architecture.md).
 
 ---
 

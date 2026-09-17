@@ -45,6 +45,9 @@
           <label for="signup-otp" class="block text-base font-semibold text-cheer-ink">
             Verification code
           </label>
+          <p class="mt-1 text-sm font-semibold text-cheer-ink/65">
+            If you already have an account, check your email for a sign-in note instead of a code.
+          </p>
           <input
             id="signup-otp"
             v-model="code"

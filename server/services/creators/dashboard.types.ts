@@ -22,18 +22,28 @@ export interface CreatorTipDto {
   createdAt: string;
 }
 
+export interface CurrencyAmountDto {
+  currency: string;
+  amount: string;
+  count: number;
+}
+
 export interface DashboardTotalsDto {
-  /** Sum of PAID tip amounts (decimal string). */
-  successfulSupport: string;
+  /**
+   * Approximate single-currency total. Null when a required exchange rate
+   * is unavailable — use byCurrency instead.
+   */
+  successfulSupport: string | null;
   /** True when one or more tips were converted at current reference rates. */
   converted: boolean;
   successfulTipCount: number;
-  /** PAID tip sum for the current UTC calendar month. */
-  periodSupport: string;
+  periodSupport: string | null;
   periodTipCount: number;
-  /** e.g. "2026-09" (UTC month). */
   periodKey: string;
   periodLabel: string;
+  byCurrency: CurrencyAmountDto[];
+  settledByCurrency: CurrencyAmountDto[];
+  heldByCurrency: CurrencyAmountDto[];
 }
 
 export interface CreatorDashboardDto {
@@ -57,6 +67,7 @@ export interface CreatorDashboardDto {
   recentMessages: CreatorTipDto[];
   /** Bachs Connect / payout readiness — never a TippyMe wallet. */
   settlement: CreatorSettlementStatusDto;
+  platformFeePercent: number;
 }
 
 export interface SupportGoalDto {
@@ -67,6 +78,8 @@ export interface SupportGoalDto {
   currency: string;
   /** 0–100 */
   percent: number;
+  /** True when other currencies could not be converted into this total. */
+  raisedIncomplete?: boolean;
 }
 
 export function toSupportGoalDto(
@@ -223,6 +236,8 @@ export interface PublicCreatorPageDto {
   tipsThisWeek: TipsThisWeekDto;
   supportGoal: SupportGoalDto | null;
   recentSupporterNotes: PublicSupporterNoteDto[];
+  /** Percent taken on destination-charge tips. 0 when unset. */
+  platformFeePercent: number;
 }
 
 export function toPublicSupporterNoteDto(tip: Tip): PublicSupporterNoteDto | null {

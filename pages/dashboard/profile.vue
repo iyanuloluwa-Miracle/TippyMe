@@ -416,6 +416,47 @@
         </button>
       </section>
 
+      <section class="mt-8 rounded-[1.75rem] border border-black/8 bg-white/80 px-5 py-6 sm:px-7">
+        <h2 class="text-xl font-extrabold tracking-tight text-cheer-ink">
+          Page and account
+        </h2>
+        <p class="mt-2 text-sm font-semibold leading-relaxed text-cheer-ink/75">
+          Pausing hides your public link. Closing signs you out and keeps payment records. It does not delete Bachs history.
+        </p>
+        <div class="mt-4 flex flex-wrap gap-2.5">
+          <button
+            type="button"
+            class="rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-semibold text-cheer-ink hover:border-cheer-leaf/40 disabled:opacity-60"
+            :disabled="accountBusy || !profile"
+            @click="togglePage"
+          >
+            {{ profile?.isActive ? 'Pause public page' : 'Resume public page' }}
+          </button>
+          <button
+            type="button"
+            class="rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-semibold text-cheer-ink hover:border-cheer-leaf/40 disabled:opacity-60"
+            :disabled="accountBusy"
+            @click="downloadTips"
+          >
+            Download tips CSV
+          </button>
+          <button
+            type="button"
+            class="rounded-full border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-800 hover:bg-red-100 disabled:opacity-60"
+            :disabled="accountBusy"
+            @click="closeAccount"
+          >
+            Close account
+          </button>
+        </div>
+        <p v-if="accountError" class="mt-3 text-sm text-red-700" role="alert">
+          {{ accountError }}
+        </p>
+        <p v-if="accountNotice" class="mt-3 text-sm font-semibold text-cheer-leaf">
+          {{ accountNotice }}
+        </p>
+      </section>
+
       <p class="pb-4 text-center text-sm text-cheer-ink/50">
         <NuxtLink
           v-if="profile.publicPath"
@@ -454,6 +495,9 @@ const api = useApi();
 const { avatarUrl: avatarUrlState, setFromProfile } = useDashboardNav();
 
 const loading = ref(true);
+const accountBusy = ref(false);
+const accountError = ref<string | null>(null);
+const accountNotice = ref<string | null>(null);
 const loadError = ref<string | null>(null);
 const profile = ref<CreatorProfile | null>(null);
 
@@ -754,6 +798,64 @@ async function polishBio() {
     aiHint.value = mapError(err);
   } finally {
     aiBusy.value = false;
+  }
+}
+
+async function togglePage() {
+  if (!profile.value) return;
+  accountBusy.value = true;
+  accountError.value = null;
+  accountNotice.value = null;
+  try {
+    const next = !profile.value.isActive;
+    const { profile: updated } = await api.setPageActive(next);
+    applyProfile(updated);
+    accountNotice.value = next ? 'Public page is live again.' : 'Public page is paused.';
+  } catch (err) {
+    accountError.value = mapError(err);
+  } finally {
+    accountBusy.value = false;
+  }
+}
+
+async function downloadTips() {
+  accountBusy.value = true;
+  accountError.value = null;
+  accountNotice.value = null;
+  try {
+    const response = await fetch('/api/creators/me/tips/export', { credentials: 'include' });
+    if (!response.ok) {
+      accountError.value = 'Unable to download tips right now.';
+      return;
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'tippyme-tips.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+    accountNotice.value = 'Tip export downloaded. Anonymous rows omit the supporter name.';
+  } catch {
+    accountError.value = 'Unable to download tips right now.';
+  } finally {
+    accountBusy.value = false;
+  }
+}
+
+async function closeAccount() {
+  if (!window.confirm('Close your account? Your public page will go offline and you will be signed out. Payment records stay.')) {
+    return;
+  }
+  accountBusy.value = true;
+  accountError.value = null;
+  try {
+    await api.closeAccount();
+    auth.setUser(null);
+    await navigateTo('/login');
+  } catch (err) {
+    accountError.value = mapError(err);
+    accountBusy.value = false;
   }
 }
 </script>

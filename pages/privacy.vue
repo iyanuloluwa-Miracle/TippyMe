@@ -8,7 +8,7 @@
         Privacy
       </h1>
       <p class="mt-3 text-sm font-semibold text-cheer-ink/80">
-        Last updated: September 8, 2026
+          Last updated: September 17, 2026
       </p>
     </header>
 
@@ -29,7 +29,7 @@
         <ul class="mt-2 list-disc space-y-2 pl-5">
           <li>
             <strong class="font-semibold text-cheer-ink">Creators:</strong>
-            email, password (hashed), profile details, social links, and tip settings you provide.
+            email, password (hashed) or Google account id, profile details, social links, tip settings, and optional payout country.
           </li>
           <li>
             <strong class="font-semibold text-cheer-ink">Supporters:</strong>
@@ -47,8 +47,23 @@
           Payments and financial data
         </h2>
         <p class="mt-2">
-          Card and bank payment details are handled by Bachs during checkout. TippyMe does not store full card numbers. We store tip amounts, currency, status, and references needed for confirmations and the creator dashboard.
+          Card and bank payment details are handled by Bachs during checkout. TippyMe does not store full card numbers. We store tip amounts, currency, status, and references needed for confirmations and the creator dashboard. When Bachs payouts are enabled, a platform fee is taken only on destination-charge tips. That fee is shown before checkout.
         </p>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-bold text-cheer-ink">
+          Processors
+        </h2>
+        <ul class="mt-2 list-disc space-y-2 pl-5">
+          <li>Bachs processes payments and Connect payouts.</li>
+          <li>Resend sends verification codes, receipts, and account emails.</li>
+          <li>Google may be used if you choose Continue with Google.</li>
+          <li>Byteship stores profile photos you upload.</li>
+          <li>OpenRouter may draft bio or thank-you text when that assist is enabled.</li>
+          <li>Frankfurter may supply reference exchange rates for dashboard estimates. Per-currency tip amounts stay the source of truth.</li>
+          <li>Sabilytics, when configured, receives aggregated site events without supporter emails or payment identifiers.</li>
+        </ul>
       </section>
 
       <section>

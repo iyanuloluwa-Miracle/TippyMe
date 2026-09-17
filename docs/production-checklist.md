@@ -41,7 +41,7 @@ AIB-mandated host remains **UNKNOWN** ([aib-stack.md](./aib-stack.md)). Default 
 | `NODE_ENV=production` | Fail-closed env validation active | ☐ |
 | HTTPS | Public `API_URL=https://…` (same origin as `APP_URL`) | ☐ |
 | API URL | Matches public webhook host | ☐ |
-| Health check | `GET https://<domain>/api/health` returns DB-aware status | ☐ |
+| Health check | `GET /api/health` is process liveness and must not require the database. `GET /api/ready` is the database readiness check. Docker health checks stay on `/api/health`. | ☐ |
 | Rate limiting | Auth OTP / login / tip create throttles verified (single instance OK) | ☐ |
 
 ---
@@ -129,7 +129,7 @@ AIB-mandated host remains **UNKNOWN** ([aib-stack.md](./aib-stack.md)). Default 
 | Check | Notes | Done |
 |-------|-------|------|
 | Structured logging | JSON lines with `requestId`, method, path, status, duration | ☐ |
-| Error monitoring hook | Optional `ERROR_MONITORING_DSN` | ☐ |
+| Error monitoring hook | Optional `ERROR_MONITORING_DSN`. When set, unexpected API errors are posted as a Sentry envelope. Empty means no-op. | ☐ |
 | Health checks | Container + `GET /api/health` | ☐ |
 | Payment failure logging | Tips/Bachs providers log kinds without secrets | ☐ |
 | Webhook failure logging | Signature / mismatch / verify failures logged | ☐ |

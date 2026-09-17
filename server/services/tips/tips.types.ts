@@ -6,6 +6,8 @@ export interface PublicTipDto {
   status: TipStatus;
   amount: string;
   currency: string;
+  /** False when the caller does not hold the confirmation token. */
+  noteVisible: boolean;
   message: string | null;
   aiThankYouMessage: string | null;
   isAnonymous: boolean;
@@ -44,6 +46,7 @@ export function toPublicTipDto(
     status: tip.status,
     amount: decimalToAmountString(tip.amount),
     currency: tip.currency,
+    noteVisible: true,
     message: tip.message,
     aiThankYouMessage: tip.aiThankYouMessage ?? null,
     isAnonymous: tip.isAnonymous,
@@ -54,5 +57,21 @@ export function toPublicTipDto(
       avatarUrl: tip.creator.avatarUrl,
     },
     createdAt: tip.createdAt.toISOString(),
+  };
+}
+
+/** Status and amount only. Notes stay private without the confirmation token. */
+export function toStatusOnlyTipDto(
+  tip: Tip & {
+    creator: Pick<CreatorProfile, 'username' | 'displayName' | 'avatarUrl'>;
+  },
+): PublicTipDto {
+  return {
+    ...toPublicTipDto(tip),
+    noteVisible: false,
+    message: null,
+    aiThankYouMessage: null,
+    isAnonymous: true,
+    supporterName: null,
   };
 }

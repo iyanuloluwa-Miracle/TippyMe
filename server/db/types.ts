@@ -38,6 +38,8 @@ export type User = {
   googleId?: string | null;
   emailVerifiedAt: Date | null;
   passwordChangedAt?: Date | null;
+  sessionRevokedAt?: Date | null;
+  closedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -55,6 +57,8 @@ export type CreatorProfile = {
   suggestedTipAmounts: string[] | null;
   isActive: boolean;
   bachsAccountId: string | null;
+  bachsPayoutsReady?: boolean;
+  bachsPayoutsCheckedAt?: Date | null;
   fridayPayoutEnabled: boolean;
   goalTitle: string | null;
   goalTargetAmount: string | null;
@@ -90,6 +94,8 @@ export type Tip = {
   isAnonymous: boolean;
   supporterName: string | null;
   supporterEmail: string | null;
+  /** HMAC of the confirmation token. Absent on tips created before token gating. */
+  confirmationTokenHash?: string | null;
   status: TipStatus;
   paymentTransactionId: string | null;
   createdAt: Date;

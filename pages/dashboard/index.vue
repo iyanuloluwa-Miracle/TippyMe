@@ -100,18 +100,42 @@
 
           <div class="motion-animate motion-animate-delay-2 mt-10 border-t border-white/10 pt-8">
             <p class="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-white/45">
-              Total successful support
+              Verified support
             </p>
-            <p class="mt-2 text-5xl font-extrabold tabular-nums tracking-tight sm:text-6xl lg:text-[4.25rem] lg:leading-none">
+            <p
+              v-if="dashboard.totals.successfulSupport"
+              class="mt-2 text-5xl font-extrabold tabular-nums tracking-tight sm:text-6xl lg:text-[4.25rem] lg:leading-none"
+            >
               {{ formatMoney(dashboard.totals.successfulSupport, dashboard.currency) }}
             </p>
+            <ul v-else class="mt-3 space-y-1">
+              <li
+                v-for="row in dashboard.totals.byCurrency"
+                :key="row.currency"
+                class="text-2xl font-extrabold tabular-nums"
+              >
+                {{ formatMoney(row.amount, row.currency) }}
+              </li>
+              <li v-if="!dashboard.totals.byCurrency.length" class="text-5xl font-extrabold">
+                {{ formatMoney('0.00', dashboard.currency) }}
+              </li>
+            </ul>
             <p v-if="dashboard.totals.converted" class="mt-2 text-xs text-white/50">
-              Approximate value using current exchange rates. Individual tips retain their original currency.
+              Approximate value using current exchange rates. The per-currency amounts below are the real totals.
+            </p>
+            <p v-else-if="!dashboard.totals.successfulSupport && dashboard.totals.byCurrency.length > 1" class="mt-2 text-xs text-white/50">
+              Shown separately because a reliable exchange rate is not available for every currency.
             </p>
             <p class="mt-3 text-base text-white/50">
               Across
               <span class="font-bold text-cheer-mint">{{ dashboard.totals.successfulTipCount }}</span>
               successful tip{{ dashboard.totals.successfulTipCount === 1 ? '' : 's' }}
+            </p>
+            <p v-if="heldSummary" class="mt-2 text-xs text-white/55">
+              {{ heldSummary }} is verified but still held by TippyMe, not settled to your Bachs balance.
+            </p>
+            <p v-if="settledSummary" class="mt-1 text-xs text-white/55">
+              {{ settledSummary }} settled to Bachs via destination charges.
             </p>
           </div>
 
@@ -158,7 +182,7 @@
                 {{ dashboard.totals.periodLabel }}
               </p>
               <p class="mt-2 break-words text-xl font-bold leading-tight tabular-nums tracking-tight sm:text-2xl">
-                {{ formatMoney(dashboard.totals.periodSupport, dashboard.currency) }}
+                {{ dashboard.totals.periodSupport ? formatMoney(dashboard.totals.periodSupport, dashboard.currency) : '—' }}
               </p>
               <p class="mt-1.5 text-xs text-white/45">
                 {{ dashboard.totals.periodTipCount }} tip{{ dashboard.totals.periodTipCount === 1 ? '' : 's' }} (UTC)
@@ -218,6 +242,9 @@
             </div>
             <p class="mt-3 text-base font-semibold leading-relaxed text-cheer-ink/85">
               {{ dashboard.settlement.message }}
+            </p>
+            <p class="mt-2 text-sm font-semibold text-cheer-ink/70">
+              A {{ platformFeeLabel }} platform fee applies only to tips that settle by destination charge. Tips held by TippyMe are not a withdrawable balance.
             </p>
             <div class="mt-4 flex flex-wrap gap-2.5">
               <button
@@ -281,7 +308,7 @@
               Settles to
             </dt>
             <dd class="mt-2 text-base font-bold text-cheer-ink">
-              {{ settlementReady ? 'Your Bachs balance' : 'Bachs (after Connect)' }}
+              {{ settlementReady ? 'Your Bachs balance' : settlementOnboarding ? 'Finish Bachs onboarding' : 'Bachs (after Connect)' }}
             </dd>
           </div>
           <div class="px-5 py-5 sm:px-7">
@@ -436,20 +463,38 @@ const greeting = computed(() => {
 });
 
 const settlementReady = computed(
-  () => dashboard.value?.settlement.readiness === 'CONNECTED',
+  () => dashboard.value?.settlement.destinationChargesEnabled === true,
+);
+
+const settlementOnboarding = computed(
+  () => dashboard.value?.settlement.readiness === 'ONBOARDING',
 );
 
 const settlementLabel = computed(() => {
-  if (settlementReady.value) return 'Bachs Connect linked';
+  if (settlementReady.value) return 'Bachs payouts enabled';
+  if (settlementOnboarding.value) return 'Onboarding incomplete';
   return 'Not configured yet';
 });
 
 const fridayLabel = computed(() => {
   const status = dashboard.value?.settlement.automatedFridayPayout;
   if (status === 'CONFIGURED') return 'Configured via Bachs';
-  if (status === 'NOT_ENABLED') return 'Available — enable above';
-  return 'Coming via Bachs Connect';
+  if (status === 'NOT_ENABLED' && settlementReady.value) return 'Available — enable above';
+  return 'After Bachs payouts are enabled';
 });
+
+function moneyList(rows: { amount: string; currency: string }[] | undefined) {
+  if (!rows?.length) return '';
+  return rows.map((row) => formatMoney(row.amount, row.currency)).join(', ');
+}
+
+const platformFeeLabel = computed(() => {
+  const percent = dashboard.value?.platformFeePercent ?? 5;
+  return `${percent}%`;
+});
+
+const heldSummary = computed(() => moneyList(dashboard.value?.totals.heldByCurrency));
+const settledSummary = computed(() => moneyList(dashboard.value?.totals.settledByCurrency));
 
 const connectBusy = ref(false);
 const connectError = ref<string | null>(null);

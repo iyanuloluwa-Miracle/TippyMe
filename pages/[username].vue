@@ -168,6 +168,9 @@
               {{ formatGoalMoney(supportGoal.targetAmount, supportGoal.currency) }}
               · {{ supportGoal.percent }}%
             </p>
+            <p v-if="supportGoal.raisedIncomplete" class="mt-1 text-xs font-semibold text-cheer-ink/60">
+              Other currencies are not included because a reliable exchange rate is unavailable.
+            </p>
             <div class="mt-3 h-2 overflow-hidden rounded-full bg-white/80">
               <div
                 class="h-full rounded-full bg-cheer-leaf transition-all"
@@ -181,6 +184,7 @@
             :display-name="profile.displayName"
             :currency="profile.currency"
             :suggested-amounts="profile.suggestedTipAmounts ?? []"
+            :platform-fee-percent="pageFeePercent"
           />
         </section>
       </div>
@@ -233,6 +237,7 @@ const recentSupporterNotes = computed(
   () => data.value?.recentSupporterNotes ?? [],
 );
 const supportGoal = computed(() => data.value?.supportGoal ?? null);
+const pageFeePercent = computed(() => data.value?.platformFeePercent ?? 5);
 
 function formatGoalMoney(amount: string, currency: string) {
   const n = Number(amount);
