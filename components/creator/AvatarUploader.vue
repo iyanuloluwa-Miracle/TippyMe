@@ -159,29 +159,12 @@ async function onFileChange(event: Event) {
   localPreview.value = objectUrl;
 
   try {
-    const tokenRes = await api.createAvatarUploadToken();
-    if (file.size > tokenRes.maxUploadBytes) {
-      throw new Error(
-        `Image must be under ${Math.round(tokenRes.maxUploadBytes / (1024 * 1024))}MB.`,
-      );
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('Image must be under 5MB.');
     }
 
-    const { ByteshipClient } = await import('@byteship/js');
-    const byteship = new ByteshipClient({ uploadToken: tokenRes.token });
-    const ext =
-      file.type === 'image/png'
-        ? 'png'
-        : file.type === 'image/webp'
-          ? 'webp'
-          : file.type === 'image/gif'
-            ? 'gif'
-            : 'jpg';
-    const uploaded = await byteship.upload(file, {
-      visibility: 'public',
-      path: `${tokenRes.folder}/avatar.${ext}`,
-    });
-
-    const url = uploaded.url?.trim();
+    const { url: uploadedUrl } = await api.uploadAvatar(file);
+    const url = uploadedUrl?.trim();
     if (!url) {
       throw new Error('Upload finished but no public URL was returned.');
     }
@@ -203,7 +186,10 @@ async function onFileChange(event: Event) {
           ? 'Photo uploads are not configured yet. Add BYTESHIP_API_KEY to the server env.'
           : err.message || 'Could not upload photo.';
     } else if (err instanceof Error) {
-      localError.value = err.message;
+      localError.value =
+        err.message === 'Failed to fetch'
+          ? 'Could not reach the server. Check your connection and try again.'
+          : err.message;
     } else {
       localError.value = 'Could not upload photo.';
     }

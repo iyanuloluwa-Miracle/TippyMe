@@ -31,6 +31,11 @@ describe('avatar helpers', () => {
   it('allows preset paths and uploaded photos, not arbitrary strings', () => {
     expect(isAllowedAvatarUrl(dicebearAvatarUrl('ada'))).toBe(true);
     expect(isAllowedAvatarUrl('https://cdn.byteship.dev/avatars/user/avatar.png')).toBe(true);
+    expect(
+      isAllowedAvatarUrl(
+        'https://cdn.byteship.cloud/f/p_x7K9mQ/avatars/user/avatar.png',
+      ),
+    ).toBe(true);
     expect(isAllowedAvatarUrl('https://api.dicebear.com/10.x/lorelei/png?seed=ada')).toBe(false);
     expect(isAllowedAvatarUrl('javascript:alert(1)')).toBe(false);
     expect(isAllowedAvatarUrl('x')).toBe(false);

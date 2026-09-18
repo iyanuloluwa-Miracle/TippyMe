@@ -45,13 +45,16 @@ export function createApiClient(
 
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const url = `${base}${path.startsWith('/') ? path : `/${path}`}`;
+    const isFormData =
+      typeof FormData !== 'undefined' && init?.body instanceof FormData;
     const response = await fetch(url, {
       ...init,
       credentials: 'include',
       headers: {
         Accept: 'application/json',
         ...defaultHeaders,
-        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+        // Let the browser set multipart boundaries for FormData bodies.
+        ...(init?.body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
         ...(init?.headers ?? {}),
       },
     });
@@ -159,6 +162,16 @@ export function createApiClient(
       }>('/api/creators/me/avatar/upload-token', {
         method: 'POST',
       }),
+
+    /** Server-proxied avatar upload (avoids browser → Byteship CORS failures). */
+    uploadAvatar: (file: File) => {
+      const body = new FormData();
+      body.append('file', file);
+      return request<{ url: string }>('/api/creators/me/avatar/upload', {
+        method: 'POST',
+        body,
+      });
+    },
 
     listMyTips: (query?: ListMyTipsQuery) => {
       const params = new URLSearchParams();

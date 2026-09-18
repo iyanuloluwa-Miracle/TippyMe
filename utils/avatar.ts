@@ -62,9 +62,15 @@ export function isAllowedAvatarUrl(url: string): boolean {
   if (parsed.protocol !== 'https:') return false;
   const host = parsed.hostname.toLowerCase();
   if (host === 'api.dicebear.com' || host.endsWith('.dicebear.com')) return false;
+  // Byteship CDN: cdn.byteship.cloud/f/<project>/avatars/<user>/avatar.png
   const uploadedPhoto = /\/avatars\/[^/]+\/.+\.(png|jpe?g|webp|gif)$/i.test(parsed.pathname);
-  const byteshipHost = host === 'byteship.dev' || host.endsWith('.byteship.dev') || host.includes('byteship');
-  return uploadedPhoto && (byteshipHost || parsed.pathname.includes('/avatars/'));
+  const byteshipHost =
+    host === 'byteship.dev' ||
+    host.endsWith('.byteship.dev') ||
+    host === 'byteship.cloud' ||
+    host.endsWith('.byteship.cloud') ||
+    host.includes('byteship');
+  return uploadedPhoto && byteshipHost;
 }
 
 /** Turn a saved DiceBear preset URL into the same-origin path. Other URLs are unchanged. */
