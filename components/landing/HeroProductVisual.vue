@@ -9,9 +9,12 @@
     >
       <video
         class="aspect-video w-full bg-[#0a0f0c] object-cover"
-        controls
+        autoplay
+        muted
+        loop
         playsinline
-        preload="metadata"
+        controls
+        preload="auto"
         aria-label="TippyMe product demo video"
       >
         <source src="/tippy-demo-video.mp4" type="video/mp4" />
