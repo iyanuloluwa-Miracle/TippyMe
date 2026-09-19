@@ -492,6 +492,7 @@ useHead({
 
 const auth = useAuthStore();
 const api = useApi();
+const { $toast } = useNuxtApp();
 const { avatarUrl: avatarUrlState, setFromProfile } = useDashboardNav();
 
 const loading = ref(true);
@@ -699,10 +700,12 @@ async function saveIdentity() {
   try {
     if (!displayName.value.trim()) {
       identityError.value = 'Display name is required.';
+      $toast.error(identityError.value);
       return;
     }
     if (!usernameOk.value) {
       identityError.value = 'Choose an available username.';
+      $toast.error(identityError.value);
       return;
     }
     const { profile: updated } = await api.updateMyCreator({
@@ -713,8 +716,10 @@ async function saveIdentity() {
     });
     applyProfile(updated);
     identitySuccess.value = 'Identity saved.';
+    $toast.success(identitySuccess.value);
   } catch (err) {
     identityError.value = mapError(err);
+    $toast.error(identityError.value);
   } finally {
     identityPending.value = false;
   }
@@ -728,6 +733,7 @@ async function saveSocial() {
     for (const link of socialLinks.value) {
       if (link.url.trim() && !/^https?:\/\//i.test(link.url.trim())) {
         socialError.value = 'Social links must start with http:// or https://';
+        $toast.error(socialError.value);
         return;
       }
     }
@@ -741,8 +747,10 @@ async function saveSocial() {
     const { profile: updated } = await api.replaceMySocialLinks(links);
     applyProfile(updated);
     socialSuccess.value = 'Social links saved.';
+    $toast.success(socialSuccess.value);
   } catch (err) {
     socialError.value = mapError(err);
+    $toast.error(socialError.value);
   } finally {
     socialPending.value = false;
   }
@@ -756,6 +764,7 @@ async function saveSettings() {
     const amounts = tipAmounts.value.map((a) => a.trim()).filter(Boolean);
     if (amounts.length === 0) {
       settingsError.value = 'Add at least one suggested tip amount.';
+      $toast.error(settingsError.value);
       return;
     }
     const { profile: updated } = await api.updateMyCreatorSettings({
@@ -771,8 +780,10 @@ async function saveSettings() {
     });
     applyProfile(updated);
     settingsSuccess.value = 'Support settings saved.';
+    $toast.success(settingsSuccess.value);
   } catch (err) {
     settingsError.value = mapError(err);
+    $toast.error(settingsError.value);
   } finally {
     settingsPending.value = false;
   }
@@ -811,8 +822,10 @@ async function togglePage() {
     const { profile: updated } = await api.setPageActive(next);
     applyProfile(updated);
     accountNotice.value = next ? 'Public page is live again.' : 'Public page is paused.';
+    $toast.success(accountNotice.value);
   } catch (err) {
     accountError.value = mapError(err);
+    $toast.error(accountError.value);
   } finally {
     accountBusy.value = false;
   }
@@ -826,6 +839,7 @@ async function downloadTips() {
     const response = await fetch('/api/creators/me/tips/export', { credentials: 'include' });
     if (!response.ok) {
       accountError.value = 'Unable to download tips right now.';
+      $toast.error(accountError.value);
       return;
     }
     const blob = await response.blob();
@@ -836,8 +850,10 @@ async function downloadTips() {
     link.click();
     URL.revokeObjectURL(url);
     accountNotice.value = 'Tip export downloaded. Anonymous rows omit the supporter name.';
+    $toast.success('Tip export downloaded');
   } catch {
     accountError.value = 'Unable to download tips right now.';
+    $toast.error(accountError.value);
   } finally {
     accountBusy.value = false;
   }

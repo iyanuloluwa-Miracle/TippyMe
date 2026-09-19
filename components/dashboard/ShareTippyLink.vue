@@ -147,6 +147,7 @@ const props = withDefaults(
 );
 
 const { track } = useSabilytics();
+const { $toast } = useNuxtApp();
 
 const isDark = computed(() => props.variant === 'dark');
 const cardCanvas = ref<HTMLCanvasElement | null>(null);
@@ -245,6 +246,7 @@ async function copyLink() {
   try {
     await navigator.clipboard.writeText(props.publicUrl);
     copied.value = true;
+    $toast.success('Tippy link copied');
     track('tip_link_copy', { username: username.value });
     if (copyTimer) clearTimeout(copyTimer);
     copyTimer = setTimeout(() => {
@@ -252,6 +254,7 @@ async function copyLink() {
     }, 2000);
   } catch {
     window.prompt('Copy your Tippy link:', props.publicUrl);
+    $toast.info('Copy the link from the prompt');
     track('tip_link_copy', { username: username.value });
   }
 }
@@ -308,6 +311,7 @@ async function downloadCard() {
   a.href = canvas.toDataURL('image/png');
   a.download = `tippyme-${username.value || 'support'}.png`;
   a.click();
+  $toast.success('Support card downloaded');
   trackShare('support_card');
 }
 </script>
