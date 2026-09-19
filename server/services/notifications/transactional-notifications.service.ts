@@ -10,9 +10,11 @@ import {
   NotificationType as NotificationTypeEnum,
 } from '../../db/enums';
 import { ResendService } from './resend.service';
+import { getServerEnv } from '../../lib/env';
 import {
   accountExistsEmail,
   accountVerifiedEmail,
+  creatorWelcomeEmail,
   otpEmail,
   securityLoginEmail,
   supporterReceiptEmail,
@@ -50,7 +52,7 @@ export class TransactionalNotificationsService {
 
   /**
    * Core send with Notification-row idempotency.
-   * - SENT → skip (no duplicate email)
+   * - SENT / DELIVERED → skip (no duplicate email)
    * - FAILED → safe retry
    * - missing → send and persist
    * - critical=true → rethrow after recording FAILED (OTP)
@@ -89,7 +91,7 @@ export class TransactionalNotificationsService {
       existing = await this.findByIdempotencyKey(params.idempotencyKey);
     }
 
-    if (existing?.status === NotificationStatus.SENT) {
+    if (existing?.status === NotificationStatus.SENT || existing?.status === NotificationStatus.DELIVERED) {
       return { status: 'skipped', notificationId: existing.id };
     }
 
@@ -337,6 +339,31 @@ export class TransactionalNotificationsService {
       text: copy.text,
       idempotencyKey: `account_verified_${params.userId}`,
       metadata: { kind: 'account_verified' },
+      critical: false,
+      retryOnce: true,
+    });
+  }
+
+  /** Called only after a new creator profile has been committed. */
+  async notifyCreatorWelcome(params: {
+    userId: string;
+    email: string;
+    creatorId: string;
+    displayName: string;
+    username: string;
+  }): Promise<TransactionalSendResult> {
+    const copy = creatorWelcomeEmail({
+      displayName: params.displayName,
+      username: params.username,
+      appUrl: getServerEnv().APP_URL,
+    });
+    return this.send({
+      type: NotificationTypeEnum.EMAIL_CREATOR_WELCOME,
+      to: params.email,
+      userId: params.userId,
+      ...copy,
+      idempotencyKey: `creator_welcome_${params.userId}`,
+      metadata: { kind: 'creator_welcome', creatorId: params.creatorId },
       critical: false,
       retryOnce: true,
     });

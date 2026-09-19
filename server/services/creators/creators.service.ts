@@ -26,6 +26,7 @@ import type {
 import { AuditAction, SocialPlatform, TipStatus } from '../../db/enums';
 import { ApiError } from '../../lib/errors';
 import { getServerEnv } from '../../lib/env';
+import { TransactionalNotificationsService } from '../notifications/transactional-notifications.service';
 import { decimalToAmountString } from '../tips/tips.types';
 import type {
   CreateCreatorInput,
@@ -245,6 +246,29 @@ export class CreatorsService {
           metadata: { event: 'created', username },
         },
       ]);
+
+      // The profile transaction is committed before attempting email delivery.
+      // Await delivery/retry so the request runtime cannot discard an unfinished send.
+      try {
+        const user = await UserModel.findOne({ _id: userId })
+          .select('email')
+          .lean<{ email: string } | null>();
+        if (!user?.email) {
+          throw new Error('Creator account email was not found.');
+        }
+        await new TransactionalNotificationsService().notifyCreatorWelcome({
+          userId,
+          email: user.email,
+          creatorId: profile.id,
+          displayName: profile.displayName,
+          username: profile.username,
+        });
+      } catch (emailError) {
+        // Communication failures must never turn a saved profile into an onboarding error.
+        console.warn(
+          `Creator welcome email failed user=${userId}: ${emailError instanceof Error ? emailError.message : 'unknown'}`,
+        );
+      }
 
       return toCreatorProfileDto(profile);
     } catch (err) {
