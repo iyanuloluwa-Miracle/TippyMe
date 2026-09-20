@@ -326,6 +326,12 @@
           </div>
 
           <div>
+            <label for="edit-thank-you" class="block text-sm text-cheer-ink">Automatic thank-you email</label>
+            <textarea id="edit-thank-you" v-model="thankYouMessage" rows="3" maxlength="500" class="mt-1.5 w-full rounded-xl border border-black/10 bg-[#f7f4ff] px-3.5 py-2.5 text-base outline-none focus:ring-2 focus:ring-cheer-leaf/30" placeholder="Thank you for helping me keep making…" :disabled="settingsPending" />
+            <p class="mt-1 text-xs text-cheer-ink/50">Sent in the supporter’s receipt only after Bachs verifies payment.</p>
+          </div>
+
+          <div>
             <label class="block text-sm text-cheer-ink">Suggested tip amounts</label>
             <div class="mt-2 flex flex-wrap gap-2">
               <input
@@ -457,6 +463,12 @@
         </p>
       </section>
 
+      <section v-if="profile?.publicPath" class="mt-5 rounded-[1.75rem] border border-black/8 bg-white/80 px-5 py-6 sm:px-7">
+        <h2 class="text-xl font-extrabold tracking-tight text-cheer-ink">Website embed</h2>
+        <p class="mt-2 text-sm text-cheer-ink/70">Paste this compact support card into any site that allows iframes.</p>
+        <textarea readonly class="mt-4 h-24 w-full rounded-xl border border-black/10 bg-[#f7f4ff] p-3 font-mono text-xs text-cheer-ink" :value="embedCode" @focus="($event.target as HTMLTextAreaElement).select()" />
+      </section>
+
       <p class="pb-4 text-center text-sm text-cheer-ink/50">
         <NuxtLink
           v-if="profile.publicPath"
@@ -514,6 +526,7 @@ let usernameCheckSeq = 0;
 
 const socialLinks = ref<{ platform: SocialPlatform; url: string }[]>([]);
 const supportMessage = ref('');
+const thankYouMessage = ref('');
 const currency = ref('NGN');
 const payoutCountry = ref('');
 const tipAmounts = ref(['1000.00', '2500.00', '5000.00']);
@@ -550,6 +563,11 @@ const currencies = ['NGN', 'USD', 'GHS', 'KES', 'ZAR'];
 const canSaveIdentity = computed(() => {
   return Boolean(displayName.value.trim()) && usernameOk.value && username.value.length >= 3;
 });
+const embedCode = computed(() => {
+  if (!profile.value?.publicPath) return '';
+  const origin = typeof window === 'undefined' ? '' : window.location.origin;
+  return `<iframe src="${origin}/embed${profile.value.publicPath}" title="Support ${profile.value.displayName}" width="320" height="250" style="border:0;max-width:100%"></iframe>`;
+});
 
 onMounted(async () => {
   await loadProfile();
@@ -573,6 +591,7 @@ function applyProfile(p: CreatorProfile) {
     url: l.url,
   }));
   supportMessage.value = p.supportMessage ?? '';
+  thankYouMessage.value = p.thankYouMessage ?? '';
   currency.value = p.currency || 'NGN';
   payoutCountry.value = p.payoutCountry ?? '';
   tipAmounts.value =
@@ -769,6 +788,7 @@ async function saveSettings() {
     }
     const { profile: updated } = await api.updateMyCreatorSettings({
       supportMessage: supportMessage.value.trim() || null,
+      thankYouMessage: thankYouMessage.value.trim() || null,
       currency: currency.value,
       payoutCountry: payoutCountry.value || undefined,
       suggestedTipAmounts: amounts,

@@ -111,5 +111,23 @@ export default defineNuxtConfig({
         ].join('; '),
       },
     },
+    // Public support cards must be iframe-able on third-party sites.
+    '/embed/**': {
+      headers: {
+        // Override site-wide DENY (empty clears clickjacking block for this path).
+        'X-Frame-Options': '',
+        'Content-Security-Policy': [
+          "default-src 'self'",
+          "script-src 'self' 'unsafe-inline'",
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+          "font-src 'self' https://fonts.gstatic.com data:",
+          "img-src 'self' data: blob: https:",
+          "connect-src 'self'",
+          "frame-ancestors *",
+          "base-uri 'self'",
+          "form-action 'self'",
+        ].join('; '),
+      },
+    },
   },
 });

@@ -19,7 +19,8 @@ export default defineApiHandler(async (event) => {
   }
 
   const creators = new CreatorsService();
-  return creators.recordTipPageView(username);
+  const body = await readBody<{ source?: string }>(event).catch(() => null);
+  return creators.recordTipPageView(username, body?.source);
 });
 
 function normalizeKey(raw: string): string {

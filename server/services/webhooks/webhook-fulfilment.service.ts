@@ -502,6 +502,7 @@ export class WebhookFulfilmentService {
           amount: decimalToAmountString(hydrated.amount),
           currency: hydrated.currency,
           creatorName: hydrated.creator.displayName,
+          thankYouMessage: hydrated.creator.thankYouMessage ?? null,
         });
       }
     } catch (err) {

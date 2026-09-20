@@ -37,6 +37,8 @@ export interface CreatorProfile {
   bio: string | null;
   avatarUrl: string | null;
   supportMessage: string | null;
+  thankYouMessage: string | null;
+  verificationStatus: 'NONE' | 'VERIFIED';
   currency: string;
   payoutCountry: string | null;
   suggestedTipAmounts: string[];
@@ -203,6 +205,15 @@ export interface CreatorDashboard {
   recentMessages: CreatorTip[];
   settlement: CreatorSettlementStatus;
   platformFeePercent: number;
+}
+
+export interface CreatorAnalytics {
+  range: { from: string; to: string };
+  views: number;
+  paidTips: number;
+  conversionPercent: number | null;
+  daily: { date: string; views: number; paidTips: number }[];
+  sources: { source: string; views: number }[];
 }
 
 export interface CreatorSettlementStatus {

@@ -55,6 +55,7 @@ export const NotificationType = {
   EMAIL_TIP_RECEIPT: 'EMAIL_TIP_RECEIPT',
   EMAIL_TIP_REVERSED: 'EMAIL_TIP_REVERSED',
   EMAIL_ACCOUNT_EXISTS: 'EMAIL_ACCOUNT_EXISTS',
+  EMAIL_CREATOR_REPLY: 'EMAIL_CREATOR_REPLY',
 } as const;
 
 export const NotificationStatus = {

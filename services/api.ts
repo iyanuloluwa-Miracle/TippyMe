@@ -12,6 +12,7 @@ import type {
   CreatorTipsPage,
   ListMyTipsQuery,
   PublicCreatorPage,
+  CreatorAnalytics,
 } from '~/types/api';
 
 export class ApiClientError extends Error {
@@ -216,6 +217,7 @@ export function createApiClient(
 
     updateMyCreatorSettings: (payload: {
       supportMessage?: string | null;
+      thankYouMessage?: string | null;
       currency?: string;
       payoutCountry?: string;
       suggestedTipAmounts?: string[];
@@ -283,10 +285,13 @@ export function createApiClient(
         `/api/creators/${encodeURIComponent(username)}`,
       ),
 
-    recordCreatorPageView: (username: string) =>
+    getMyAnalytics: (days = 30) =>
+      request<{ analytics: CreatorAnalytics }>(`/api/creators/me/analytics?days=${encodeURIComponent(String(days))}`),
+
+    recordCreatorPageView: (username: string, source?: string) =>
       request<{ recorded: boolean }>(
         `/api/creators/${encodeURIComponent(username)}/view`,
-        { method: 'POST' },
+        { method: 'POST', body: JSON.stringify(source ? { source } : {}) },
       ),
 
     createTip: (

@@ -93,9 +93,7 @@
               />
             </div>
 
-            <h1 class="mt-5 text-3xl font-bold tracking-tight sm:text-4xl lg:leading-none">
-              {{ profile.displayName }}
-            </h1>
+            <div class="mt-5 flex items-center gap-2"><h1 class="text-3xl font-bold tracking-tight sm:text-4xl lg:leading-none">{{ profile.displayName }}</h1><span v-if="profile.verificationStatus === 'VERIFIED'" class="rounded-full bg-cheer-mint px-2 py-1 text-xs font-bold text-cheer-ink" title="Verified creator">Verified</span></div>
             <p class="mt-1.5 text-sm font-semibold text-cheer-mint/80">
               {{ pathLabel }}
             </p>
@@ -295,7 +293,12 @@ onMounted(() => {
   const page = data.value as PublicCreatorPage | null;
   if (!page?.profile?.username) return;
   track('tip_page_view', { username: page.profile.username });
-  void api.recordCreatorPageView(page.profile.username).catch(() => {
+  const source = typeof route.query.ref === 'string'
+    ? route.query.ref
+    : typeof route.query.utm_source === 'string'
+      ? route.query.utm_source
+      : undefined;
+  void api.recordCreatorPageView(page.profile.username, source).catch(() => {
     // View counting must not block the tip page.
   });
 });

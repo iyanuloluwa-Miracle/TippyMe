@@ -70,6 +70,15 @@ export interface CreatorDashboardDto {
   platformFeePercent: number;
 }
 
+export interface CreatorAnalyticsDto {
+  range: { from: string; to: string };
+  views: number;
+  paidTips: number;
+  conversionPercent: number | null;
+  daily: { date: string; views: number; paidTips: number }[];
+  sources: { source: string; views: number }[];
+}
+
 export interface SupportGoalDto {
   active: boolean;
   title: string;

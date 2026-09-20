@@ -49,9 +49,11 @@ export function supporterReceiptEmail(params: {
   amount: string;
   currency: string;
   creatorName: string;
+  thankYouMessage?: string | null;
 }): { subject: string; text: string; html: string } {
   const subject = `Receipt for your support of ${params.creatorName}`;
-  const text = `Your ${params.amount} ${params.currency} support payment to ${params.creatorName} was verified by Bachs. This is a receipt, not a promise that the creator has already been paid out.`;
+  const thanks = params.thankYouMessage?.trim();
+  const text = `Your ${params.amount} ${params.currency} support payment to ${params.creatorName} was verified by Bachs.${thanks ? ` ${thanks}` : ''} This is a receipt, not a promise that the creator has already been paid out.`;
   const html = `
 <!DOCTYPE html>
 <html>
@@ -59,6 +61,7 @@ export function supporterReceiptEmail(params: {
   <p>Your support payment was verified.</p>
   <p style="font-size: 22px; font-weight: 700;">${escapeHtml(params.amount)} ${escapeHtml(params.currency)}</p>
   <p style="color: #6b5f8a;">Paid to support ${escapeHtml(params.creatorName)}. Bachs verified the payment. This receipt is not a payout confirmation for the creator.</p>
+  ${thanks ? `<p>${escapeHtml(thanks)}</p>` : ''}
 </body>
 </html>`.trim();
   return { subject, text, html };

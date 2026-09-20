@@ -49,6 +49,7 @@ import {
   type CreatorTipsPageDto,
   type ListTipsQuery,
   type PublicCreatorPageDto,
+  type CreatorAnalyticsDto,
   type PublicSupporterNoteDto,
 } from './dashboard.types';
 import { buildSettlementStatus } from './settlement.types';
@@ -346,6 +347,7 @@ export class CreatorsService {
 
     const data: {
       supportMessage?: string | null;
+      thankYouMessage?: string | null;
       currency?: AllowedCurrency;
       payoutCountry?: string;
       suggestedTipAmounts?: string[];
@@ -359,6 +361,11 @@ export class CreatorsService {
         dto.supportMessage === null
           ? null
           : this.requireValidSupportMessage(dto.supportMessage);
+    }
+    if (dto.thankYouMessage !== undefined) {
+      data.thankYouMessage = dto.thankYouMessage === null
+        ? null
+        : this.requireValidSupportMessage(dto.thankYouMessage);
     }
     if (dto.currency !== undefined) {
       data.currency = this.requireValidCurrency(dto.currency);
@@ -622,7 +629,7 @@ export class CreatorsService {
    * Record an anonymous public tip-page view for dashboard link-view counts.
    * Does not store IP, user-agent, or other visitor identifiers.
    */
-  async recordTipPageView(raw: string): Promise<{ recorded: true }> {
+  async recordTipPageView(raw: string, rawSource?: string): Promise<{ recorded: true }> {
     await useDb();
     const username = normalizeUsername(raw);
     const profile = toPlain<CreatorProfile>(
@@ -633,9 +640,49 @@ export class CreatorsService {
       throw new ApiError(404, 'CREATOR_NOT_FOUND', 'Creator not found.');
     }
 
-    await TipPageViewModel.create([{ creatorId: profile.id }]);
+    const source = rawSource?.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '').slice(0, 100) || null;
+    await TipPageViewModel.create([{ creatorId: profile.id, source }]);
 
     return { recorded: true };
+  }
+
+  async getAnalytics(userId: string, days = 30): Promise<CreatorAnalyticsDto> {
+    await useDb();
+    const profile = await this.requireOwnedProfile(userId);
+    const safeDays = Math.max(7, Math.min(90, Math.floor(days)));
+    const end = new Date();
+    const start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate() - safeDays + 1));
+    const [views, paidTips, sourceRows, dailyViews, dailyTips] = await Promise.all([
+      TipPageViewModel.countDocuments({ creatorId: profile.id, createdAt: { $gte: start, $lte: end } }),
+      TipModel.countDocuments({ creatorId: profile.id, status: TipStatus.PAID, createdAt: { $gte: start, $lte: end } }),
+      TipPageViewModel.aggregate<{ _id: string | null; views: number }>([
+        { $match: { creatorId: profile.id, createdAt: { $gte: start, $lte: end } } },
+        { $group: { _id: '$source', views: { $sum: 1 } } }, { $sort: { views: -1 } }, { $limit: 10 },
+      ]),
+      TipPageViewModel.aggregate<{ _id: string; views: number }>([
+        { $match: { creatorId: profile.id, createdAt: { $gte: start, $lte: end } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'UTC' } }, views: { $sum: 1 } } },
+      ]),
+      TipModel.aggregate<{ _id: string; paidTips: number }>([
+        { $match: { creatorId: profile.id, status: TipStatus.PAID, createdAt: { $gte: start, $lte: end } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'UTC' } }, paidTips: { $sum: 1 } } },
+      ]),
+    ]);
+    const viewsByDate = new Map(dailyViews.map((row) => [row._id, row.views]));
+    const tipsByDate = new Map(dailyTips.map((row) => [row._id, row.paidTips]));
+    const daily = Array.from({ length: safeDays }, (_, index) => {
+      const date = new Date(start); date.setUTCDate(start.getUTCDate() + index);
+      const key = date.toISOString().slice(0, 10);
+      return { date: key, views: viewsByDate.get(key) ?? 0, paidTips: tipsByDate.get(key) ?? 0 };
+    });
+    return {
+      range: { from: start.toISOString(), to: end.toISOString() }, views, paidTips,
+      conversionPercent: views
+        ? Math.min(100, Math.round((paidTips / views) * 1000) / 10)
+        : null,
+      daily,
+      sources: sourceRows.map((row) => ({ source: row._id || 'direct', views: row.views })),
+    };
   }
 
   /**

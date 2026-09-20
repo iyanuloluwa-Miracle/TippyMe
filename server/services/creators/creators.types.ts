@@ -20,6 +20,8 @@ export interface CreatorProfileDto {
   bio: string | null;
   avatarUrl: string | null;
   supportMessage: string | null;
+  thankYouMessage: string | null;
+  verificationStatus: 'NONE' | 'VERIFIED';
   currency: string;
   payoutCountry: string | null;
   suggestedTipAmounts: string[];
@@ -66,6 +68,7 @@ export interface UpdateCreatorProfileInput {
 
 export interface UpdateCreatorSettingsInput {
   supportMessage?: string | null;
+  thankYouMessage?: string | null;
   currency?: string;
   payoutCountry?: string;
   suggestedTipAmounts?: string[];
@@ -99,6 +102,8 @@ export function toCreatorProfileDto(
     bio: profile.bio,
     avatarUrl: profile.avatarUrl,
     supportMessage: profile.supportMessage,
+    thankYouMessage: profile.thankYouMessage ?? null,
+    verificationStatus: profile.verificationStatus === 'VERIFIED' ? 'VERIFIED' : 'NONE',
     currency: profile.currency,
     payoutCountry: profile.payoutCountry ?? null,
     suggestedTipAmounts: parseSuggestedTipAmounts(profile.suggestedTipAmounts),

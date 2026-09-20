@@ -2,7 +2,7 @@ import { createId } from '@paralleldrive/cuid2';
 import mongoose, { Schema, type Model, type ClientSession } from 'mongoose';
 import type {
   User, CreatorProfile, TipPageView, SocialLink, PaymentTransaction,
-  Tip, WebhookEvent, OtpChallenge, Notification, AuditLog,
+  Tip, WebhookEvent, OtpChallenge, Notification, AuditLog, CreatorReply,
 } from './types';
 import {
   AuditAction,
@@ -70,6 +70,8 @@ const creatorProfileSchema = new Schema(
     bio: { type: String, default: null },
     avatarUrl: { type: String, default: null },
     supportMessage: { type: String, default: null },
+    thankYouMessage: { type: String, default: null, maxlength: 500 },
+    verificationStatus: { type: String, enum: ['NONE', 'VERIFIED'], default: 'NONE' },
     currency: { type: String, required: true, default: 'NGN', maxlength: 3 },
     payoutCountry: { type: String, default: null },
     suggestedTipAmounts: { type: [String], default: null },
@@ -106,11 +108,24 @@ creatorProfileSchema.pre('save', function () {
 const tipPageViewSchema = new Schema(
   withId({
     creatorId: { type: String, required: true },
+    source: { type: String, default: null, maxlength: 100 },
     createdAt: { type: Date, default: () => new Date() },
   }),
   baseOptions,
 );
 tipPageViewSchema.index({ creatorId: 1, createdAt: 1 });
+tipPageViewSchema.index({ creatorId: 1, source: 1, createdAt: 1 });
+
+const creatorReplySchema = new Schema(
+  withId({
+    creatorId: { type: String, required: true },
+    tipId: { type: String, required: true },
+    body: { type: String, required: true, maxlength: 1000 },
+    createdAt: { type: Date, default: () => new Date() },
+  }),
+  baseOptions,
+);
+creatorReplySchema.index({ creatorId: 1, tipId: 1, createdAt: -1 });
 
 const socialLinkSchema = new Schema(
   withId({
@@ -332,6 +347,7 @@ export const CreatorProfileModel = getModel<CreatorProfile>(
   creatorProfileSchema,
 );
 export const TipPageViewModel = getModel<TipPageView>('TipPageView', tipPageViewSchema);
+export const CreatorReplyModel = getModel<CreatorReply>('CreatorReply', creatorReplySchema);
 export const SocialLinkModel = getModel<SocialLink>('SocialLink', socialLinkSchema);
 export const PaymentTransactionModel = getModel<PaymentTransaction>(
   'PaymentTransaction',

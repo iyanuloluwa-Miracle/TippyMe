@@ -267,11 +267,13 @@ export class TransactionalNotificationsService {
     amount: string;
     currency: string;
     creatorName: string;
+    thankYouMessage?: string | null;
   }): Promise<TransactionalSendResult> {
     const copy = supporterReceiptEmail({
       amount: params.amount,
       currency: params.currency,
       creatorName: params.creatorName,
+      thankYouMessage: params.thankYouMessage,
     });
     return this.send({
       type: NotificationTypeEnum.EMAIL_TIP_RECEIPT,

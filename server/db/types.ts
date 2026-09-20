@@ -52,6 +52,8 @@ export type CreatorProfile = {
   bio: string | null;
   avatarUrl: string | null;
   supportMessage: string | null;
+  thankYouMessage?: string | null;
+  verificationStatus?: 'NONE' | 'VERIFIED';
   currency: string;
   payoutCountry?: string | null;
   suggestedTipAmounts: string[] | null;
@@ -168,5 +170,14 @@ export type AuditLog = {
 export type TipPageView = {
   id: string;
   creatorId: string;
+  source?: string | null;
+  createdAt: Date;
+};
+
+export type CreatorReply = {
+  id: string;
+  creatorId: string;
+  tipId: string;
+  body: string;
   createdAt: Date;
 };
