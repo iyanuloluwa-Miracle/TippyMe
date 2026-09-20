@@ -268,14 +268,77 @@ async function downloadCard() {
   const w = canvas.width;
   const h = canvas.height;
 
+  // Social-card treatment: a deep purple canvas with a bold, cropped violet orb.
+  // This stays deliberately simple so the creator's name remains legible when
+  // the image is reduced in a WhatsApp, X, or Instagram preview.
   const grad = ctx.createLinearGradient(0, 0, w, h);
-  grad.addColorStop(0, '#5b2db8');
-  grad.addColorStop(0.45, '#3b1d7a');
-  grad.addColorStop(1, '#1a1228');
+  grad.addColorStop(0, '#24104f');
+  grad.addColorStop(0.55, '#180b38');
+  grad.addColorStop(1, '#100723');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
 
-  ctx.fillStyle = 'rgba(238, 230, 255,0.9)';
+  ctx.fillStyle = '#5126a8';
+  ctx.beginPath();
+  ctx.arc(w + 16, -12, 174, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#f3af2f';
+  ctx.beginPath();
+  ctx.arc(w - 72, 72, 9, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(163, 113, 255, 0.16)';
+  ctx.beginPath();
+  ctx.arc(34, h + 46, 136, 0, Math.PI * 2);
+  ctx.fill();
+
+  // A small, custom support illustration gives the share card a visual focal
+  // point without depending on a stock image or obscuring creator-specific copy.
+  ctx.save();
+  ctx.translate(w - 118, 142);
+  ctx.rotate(-0.14);
+  ctx.shadowColor = 'rgba(10, 2, 34, 0.4)';
+  ctx.shadowBlur = 20;
+  ctx.shadowOffsetY = 10;
+  ctx.fillStyle = '#f4edff';
+  ctx.beginPath();
+  ctx.roundRect(-58, -37, 116, 74, 16);
+  ctx.fill();
+  ctx.shadowColor = 'transparent';
+
+  ctx.fillStyle = '#6530c7';
+  ctx.beginPath();
+  ctx.roundRect(-42, -20, 42, 42, 11);
+  ctx.fill();
+
+  // Heart mark on the illustrated support card.
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(-21, 11);
+  ctx.bezierCurveTo(-45, -4, -32, -22, -21, -10);
+  ctx.bezierCurveTo(-10, -22, 3, -4, -21, 11);
+  ctx.fill();
+
+  ctx.fillStyle = '#b184ff';
+  ctx.beginPath();
+  ctx.roundRect(12, -14, 28, 7, 3.5);
+  ctx.roundRect(12, 0, 20, 7, 3.5);
+  ctx.roundRect(12, 14, 24, 7, 3.5);
+  ctx.fill();
+  ctx.restore();
+
+  // Floating tip coins complete the illustration while keeping the QR area clear.
+  ctx.fillStyle = '#f3af2f';
+  ctx.beginPath();
+  ctx.arc(w - 50, 195, 11, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffdb79';
+  ctx.beginPath();
+  ctx.arc(w - 76, 187, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
   ctx.font = '600 18px Darker Grotesque, sans-serif';
   ctx.fillText('TippyMe', 40, 48);
 
@@ -283,14 +346,18 @@ async function downloadCard() {
   ctx.font = '700 42px Darker Grotesque, sans-serif';
   ctx.fillText(`Support ${props.displayName}`, 40, 120);
 
-  ctx.fillStyle = 'rgba(255,255,255,0.72)';
-  ctx.font = '500 22px Darker Grotesque, sans-serif';
-  const line = goalLine.value || 'One link. No bank details in the chat.';
-  ctx.fillText(line.slice(0, 52), 40, 168);
+  ctx.fillStyle = '#b184ff';
+  ctx.font = '700 38px Darker Grotesque, sans-serif';
+  ctx.fillText('with a tip that matters.', 40, 162);
 
-  ctx.fillStyle = '#eee6ff';
+  ctx.fillStyle = 'rgba(255,255,255,0.72)';
+  ctx.font = '500 20px Darker Grotesque, sans-serif';
+  const line = goalLine.value || 'One link. No bank details in the chat.';
+  ctx.fillText(line.slice(0, 52), 40, 204);
+
+  ctx.fillStyle = '#d5bcff';
   ctx.font = '600 20px Darker Grotesque, sans-serif';
-  ctx.fillText(props.publicUrl.slice(0, 48), 40, 230);
+  ctx.fillText(props.publicUrl.slice(0, 48), 40, 250);
 
   try {
     const img = new Image();
