@@ -59,7 +59,7 @@ export default defineNuxtConfig({
         {
           name: 'description',
           content:
-            'One link for everyone who wants to support your work. TippyMe gives you a simple page to receive support and messages.',
+            'One link for African creators to receive support and messages — without pasting bank details in WhatsApp or DMs.',
         },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'theme-color', content: '#9362ff' },
@@ -131,6 +131,13 @@ export default defineNuxtConfig({
     },
     // GitHub README badges are fetched via camo — cache aggressively.
     '/badges/**': {
+      headers: {
+        'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+        'Access-Control-Allow-Origin': '*',
+      },
+    },
+    // WhatsApp / social crawlers fetch these for link previews.
+    '/og/**': {
       headers: {
         'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
         'Access-Control-Allow-Origin': '*',

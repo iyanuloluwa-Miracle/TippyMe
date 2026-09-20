@@ -274,18 +274,48 @@ const pathLabel = computed(() => {
   return path.startsWith('/') ? path : `/${path}`;
 });
 
-useHead(() => ({
-  title: profile.value
+const origin = usePublicOrigin();
+const seoTitle = computed(() =>
+  profile.value
     ? `Support ${profile.value.displayName} — TippyMe`
     : 'Creator — TippyMe',
-  meta: [
-    {
-      name: 'description',
-      content: profile.value?.supportMessage
-        || profile.value?.bio
-        || 'Send support and a message through TippyMe.',
-    },
-  ],
+);
+const seoDescription = computed(
+  () =>
+    profile.value?.supportMessage?.trim()
+    || profile.value?.bio?.trim()
+    || 'Send support and a message through TippyMe — no bank details in the chat.',
+);
+const seoImage = computed(() => {
+  const raw = avatarSrc.value;
+  if (!raw) return origin ? `${origin}/og/default.png` : '/og/default.png';
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  return origin ? `${origin}${raw.startsWith('/') ? raw : `/${raw}`}` : raw;
+});
+
+useSeoMeta({
+  title: seoTitle,
+  description: seoDescription,
+  ogTitle: seoTitle,
+  ogDescription: seoDescription,
+  ogType: 'profile',
+  ogUrl: computed(() => (origin ? `${origin}${pathLabel.value}` : undefined)),
+  ogImage: seoImage,
+  ogImageAlt: computed(() =>
+    profile.value
+      ? `${profile.value.displayName} on TippyMe`
+      : 'TippyMe — One link for support',
+  ),
+  twitterCard: 'summary_large_image',
+  twitterTitle: seoTitle,
+  twitterDescription: seoDescription,
+  twitterImage: seoImage,
+});
+
+useHead(() => ({
+  link: origin
+    ? [{ rel: 'canonical', href: `${origin}${pathLabel.value}` }]
+    : [],
 }));
 
 // Analytics after first paint — never block rendering.

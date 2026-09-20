@@ -14,15 +14,11 @@
 <script setup lang="ts">
 const route = useRoute();
 
-useHead({
+useSiteSeo({
   title: 'TippyMe — One link for support',
-  meta: [
-    {
-      name: 'description',
-      content:
-        'Still posting your bank details when people want to support your work? TippyMe gives you one simple link to receive support and messages.',
-    },
-  ],
+  description:
+    'One link for African creators to receive support and messages — without pasting bank details in WhatsApp or DMs.',
+  path: '/',
 });
 
 // Browser scroll restoration / leftover #faq can land visitors on FAQ.
