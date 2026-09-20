@@ -1,7 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="214" height="48" viewBox="0 0 214 48" role="img" aria-label="Support me on TippyMe">
-  <title>Support me on TippyMe</title>
-  <rect width="214" height="48" rx="24" fill="#9362ff"/>
-  <circle cx="28" cy="24" r="10" fill="#eee6ff"/>
-  <path d="M28 16.5c.4 2.2 1.5 3.9 3.2 5.1-1.7 1.2-2.8 2.9-3.2 5.1-.4-2.2-1.5-3.9-3.2-5.1 1.7-1.2 2.8-2.9 3.2-5.1z" fill="#9362ff"/>
-  <text x="48" y="30" fill="#ffffff" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="700">Support me on TippyMe</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="214" height="48" aria-label="Support me on TippyMe" role="img" viewBox="0 0 214 48"><title>Support me on TippyMe</title><rect width="214" height="48" fill="#9362ff" rx="24"/><circle cx="28" cy="24" r="10" fill="#eee6ff"/><path fill="#9362ff" d="M28 16.5c.4 2.2 1.5 3.9 3.2 5.1-1.7 1.2-2.8 2.9-3.2 5.1-.4-2.2-1.5-3.9-3.2-5.1 1.7-1.2 2.8-2.9 3.2-5.1z"/><text x="48" y="30" fill="#fff" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="15" font-weight="700">Support me on TippyMe</text></svg>
