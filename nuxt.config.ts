@@ -129,5 +129,12 @@ export default defineNuxtConfig({
         ].join('; '),
       },
     },
+    // GitHub README badges are fetched via camo — cache aggressively.
+    '/badges/**': {
+      headers: {
+        'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
+        'Access-Control-Allow-Origin': '*',
+      },
+    },
   },
 });

@@ -464,9 +464,116 @@
       </section>
 
       <section v-if="profile?.publicPath" class="mt-5 rounded-[1.75rem] border border-black/8 bg-white/80 px-5 py-6 sm:px-7">
-        <h2 class="text-xl font-extrabold tracking-tight text-cheer-ink">Website embed</h2>
-        <p class="mt-2 text-sm text-cheer-ink/70">Paste this compact support card into any site that allows iframes.</p>
-        <textarea readonly class="mt-4 h-24 w-full rounded-xl border border-black/10 bg-[#f7f4ff] p-3 font-mono text-xs text-cheer-ink" :value="embedCode" @focus="($event.target as HTMLTextAreaElement).select()" />
+        <h2 class="text-xl font-extrabold tracking-tight text-cheer-ink">Share on other sites</h2>
+        <p class="mt-2 text-sm text-cheer-ink/70">
+          Use an iframe on websites that allow embeds, or a GitHub badge (GitHub strips iframes from READMEs).
+        </p>
+
+        <div class="mt-5 space-y-6">
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h3 class="text-sm font-bold text-cheer-ink">Website embed</h3>
+              <button
+                type="button"
+                class="rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-cheer-ink hover:border-cheer-leaf/40"
+                @click="copyText(embedCode, 'embed')"
+              >
+                {{ copiedKey === 'embed' ? 'Copied!' : 'Copy' }}
+              </button>
+            </div>
+            <textarea
+              readonly
+              class="mt-2 h-24 w-full rounded-xl border border-black/10 bg-[#f7f4ff] p-3 font-mono text-xs text-cheer-ink"
+              :value="embedCode"
+              @focus="($event.target as HTMLTextAreaElement).select()"
+            />
+          </div>
+
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h3 class="text-sm font-bold text-cheer-ink">GitHub README badge</h3>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  class="rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-cheer-ink hover:border-cheer-leaf/40"
+                  @click="copyText(githubBadgeHtml, 'github-html')"
+                >
+                  {{ copiedKey === 'github-html' ? 'Copied!' : 'Copy HTML' }}
+                </button>
+                <button
+                  type="button"
+                  class="rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-cheer-ink hover:border-cheer-leaf/40"
+                  @click="copyText(githubBadgeMarkdown, 'github-md')"
+                >
+                  {{ copiedKey === 'github-md' ? 'Copied!' : 'Copy Markdown' }}
+                </button>
+              </div>
+            </div>
+            <p class="mt-1 text-xs text-cheer-ink/50">
+              Paste into your profile or repo <code class="rounded bg-black/5 px-1">README.md</code>. Same approach Buy Me a Coffee uses (linked image, not an iframe).
+            </p>
+            <p
+              v-if="shareUsesLocalhost"
+              class="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+            >
+              Snippets currently use a localhost URL. Set <code class="rounded bg-black/5 px-1">NUXT_PUBLIC_APP_URL=https://tippyme.click</code> in production so GitHub can load the badge.
+            </p>
+            <div class="mt-3 flex items-center gap-3 rounded-xl border border-black/8 bg-[#f7f4ff] px-4 py-3">
+              <a
+                :href="publicTipUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex shrink-0"
+              >
+                <img
+                  src="/badges/support-me.svg"
+                  alt="Support me on TippyMe"
+                  width="214"
+                  height="48"
+                  class="h-12 w-auto"
+                >
+              </a>
+              <p class="text-xs text-cheer-ink/60">Preview — opens your Tippy page</p>
+            </div>
+            <textarea
+              readonly
+              class="mt-2 h-20 w-full rounded-xl border border-black/10 bg-[#f7f4ff] p-3 font-mono text-xs text-cheer-ink"
+              :value="githubBadgeHtml"
+              @focus="($event.target as HTMLTextAreaElement).select()"
+            />
+            <details class="mt-2">
+              <summary class="cursor-pointer text-xs font-semibold text-cheer-leaf">Markdown version</summary>
+              <textarea
+                readonly
+                class="mt-2 h-16 w-full rounded-xl border border-black/10 bg-[#f7f4ff] p-3 font-mono text-xs text-cheer-ink"
+                :value="githubBadgeMarkdown"
+                @focus="($event.target as HTMLTextAreaElement).select()"
+              />
+            </details>
+          </div>
+
+          <div>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h3 class="text-sm font-bold text-cheer-ink">GitHub Sponsor button</h3>
+              <button
+                type="button"
+                class="rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-cheer-ink hover:border-cheer-leaf/40"
+                @click="copyText(fundingYml, 'funding')"
+              >
+                {{ copiedKey === 'funding' ? 'Copied!' : 'Copy' }}
+              </button>
+            </div>
+            <p class="mt-1 text-xs text-cheer-ink/50">
+              Create <code class="rounded bg-black/5 px-1">.github/FUNDING.yml</code> on your default branch, then enable Sponsorships in repo settings.
+            </p>
+            <textarea
+              readonly
+              class="mt-2 h-16 w-full rounded-xl border border-black/10 bg-[#f7f4ff] p-3 font-mono text-xs text-cheer-ink"
+              :value="fundingYml"
+              @focus="($event.target as HTMLTextAreaElement).select()"
+            />
+          </div>
+        </div>
       </section>
 
       <p class="pb-4 text-center text-sm text-cheer-ink/50">
@@ -563,11 +670,62 @@ const currencies = ['NGN', 'USD', 'GHS', 'KES', 'ZAR'];
 const canSaveIdentity = computed(() => {
   return Boolean(displayName.value.trim()) && usernameOk.value && username.value.length >= 3;
 });
+
+const runtimeConfig = useRuntimeConfig();
+const copiedKey = ref<string | null>(null);
+let copiedTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Absolute origin used in pasteable snippets (GitHub needs a public HTTPS URL). */
+const shareOrigin = computed(() => {
+  const configured = String(runtimeConfig.public.appUrl ?? '').replace(/\/$/, '');
+  if (configured) return configured;
+  if (import.meta.client && typeof window !== 'undefined') return window.location.origin;
+  return '';
+});
+
+const publicTipUrl = computed(() => {
+  if (!profile.value?.publicPath) return '';
+  return `${shareOrigin.value}${profile.value.publicPath}`;
+});
+
+const badgeImageUrl = computed(() => `${shareOrigin.value}/badges/support-me.svg`);
+
 const embedCode = computed(() => {
   if (!profile.value?.publicPath) return '';
-  const origin = typeof window === 'undefined' ? '' : window.location.origin;
-  return `<iframe src="${origin}/embed${profile.value.publicPath}" title="Support ${profile.value.displayName}" width="320" height="250" style="border:0;max-width:100%"></iframe>`;
+  return `<iframe src="${shareOrigin.value}/embed${profile.value.publicPath}" title="Support ${profile.value.displayName}" width="320" height="250" style="border:0;max-width:100%"></iframe>`;
 });
+
+const githubBadgeMarkdown = computed(() => {
+  if (!publicTipUrl.value) return '';
+  return `[![Support me on TippyMe](${badgeImageUrl.value})](${publicTipUrl.value})`;
+});
+
+const githubBadgeHtml = computed(() => {
+  if (!publicTipUrl.value) return '';
+  return `<a href="${publicTipUrl.value}" target="_blank"><img src="${badgeImageUrl.value}" alt="Support me on TippyMe" height="41" /></a>`;
+});
+
+const fundingYml = computed(() => {
+  if (!publicTipUrl.value) return '';
+  return `# .github/FUNDING.yml\ncustom: ${publicTipUrl.value}\n`;
+});
+
+const shareUsesLocalhost = computed(() => /localhost|127\.0\.0\.1/i.test(shareOrigin.value));
+
+async function copyText(value: string, key: string) {
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+    copiedKey.value = key;
+    if (copiedTimer) clearTimeout(copiedTimer);
+    copiedTimer = setTimeout(() => {
+      copiedKey.value = null;
+    }, 2000);
+    $toast.success('Copied');
+  } catch {
+    $toast.error('Could not copy. Select the text and copy manually.');
+  }
+}
 
 onMounted(async () => {
   await loadProfile();
@@ -575,6 +733,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (usernameTimer) clearTimeout(usernameTimer);
+  if (copiedTimer) clearTimeout(copiedTimer);
 });
 
 function applyProfile(p: CreatorProfile) {
