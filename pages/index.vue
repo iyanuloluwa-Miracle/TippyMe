@@ -8,6 +8,7 @@
     <LandingTestimonialsSection />
     <LandingTrustSection />
     <LandingFaqSection />
+    <LandingAskTippyMe />
   </div>
 </template>
 
