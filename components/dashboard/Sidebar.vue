@@ -1,35 +1,20 @@
 <template>
   <aside
-    class="dashboard-sidebar relative flex h-full shrink-0 flex-col overflow-hidden text-white"
+    class="dashboard-sidebar relative flex h-full shrink-0 flex-col overflow-hidden text-[#30213f]"
     :class="{ 'dashboard-sidebar--collapsed': collapsed }"
-    style="
-      background:
-        radial-gradient(ellipse 90% 60% at 0% 0%, rgba(238, 230, 255, 0.16), transparent 55%),
-        radial-gradient(ellipse 70% 50% at 100% 100%, rgba(147, 98, 255, 0.45), transparent 55%),
-        linear-gradient(165deg, #3b1d7a 0%, #1a1228 48%, #1a0f33 100%);
-    "
     aria-label="Dashboard sidebar"
   >
-    <div
-      class="pointer-events-none absolute inset-0 opacity-[0.18]"
-      style="
-        background-image: radial-gradient(rgba(238, 230, 255, 0.35) 1px, transparent 1px);
-        background-size: 18px 18px;
-      "
-      aria-hidden="true"
-    />
-
     <div class="sidebar-brand relative flex shrink-0 items-center gap-2 px-5">
       <NuxtLink
         to="/"
         aria-label="TippyMe home"
-        class="inline-flex items-center gap-2.5 rounded-sm transition-opacity duration-200 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-mint focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1228]"
+        class="inline-flex items-center gap-2.5 rounded-sm transition-opacity duration-200 hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-white"
       >
         <img
           src="/tippyme-mark.png"
           alt=""
           aria-hidden="true"
-          class="h-7 w-auto shrink-0 object-contain brightness-0 invert"
+          class="h-7 w-auto shrink-0 object-contain"
           width="19"
           height="28"
           decoding="async"
@@ -59,7 +44,7 @@
     </div>
 
     <nav class="relative flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-3 pt-2" aria-label="Dashboard">
-      <p :class="collapsed ? 'sr-only' : 'px-3 pb-2 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-white/35'">
+      <p :class="collapsed ? 'sr-only' : 'px-3 pb-2 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-[#80718f]'">
         Workspace
       </p>
 
@@ -69,11 +54,11 @@
         :to="link.to"
         :aria-current="isActive(link.to) ? 'page' : undefined"
         :title="collapsed ? link.label : undefined"
-        class="sidebar-link group flex shrink-0 items-center gap-3 rounded-2xl px-3 py-2.5 text-[0.9375rem] font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-mint focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1228]"
+        class="sidebar-link group flex shrink-0 items-center gap-3 rounded-2xl px-3 py-2.5 text-[0.9375rem] font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-white"
         :class="
           isActive(link.to)
-            ? 'bg-cheer-mint text-cheer-ink shadow-[0_8px_24px_-10px_rgba(238, 230, 255,0.7)]'
-            : 'text-white/65 hover:bg-white/[0.06] hover:text-white'
+            ? 'bg-[#eee5fa] text-[#542b85]'
+            : 'text-[#6b5b7b] hover:bg-[#f5effc] hover:text-[#603197]'
         "
         @click="emit('navigate')"
       >
@@ -91,7 +76,7 @@
         v-if="publicPath"
         :to="publicPath"
         :title="collapsed ? 'Public page' : undefined"
-        class="sidebar-link group flex shrink-0 items-center gap-3 rounded-2xl px-3 py-2.5 text-[0.9375rem] font-bold text-white/65 transition-all duration-200 hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-mint focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1228]"
+        class="sidebar-link group flex shrink-0 items-center gap-3 rounded-2xl px-3 py-2.5 text-[0.9375rem] font-bold text-[#6b5b7b] transition-all duration-200 hover:bg-[#f5effc] hover:text-[#603197] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-white"
         @click="emit('navigate')"
       >
         <span
@@ -104,7 +89,7 @@
       </NuxtLink>
     </nav>
 
-    <div class="relative mt-auto shrink-0 border-t border-white/10 px-4 py-5">
+    <div class="relative mt-auto shrink-0 border-t border-[#e7dfee] px-4 py-5">
       <div
         v-if="auth.user?.email"
         class="flex items-center gap-3"
@@ -115,17 +100,17 @@
           :src="avatarSrc"
           alt=""
           aria-hidden="true"
-          class="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-white/10"
+          class="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-[#eee5fa]"
           width="40"
           height="40"
           decoding="async"
         >
         <div :class="collapsed ? 'sr-only' : 'min-w-0'">
-          <p class="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white/35">
+          <p class="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[#80718f]">
             Signed in
           </p>
           <p
-            class="truncate text-sm font-medium text-white/75"
+            class="truncate text-sm font-medium text-[#4e3b60]"
             :title="auth.user.email"
           >
             {{ auth.user.email }}
@@ -134,7 +119,7 @@
       </div>
       <button
         type="button"
-        class="motion-cta mt-4 flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.06] py-2.5 text-sm font-semibold text-white transition hover:border-cheer-mint/40 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-mint focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1228] disabled:opacity-60"
+        class="motion-cta mt-4 flex w-full items-center justify-center gap-2 rounded-full border border-[#e7dfee] bg-white py-2.5 text-sm font-semibold text-[#5d4276] transition hover:border-cheer-leaf/40 hover:bg-[#f5effc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
         :title="collapsed ? 'Sign out' : undefined"
         :disabled="loggingOut"
         @click="onLogout"
@@ -206,7 +191,7 @@ async function onLogout() {
 </script>
 
 <style scoped>
-.dashboard-sidebar { width: 17.5rem; max-width: 100vw; transition: width .22s ease; }
+.dashboard-sidebar { width: 17.5rem; max-width: 100vw; transition: width .22s ease; background: linear-gradient(180deg, #fff 70%, #faf7ff); }
 .dashboard-sidebar--collapsed { width: 5.25rem; }
 .sidebar-brand { min-height: 4.5rem; }
 .sidebar-toggle {
@@ -216,37 +201,37 @@ async function onLogout() {
   width: 2.25rem;
   height: 2.25rem;
   margin-left: auto;
-  border: 1px solid #ffffff18;
+  border: 1px solid #e7dfee;
   border-radius: .7rem;
-  color: #dfcef9;
-  background: #ffffff08;
+  color: #705483;
+  background: #ffffff;
   transition: color .2s ease, background .2s ease;
 }
-.sidebar-toggle:hover { color: #ceff83; background: #9362ff25; }
-.sidebar-toggle:focus-visible { outline: 2px solid #ceff83; outline-offset: 3px; }
+.sidebar-toggle:hover { color: #7540b4; background: #eee5fa; }
+.sidebar-toggle:focus-visible { outline: 2px solid #7540b4; outline-offset: 3px; }
 .dashboard-sidebar--collapsed .sidebar-brand { flex-direction: column; justify-content: center; min-height: 7rem; padding: .8rem 0; gap: .8rem; }
 .dashboard-sidebar--collapsed .sidebar-toggle { margin-left: 0; }
 .dashboard-sidebar--collapsed .sidebar-link { justify-content: center; gap: 0; padding: .6rem .5rem; }
 .workspace-icon {
-  --nav-icon-accent: #c9b2fa;
+  --nav-icon-accent: #9573bd;
   display: grid;
   place-items: center;
   flex-shrink: 0;
   width: 2.25rem;
   height: 2.25rem;
-  border: 1px solid #ffffff12;
+  border: 1px solid #ece5f3;
   border-radius: .75rem;
-  color: #c9bcdf;
-  background: linear-gradient(145deg, #ffffff0e, #ffffff04);
+  color: #7b5c96;
+  background: #f7f3fc;
   box-shadow: inset 0 1px 0 #ffffff06;
   transition: color .2s ease, border-color .2s ease, background .2s ease, transform .2s ease;
 }
 .workspace-icon svg { width: 1.4rem; height: 1.4rem; }
 .group:hover .workspace-icon, .group:focus-visible .workspace-icon {
-  --nav-icon-accent: #ceff83;
-  color: #f0e8ff;
-  border-color: #c9b2fa40;
-  background: #9362ff20;
+  --nav-icon-accent: #7540b4;
+  color: #65399a;
+  border-color: #9573bd40;
+  background: #eee5fa;
   transform: translateY(-1px);
 }
 .workspace-icon.workspace-icon--active,

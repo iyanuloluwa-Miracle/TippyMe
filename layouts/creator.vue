@@ -1,5 +1,5 @@
 <template>
-  <div class="cheer-page-atmosphere relative flex min-h-dvh flex-col overflow-hidden">
+  <div class="creator-page-shell relative flex min-h-dvh flex-col overflow-hidden">
     <div
       class="pointer-events-none absolute inset-0 opacity-[0.22]"
       style="
@@ -17,7 +17,7 @@
       aria-hidden="true"
     />
 
-    <header class="relative z-20 border-b border-cheer-leaf/10 bg-white/80 backdrop-blur-md">
+    <header class="creator-page-header relative z-20">
       <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
         <NuxtLink
           to="/"
@@ -103,3 +103,7 @@ onMounted(() => {
   }
 });
 </script>
+
+<style scoped>
+.creator-page-shell { background: radial-gradient(ellipse 80% 35% at 0% 0%, #e2d4ef70, transparent 75%), radial-gradient(ellipse 55% 40% at 100% 60%, #e5dbf350, transparent 75%), #f7f4fb; }.creator-page-shell > div[aria-hidden='true'] { display: none; }.creator-page-header { border-bottom: 1px solid #e7dfee; background: #ffffff; }.creator-page-header > div { max-width: 1160px; padding-top: 20px; padding-bottom: 20px; }.creator-page-header img { filter: none; }.creator-page-header span { color: #30213f; }.creator-page-header > div > a:not(:first-child) { color: #ffffff; background: #7540b4; border: 1px solid #7540b4; border-radius: 12px; font-size: 13px; }.creator-page-shell > footer { border-color: #e3d9ef; }.creator-page-shell > footer > div { color: #7c6a8b; }.creator-page-shell > footer a { color: #70459a; }
+</style>

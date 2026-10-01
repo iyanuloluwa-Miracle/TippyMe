@@ -1,19 +1,23 @@
 <template>
-  <div class="mx-auto max-w-md px-4 py-16 text-center">
-    <h1 class="text-2xl font-bold text-cheer-ink">
+  <div class="studio-page">
+    <div class="studio-card mx-auto mt-8 max-w-lg text-center">
+    <p class="studio-kicker">LET’S GET YOU CONNECTED</p>
+    <h1 class="text-3xl font-bold text-[#261b38]">
       Refresh Connect link
     </h1>
-    <p class="mt-3 text-sm font-semibold leading-relaxed text-cheer-ink/85">
+    <p class="studio-muted mt-4" role="status">
       {{ message }}
     </p>
     <button
       type="button"
-      class="mt-8 inline-flex items-center justify-center rounded-full bg-cheer-leaf px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+      class="studio-button studio-button--primary mt-8"
       :disabled="busy"
       @click="refresh"
     >
       {{ busy ? 'Working…' : 'Get a fresh Bachs link' }}
     </button>
+    <NuxtLink to="/dashboard#payouts" class="studio-link mt-4 block">Back to payouts →</NuxtLink>
+    </div>
   </div>
 </template>
 

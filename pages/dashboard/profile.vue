@@ -1,20 +1,11 @@
 <template>
-  <div class="w-full px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
-    <header class="mb-6 sm:mb-8">
-      <p class="text-[0.7rem] font-bold uppercase tracking-[0.18em] text-cheer-leaf">
-        Workspace
-      </p>
-      <h1 class="mt-2 text-4xl font-extrabold tracking-tight text-cheer-ink sm:text-5xl">
-        Edit profile
-      </h1>
-      <p class="mt-2 max-w-xl text-base font-semibold text-cheer-ink/85">
-        Update how you appear on your Tippy page, your social links, and support settings.
-      </p>
-    </header>
+  <div class="studio-page profile-workspace">
+    <div class="studio-breadcrumb"><NuxtLink to="/dashboard">Workspace</NuxtLink><span aria-hidden="true">/</span><strong>Edit profile</strong></div>
+    <header class="studio-page-header"><div><p class="studio-kicker">MAKE THIS SPACE YOURS</p><h1>Your page. Your personality.</h1><p class="studio-intro">Shape how supporters meet you, show their support, and stay connected.</p></div><NuxtLink v-if="profile?.publicPath" :to="profile.publicPath" class="studio-button studio-button--primary">Preview public page ↗</NuxtLink></header>
 
     <p
       v-if="loadError"
-      class="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+      class="mb-4 rounded-2xl border border-[#f3d0d7] bg-[#fff1f3] px-4 py-3 text-sm text-[#ac3047]"
       role="alert"
     >
       {{ loadError }}
@@ -31,26 +22,35 @@
 
     <div
       v-else-if="profile"
-      class="mx-auto max-w-2xl space-y-5"
+      class="settings-layout"
     >
+      <aside class="settings-sidebar">
+        <nav class="settings-nav" aria-label="Profile settings">
+          <NuxtLink v-for="section in settingsSections" :key="section.id" :to="{ path: '/dashboard/profile', hash: '#' + section.id }" :aria-current="activeSection === section.id ? 'page' : undefined" :class="{ selected: activeSection === section.id }"><span class="settings-nav-icon" aria-hidden="true">{{ section.icon }}</span><span><strong>{{ section.label }}</strong><small>{{ section.description }}</small></span><span aria-hidden="true">›</span></NuxtLink>
+        </nav>
+        <div class="settings-preview"><span class="studio-kicker">PROFILE PREVIEW</span><div class="settings-monogram" aria-hidden="true">{{ Array.from(displayName || 'Y')[0]?.toUpperCase() }}</div><strong>{{ displayName || 'Your creator name' }}</strong><span>@{{ username || 'yourname' }}</span><p>{{ bio || 'A few words about what you create.' }}</p><small>Save each section when you’re ready.</small></div>
+      </aside>
+      <div class="profile-editor">
       <!-- Identity -->
       <section
-        class="rounded-[1.75rem] border border-black/6 bg-white/85 p-5 shadow-[0_1px_0_rgba(26, 18, 40,0.04)] backdrop-blur-md sm:p-7"
+        v-show="activeSection === 'profile'"
+        id="profile"
+        class="studio-card settings-form"
         aria-labelledby="identity-heading"
       >
         <h2
           id="identity-heading"
-          class="text-xl font-extrabold tracking-tight text-cheer-ink"
+          class="text-xl font-extrabold tracking-tight text-[#261b38]"
         >
           Identity
         </h2>
-        <p class="mt-1 text-sm text-cheer-ink/55">
+        <p class="mt-1 text-sm text-[#70647e]">
           Name, bio, username, and photo on your public page.
         </p>
 
         <div class="mt-5 space-y-4">
           <div>
-            <p class="block text-sm text-cheer-ink">
+            <p class="block text-sm text-[#261b38]">
               Profile photo
             </p>
             <div class="mt-2">
@@ -60,6 +60,7 @@
                 :alt="displayName || 'Profile photo'"
                 size="lg"
                 persist
+                variant="light"
                 hint="Click to change your photo"
                 :disabled="identityPending"
                 @uploaded="onAvatarUploaded"
@@ -70,7 +71,7 @@
           <div>
             <label
               for="edit-display"
-              class="block text-sm text-cheer-ink"
+              class="block text-sm text-[#261b38]"
             >Display name</label>
             <input
               id="edit-display"
@@ -78,7 +79,7 @@
               type="text"
               maxlength="80"
               required
-              class="mt-1.5 w-full rounded-xl border border-black/10 bg-[#f7f4ff] px-3.5 py-2.5 text-base outline-none focus:border-cheer-leaf/40 focus:ring-2 focus:ring-cheer-leaf/30"
+              class="mt-1.5 w-full rounded-xl border border-[#e7dfee] bg-[#ffffff] px-3.5 py-2.5 text-base outline-none focus:border-cheer-leaf/40 focus:ring-2 focus:ring-cheer-leaf/30"
               placeholder="How supporters see you"
               :disabled="identityPending"
             >
@@ -88,11 +89,11 @@
             <div class="flex items-center justify-between gap-2">
               <label
                 for="edit-bio"
-                class="block text-sm text-cheer-ink"
+                class="block text-sm text-[#261b38]"
               >Bio</label>
               <button
                 type="button"
-                class="text-xs font-semibold text-cheer-leaf hover:underline disabled:opacity-50"
+                class="text-xs font-semibold text-[#6d3db0] hover:underline disabled:opacity-50"
                 :disabled="identityPending || aiBusy"
                 @click="polishBio"
               >
@@ -104,13 +105,13 @@
               v-model="bio"
               rows="3"
               maxlength="500"
-              class="mt-1.5 w-full rounded-xl border border-black/10 bg-[#f7f4ff] px-3.5 py-2.5 text-base outline-none focus:border-cheer-leaf/40 focus:ring-2 focus:ring-cheer-leaf/30"
+              class="mt-1.5 w-full rounded-xl border border-[#e7dfee] bg-[#ffffff] px-3.5 py-2.5 text-base outline-none focus:border-cheer-leaf/40 focus:ring-2 focus:ring-cheer-leaf/30"
               placeholder="A short line about your work"
               :disabled="identityPending"
             />
             <p
               v-if="aiHint"
-              class="mt-1 text-xs text-cheer-ink/50"
+              class="mt-1 text-xs text-[#70647e]"
             >
               {{ aiHint }}
             </p>
@@ -119,17 +120,17 @@
           <div>
             <label
               for="edit-username"
-              class="block text-sm text-cheer-ink"
+              class="block text-sm text-[#261b38]"
             >Username</label>
-            <div class="mt-1.5 flex items-center gap-2 rounded-xl border border-black/10 bg-[#f7f4ff] px-3.5 focus-within:border-cheer-leaf/40 focus-within:ring-2 focus-within:ring-cheer-leaf/30">
-              <span class="shrink-0 text-sm text-cheer-ink/45">/</span>
+            <div class="mt-1.5 flex items-center gap-2 rounded-xl border border-[#e7dfee] bg-[#ffffff] px-3.5 focus-within:border-cheer-leaf/40 focus-within:ring-2 focus-within:ring-cheer-leaf/30">
+              <span class="shrink-0 text-sm text-[#70647e]">/</span>
               <input
                 id="edit-username"
                 v-model="username"
                 type="text"
                 autocomplete="username"
                 maxlength="30"
-                class="w-full bg-transparent py-2.5 text-base text-cheer-ink outline-none"
+                class="w-full bg-transparent py-2.5 text-base text-[#261b38] outline-none"
                 placeholder="yourname"
                 :disabled="identityPending"
                 @input="onUsernameInput"
@@ -138,12 +139,12 @@
             <p
               v-if="usernameStatus"
               class="mt-2 text-sm"
-              :class="usernameOk ? 'text-cheer-leaf' : 'text-red-700'"
+              :class="usernameOk ? 'text-[#6d3db0]' : 'text-[#ac3047]'"
               role="status"
             >
               {{ usernameStatus }}
             </p>
-            <p class="mt-1 text-xs text-cheer-ink/50">
+            <p class="mt-1 text-xs text-[#70647e]">
               Lowercase letters, numbers, underscores. 3–30 characters.
             </p>
           </div>
@@ -151,14 +152,14 @@
 
         <p
           v-if="identityError"
-          class="mt-3 text-sm text-red-700"
+          class="mt-3 text-sm text-[#ac3047]"
           role="alert"
         >
           {{ identityError }}
         </p>
         <p
           v-if="identitySuccess"
-          class="mt-3 text-sm text-cheer-leaf"
+          class="mt-3 text-sm text-[#6d3db0]"
           role="status"
         >
           {{ identitySuccess }}
@@ -176,16 +177,18 @@
 
       <!-- Social -->
       <section
-        class="rounded-[1.75rem] border border-black/6 bg-white/85 p-5 shadow-[0_1px_0_rgba(26, 18, 40,0.04)] backdrop-blur-md sm:p-7"
+        v-show="activeSection === 'links'"
+        id="links"
+        class="studio-card settings-form"
         aria-labelledby="social-heading"
       >
         <h2
           id="social-heading"
-          class="text-xl font-extrabold tracking-tight text-cheer-ink"
+          class="text-xl font-extrabold tracking-tight text-[#261b38]"
         >
           Social links
         </h2>
-        <p class="mt-1 text-sm text-cheer-ink/55">
+        <p class="mt-1 text-sm text-[#70647e]">
           Optional — add up to a few links supporters can follow.
         </p>
 
@@ -197,7 +200,8 @@
           >
             <select
               v-model="link.platform"
-              class="rounded-xl border border-black/10 bg-[#f7f4ff] px-3 py-2.5 text-sm"
+              :aria-label="`Social platform ${index + 1}`"
+              class="rounded-xl border border-[#e7dfee] bg-[#ffffff] px-3 py-2.5 text-sm"
               :disabled="socialPending"
             >
               <option
@@ -210,14 +214,15 @@
             </select>
             <input
               v-model="link.url"
+              :aria-label="`Social URL ${index + 1}`"
               type="url"
               placeholder="https://"
-              class="min-w-0 flex-1 rounded-xl border border-black/10 bg-[#f7f4ff] px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-cheer-leaf/30"
+              class="min-w-0 flex-1 rounded-xl border border-[#e7dfee] bg-[#ffffff] px-3.5 py-2.5 text-sm outline-none focus:ring-2 focus:ring-cheer-leaf/30"
               :disabled="socialPending"
             >
             <button
               type="button"
-              class="text-sm text-red-700"
+              class="text-sm text-[#ac3047]"
               :disabled="socialPending"
               @click="removeSocial(index)"
             >
@@ -228,7 +233,7 @@
 
         <button
           type="button"
-          class="mt-3 text-sm font-semibold text-cheer-leaf disabled:opacity-50"
+          class="mt-3 text-sm font-semibold text-[#6d3db0] disabled:opacity-50"
           :disabled="socialPending || socialLinks.length >= 5"
           @click="addSocial"
         >
@@ -237,14 +242,14 @@
 
         <p
           v-if="socialError"
-          class="mt-3 text-sm text-red-700"
+          class="mt-3 text-sm text-[#ac3047]"
           role="alert"
         >
           {{ socialError }}
         </p>
         <p
           v-if="socialSuccess"
-          class="mt-3 text-sm text-cheer-leaf"
+          class="mt-3 text-sm text-[#6d3db0]"
           role="status"
         >
           {{ socialSuccess }}
@@ -262,16 +267,18 @@
 
       <!-- Support -->
       <section
-        class="rounded-[1.75rem] border border-black/6 bg-white/85 p-5 shadow-[0_1px_0_rgba(26, 18, 40,0.04)] backdrop-blur-md sm:p-7"
+        v-show="activeSection === 'support'"
+        id="support"
+        class="studio-card settings-form"
         aria-labelledby="support-heading"
       >
         <h2
           id="support-heading"
-          class="text-xl font-extrabold tracking-tight text-cheer-ink"
+          class="text-xl font-extrabold tracking-tight text-[#261b38]"
         >
           Support settings
         </h2>
-        <p class="mt-1 text-sm text-cheer-ink/55">
+        <p class="mt-1 text-sm text-[#70647e]">
           Currency, message, and suggested tip amounts on your page.
         </p>
 
@@ -279,12 +286,12 @@
           <div>
             <label
               for="edit-currency"
-              class="block text-sm text-cheer-ink"
+              class="block text-sm text-[#261b38]"
             >Preferred currency</label>
             <select
               id="edit-currency"
               v-model="currency"
-              class="mt-1.5 w-full rounded-xl border border-black/10 bg-[#f7f4ff] px-3.5 py-2.5 text-base"
+              class="mt-1.5 w-full rounded-xl border border-[#e7dfee] bg-[#ffffff] px-3.5 py-2.5 text-base"
               :disabled="settingsPending"
             >
               <option
@@ -298,59 +305,60 @@
           </div>
 
           <div>
-            <label for="edit-payout-country" class="block text-sm text-cheer-ink">Payout country</label>
-            <select id="edit-payout-country" v-model="payoutCountry" class="mt-1.5 w-full rounded-xl border border-black/10 bg-[#f7f4ff] px-3.5 py-2.5 text-base" :disabled="settingsPending">
+            <label for="edit-payout-country" class="block text-sm text-[#261b38]">Payout country</label>
+            <select id="edit-payout-country" v-model="payoutCountry" class="mt-1.5 w-full rounded-xl border border-[#e7dfee] bg-[#ffffff] px-3.5 py-2.5 text-base" :disabled="settingsPending">
               <option value="">Choose your country</option>
               <option value="NG">Nigeria</option>
               <option value="GH">Ghana</option>
               <option value="KE">Kenya</option>
               <option value="ZA">South Africa</option>
             </select>
-            <p class="mt-1 text-xs text-cheer-ink/50">Choose where your Bachs payout account is based. This can be changed only before connecting payouts.</p>
+            <p class="mt-1 text-xs text-[#70647e]">Choose where your Bachs payout account is based. This can be changed only before connecting payouts.</p>
           </div>
 
           <div>
             <label
               for="edit-support"
-              class="block text-sm text-cheer-ink"
+              class="block text-sm text-[#261b38]"
             >Support message</label>
             <textarea
               id="edit-support"
               v-model="supportMessage"
               rows="3"
               maxlength="500"
-              class="mt-1.5 w-full rounded-xl border border-black/10 bg-[#f7f4ff] px-3.5 py-2.5 text-base outline-none focus:ring-2 focus:ring-cheer-leaf/30"
+              class="mt-1.5 w-full rounded-xl border border-[#e7dfee] bg-[#ffffff] px-3.5 py-2.5 text-base outline-none focus:ring-2 focus:ring-cheer-leaf/30"
               placeholder="Thanks for supporting my work…"
               :disabled="settingsPending"
             />
           </div>
 
           <div>
-            <label for="edit-thank-you" class="block text-sm text-cheer-ink">Automatic thank-you email</label>
-            <textarea id="edit-thank-you" v-model="thankYouMessage" rows="3" maxlength="500" class="mt-1.5 w-full rounded-xl border border-black/10 bg-[#f7f4ff] px-3.5 py-2.5 text-base outline-none focus:ring-2 focus:ring-cheer-leaf/30" placeholder="Thank you for helping me keep making…" :disabled="settingsPending" />
-            <p class="mt-1 text-xs text-cheer-ink/50">Sent in the supporter’s receipt only after Bachs verifies payment.</p>
+            <label for="edit-thank-you" class="block text-sm text-[#261b38]">Automatic thank-you email</label>
+            <textarea id="edit-thank-you" v-model="thankYouMessage" rows="3" maxlength="500" class="mt-1.5 w-full rounded-xl border border-[#e7dfee] bg-[#ffffff] px-3.5 py-2.5 text-base outline-none focus:ring-2 focus:ring-cheer-leaf/30" placeholder="Thank you for helping me keep making…" :disabled="settingsPending" />
+            <p class="mt-1 text-xs text-[#70647e]">Sent in the supporter’s receipt only after Bachs verifies payment.</p>
           </div>
 
           <div>
-            <label class="block text-sm text-cheer-ink">Suggested tip amounts</label>
+            <label class="block text-sm text-[#261b38]">Suggested tip amounts</label>
             <div class="mt-2 flex flex-wrap gap-2">
               <input
                 v-for="(_, i) in tipAmounts"
                 :key="i"
                 v-model="tipAmounts[i]"
+                :aria-label="`Suggested tip amount ${i + 1}`"
                 type="text"
                 inputmode="decimal"
-                class="w-28 rounded-xl border border-black/10 bg-[#f7f4ff] px-3 py-2 text-sm"
+                class="w-28 rounded-xl border border-[#e7dfee] bg-[#ffffff] px-3 py-2 text-sm"
                 :disabled="settingsPending"
               >
             </div>
-            <p class="mt-1 text-xs text-cheer-ink/50">
+            <p class="mt-1 text-xs text-[#70647e]">
               Decimal amounts (e.g. 1000.00). Up to 5 amounts.
             </p>
           </div>
 
-          <div class="rounded-2xl border border-black/8 bg-cheer-sand/50 p-4">
-            <label class="flex items-center gap-2 text-sm font-semibold text-cheer-ink">
+          <div class="rounded-2xl border border-[#e7dfee] bg-[#b58bea0d] p-4">
+            <label class="flex items-center gap-2 text-sm font-semibold text-[#261b38]">
               <input
                 v-model="goalActive"
                 type="checkbox"
@@ -366,14 +374,14 @@
               <div>
                 <label
                   for="edit-goal-title"
-                  class="block text-sm text-cheer-ink"
+                  class="block text-sm text-[#261b38]"
                 >Goal title</label>
                 <input
                   id="edit-goal-title"
                   v-model="goalTitle"
                   type="text"
                   maxlength="80"
-                  class="mt-1.5 w-full rounded-xl border border-black/10 bg-[#f7f4ff] px-3.5 py-2.5 text-base"
+                  class="mt-1.5 w-full rounded-xl border border-[#e7dfee] bg-[#ffffff] px-3.5 py-2.5 text-base"
                   placeholder="e.g. Laptop fund"
                   :disabled="settingsPending"
                 >
@@ -381,14 +389,14 @@
               <div>
                 <label
                   for="edit-goal-amount"
-                  class="block text-sm text-cheer-ink"
+                  class="block text-sm text-[#261b38]"
                 >Target amount</label>
                 <input
                   id="edit-goal-amount"
                   v-model="goalTargetAmount"
                   type="text"
                   inputmode="decimal"
-                  class="mt-1.5 w-full rounded-xl border border-black/10 bg-[#f7f4ff] px-3.5 py-2.5 text-base"
+                  class="mt-1.5 w-full rounded-xl border border-[#e7dfee] bg-[#ffffff] px-3.5 py-2.5 text-base"
                   placeholder="50000.00"
                   :disabled="settingsPending"
                 >
@@ -399,14 +407,14 @@
 
         <p
           v-if="settingsError"
-          class="mt-3 text-sm text-red-700"
+          class="mt-3 text-sm text-[#ac3047]"
           role="alert"
         >
           {{ settingsError }}
         </p>
         <p
           v-if="settingsSuccess"
-          class="mt-3 text-sm text-cheer-leaf"
+          class="mt-3 text-sm text-[#6d3db0]"
           role="status"
         >
           {{ settingsSuccess }}
@@ -422,17 +430,17 @@
         </button>
       </section>
 
-      <section class="mt-8 rounded-[1.75rem] border border-black/8 bg-white/80 px-5 py-6 sm:px-7">
-        <h2 class="text-xl font-extrabold tracking-tight text-cheer-ink">
+      <section v-show="activeSection === 'account'" id="account" class="studio-card settings-danger">
+        <h2 class="text-xl font-extrabold tracking-tight text-[#261b38]">
           Page and account
         </h2>
-        <p class="mt-2 text-sm font-semibold leading-relaxed text-cheer-ink/75">
+        <p class="mt-2 text-sm font-semibold leading-relaxed text-[#70647e]">
           Pausing hides your public link. Closing signs you out and keeps payment records. It does not delete Bachs history.
         </p>
         <div class="mt-4 flex flex-wrap gap-2.5">
           <button
             type="button"
-            class="rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-semibold text-cheer-ink hover:border-cheer-leaf/40 disabled:opacity-60"
+            class="rounded-full border border-[#e7dfee] bg-[#f7f4fb] px-4 py-2.5 text-sm font-semibold text-[#261b38] hover:border-cheer-leaf/40 disabled:opacity-60"
             :disabled="accountBusy || !profile"
             @click="togglePage"
           >
@@ -440,7 +448,7 @@
           </button>
           <button
             type="button"
-            class="rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-semibold text-cheer-ink hover:border-cheer-leaf/40 disabled:opacity-60"
+            class="rounded-full border border-[#e7dfee] bg-[#f7f4fb] px-4 py-2.5 text-sm font-semibold text-[#261b38] hover:border-cheer-leaf/40 disabled:opacity-60"
             :disabled="accountBusy"
             @click="downloadTips"
           >
@@ -448,43 +456,47 @@
           </button>
           <button
             type="button"
-            class="rounded-full border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-800 hover:bg-red-100 disabled:opacity-60"
+            class="rounded-full border border-[#f3d0d7] bg-[#fff1f3] px-4 py-2.5 text-sm font-semibold text-[#ac3047] hover:bg-[#ffe5eb] disabled:opacity-60"
             :disabled="accountBusy"
             @click="closeAccount"
           >
             Close account
           </button>
         </div>
-        <p v-if="accountError" class="mt-3 text-sm text-red-700" role="alert">
+        <p v-if="accountError" class="mt-3 text-sm text-[#ac3047]" role="alert">
           {{ accountError }}
         </p>
-        <p v-if="accountNotice" class="mt-3 text-sm font-semibold text-cheer-leaf">
+        <p v-if="accountNotice" class="mt-3 text-sm font-semibold text-[#6d3db0]">
           {{ accountNotice }}
         </p>
       </section>
 
       <DashboardShareStudio
         v-if="profile?.publicPath"
+        v-show="activeSection === 'sharing'"
+        id="sharing"
+        theme="light"
         :public-path="profile.publicPath"
         :display-name="profile.displayName"
       />
 
-      <p class="pb-4 text-center text-sm text-cheer-ink/50">
+      <p class="pb-4 text-center text-sm text-[#70647e]">
         <NuxtLink
           v-if="profile.publicPath"
           :to="profile.publicPath"
-          class="font-semibold text-cheer-leaf hover:underline"
+          class="font-semibold text-[#6d3db0] hover:underline"
         >
           View public page
         </NuxtLink>
-        <span class="mx-2 text-cheer-ink/25">·</span>
+        <span class="mx-2 text-[#70647e]">·</span>
         <NuxtLink
           to="/dashboard"
-          class="font-semibold text-cheer-ink/70 hover:underline"
+          class="font-semibold text-[#70647e] hover:underline"
         >
           Back to overview
         </NuxtLink>
       </p>
+      </div>
     </div>
   </div>
 </template>
@@ -504,6 +516,18 @@ useHead({
 
 const auth = useAuthStore();
 const api = useApi();
+const settingsRoute = useRoute();
+const settingsSections = [
+  { id: 'profile', label: 'Profile', description: 'Name, photo & bio', icon: '◈' },
+  { id: 'links', label: 'Social links', description: 'Connect your worlds', icon: '↗' },
+  { id: 'support', label: 'Support settings', description: 'Amounts, messages & goals', icon: '♡' },
+  { id: 'sharing', label: 'Sharing tools', description: 'Embeds & GitHub badges', icon: '✦' },
+  { id: 'account', label: 'Page & account', description: 'Visibility & account access', icon: '◎' },
+];
+const activeSection = computed(() => {
+  const key = settingsRoute.hash.slice(1);
+  return settingsSections.some((section) => section.id === key) ? key : 'profile';
+});
 const { $toast } = useNuxtApp();
 const { avatarUrl: avatarUrlState, setFromProfile } = useDashboardNav();
 
@@ -891,3 +915,10 @@ async function closeAccount() {
   }
 }
 </script>
+
+<style scoped>
+.settings-layout { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 24px; align-items: start; }.settings-sidebar { position: sticky; top: 24px; }.settings-nav { display: grid; gap: 8px; }.settings-nav a { display: flex; align-items: center; gap: 12px; border: 1px solid transparent; border-radius: 12px; padding: 12px; color: #70647e; }.settings-nav a.selected { border-color: #bc92e83d; background: #b491db17; color: #6d3db0; }.settings-nav a:hover { background: #b491db0c; }.settings-nav-icon { width: 22px; font-size: 22px; color: #6d3db0; }.settings-nav a > span:nth-child(2) { flex: 1; }.settings-nav strong { display: block; font-size: 14px; }.settings-nav small { display: block; font-size: 11px; color: #70647e; margin-top: 3px; }.settings-preview { padding: 24px 16px; margin-top: 24px; border-top: 1px solid #e7dfee; text-align: center; }.settings-monogram { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 20px; margin: 16px auto; background: #b697df20; border: 1px solid #d8b4fe29; color: #6d3db0; font-size: 28px; }.settings-preview > strong { display: block; font-size: 19px; overflow-wrap: anywhere; }.settings-preview > span:not(:first-child) { font-size: 12px; color: #70647e; overflow-wrap: anywhere; }.settings-preview p { font-size: 12px; color: #70647e; line-height: 1.5; overflow-wrap: anywhere; }.settings-preview small { font-size: 11px; color: #70647e; }.profile-editor { min-width: 0; }.profile-editor > section { scroll-margin-top: 24px; }.profile-editor > p:last-child { margin-top: 24px; }.settings-form { max-width: 880px; }.settings-form > button.bg-cheer-leaf { border-radius: 12px; background: #7540b4; color: #fff; }
+.settings-form > button.bg-cheer-leaf:hover { background: #603197; }.settings-form :is(input, textarea, select) { color: #261b38; }.settings-form input[type='checkbox'] { accent-color: #7c4ac0; }.settings-danger { border-color: #f3d0d7; }
+@media (max-width: 1100px) { .settings-layout { grid-template-columns: 180px minmax(0, 1fr); gap: 16px; }.settings-nav a { gap: 8px; padding: 10px; }.settings-nav small { font-size: 10px; } }
+@media (max-width: 800px) { .settings-layout { grid-template-columns: minmax(0, 1fr); }.settings-sidebar { position: static; }.settings-preview { display: none; }.settings-nav { display: flex; overflow-x: auto; padding-bottom: 8px; }.settings-nav a { flex-shrink: 0; }.settings-nav small, .settings-nav a > span:last-child { display: none; }.settings-nav strong { font-size: 12px; }.settings-nav-icon { font-size: 18px; width: 18px; } }
+</style>

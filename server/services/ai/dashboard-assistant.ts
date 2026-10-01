@@ -52,7 +52,7 @@ export function answerDashboardQuestion(
     response.answer = g
       ? `Your goal “${g.title}” has reached ${g.currency} ${g.raisedAmount} of ${g.currency} ${g.targetAmount} (${g.percent}%).${g.raisedIncomplete ? ' This excludes support in currencies that could not be converted.' : ''}`
       : 'You don’t have an active support goal yet. Add a title and target in your profile’s support settings.';
-    response.actions = [{ label: 'Manage my goal', to: '/dashboard/profile' }];
+    response.actions = [{ label: 'Manage my goal', to: '/dashboard/profile#support' }];
   } else if (topic === 'traffic') {
     response.answer = `Your page has ${dashboard.linkViews.lifetime} lifetime views and ${dashboard.linkViews.thisWeek} views this week. ${dashboard.conversion.viewsToTipsPercent === null ? 'There isn’t enough data to calculate your views-to-tips conversion yet.' : `Your views-to-tips conversion is ${dashboard.conversion.viewsToTipsPercent}%.`}`;
     response.actions = [{ label: 'Explore analytics', to: '/dashboard/analytics' }];

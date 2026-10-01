@@ -1,5 +1,5 @@
 <template>
-  <section class="share-studio" aria-labelledby="share-studio-title">
+  <section class="share-studio" :class="{ 'share-studio--dark': theme === 'dark' }" aria-labelledby="share-studio-title">
     <header class="studio-heading">
       <div>
         <p class="eyebrow">A little link. A lot of possibility.</p>
@@ -63,7 +63,7 @@
 
 <script setup lang="ts">
 type Destination = 'website' | 'readme' | 'sponsor';
-const props = defineProps<{ publicPath: string; displayName: string }>();
+const props = withDefaults(defineProps<{ publicPath: string; displayName: string; theme?: 'light' | 'dark' }>(), { theme: 'light' });
 const config = useRuntimeConfig();
 const requestUrl = useRequestURL();
 const active = ref<Destination>('website');
@@ -141,4 +141,13 @@ button:focus-visible, a:focus-visible, textarea:focus-visible { outline: 2px sol
 @media (max-width: 800px) { .studio-body { grid-template-columns: minmax(0, 1fr); }.preview-column { border-right: 0; border-bottom: 1px solid #eee8f4; }.preview-stage { min-height: 250px; }.browser-preview, .readme-preview, .sponsor-preview { max-width: 360px; }.destination-picker button { flex-direction: column; align-items: flex-start; gap: 5px; } }
 @media (max-width: 480px) { .studio-heading { padding: 24px 18px 20px; }.heading-icon { display: none; }.link-bar { margin: 0 18px 18px; padding: 11px; }.link-text a { font-size: 14px; }.destination-picker { padding: 0 18px 20px; gap: 6px; }.destination-picker button { padding: 10px 8px; }.destination-picker strong { font-size: 12px; }.destination-picker small { font-size: 11px; }.preview-column, .setup-column { padding: 20px 18px; }.studio-footer { padding: 14px 18px; } }
 @media (prefers-reduced-motion: reduce) { button { transition: none !important; } }
+.share-studio--dark { margin-top: 0; background: #251d36; border-color: #e5d5ff1c; color: #f7edff; border-radius: 20px; }
+.share-studio--dark .studio-heading { background: radial-gradient(ellipse at top right, #a276d822, transparent 65%); }
+.share-studio--dark :is(.eyebrow, .section-label, .text-link) { color: #d7b8fb; }
+.share-studio--dark :is(.studio-heading p:last-child, .setup-description, .preview-caption, .setup-steps li, .link-text > span, .destination-picker small, .copy-feedback) { color: #c6b3da; }
+.share-studio--dark :is(.link-bar, .secondary-button, .destination-picker button, .format-picker, .code-block, .heading-icon) { background: #1d152b; border-color: #d5b9f52e; color: #eee4ff; }
+.share-studio--dark .destination-picker button.selected { background: #a778d520; border-color: #a681d0; box-shadow: inset 0 0 0 1px #a681d0; }
+.share-studio--dark :is(.preview-column, .studio-footer) { background: #1f172e; border-color: #e5d5ff1c; color: #bca7d3; }
+.share-studio--dark .studio-body, .share-studio--dark .code-heading { border-color: #e5d5ff1c; }.share-studio--dark .preview-stage { background-color: #2e2140; background-image: radial-gradient(#cfc0e012 .8px, transparent .8px); border-color: #d5b9f526; }.share-studio--dark :is(.readme-preview, .sponsor-preview, .browser-preview) { color: #1a1228; }
+.share-studio--dark .code-block textarea, .share-studio--dark .setup-steps code, .share-studio--dark .code-heading { color: #d9bff5; }.share-studio--dark .code-heading span:last-child { color: #bdabce; }.share-studio--dark .format-picker .selected { background: #4a315f; color: #f0ddff; }.share-studio--dark .setup-steps li::before { background: #b38ae917; border-color: #b38ae944; color: #d7b8fb; }.share-studio--dark .primary-button { background: #e9ddff; color: #281546; }
 </style>

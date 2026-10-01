@@ -1,5 +1,6 @@
 <template>
-  <div class="space-y-3">
+  <div class="space-y-3" :class="{ 'compact-share': compact }">
+    <div v-if="compact" class="compact-share-url"><span aria-hidden="true">↗</span><span>{{ publicUrl.replace(/^https?:\/\//, '') }}</span></div>
     <div class="flex flex-wrap gap-2.5">
       <button
         type="button"
@@ -72,8 +73,9 @@
       </details>
     </div>
 
-    <div
-      v-if="showKit"
+    <component :is="compact ? 'details' : 'div'" v-if="showKit" class="share-kit-details">
+      <summary v-if="compact" class="share-kit-summary">QR code &amp; support card <span aria-hidden="true">+</span></summary>
+      <div
       class="grid gap-3 sm:grid-cols-[auto_1fr]"
       :class="isDark ? 'text-white' : 'text-cheer-ink'"
     >
@@ -115,7 +117,8 @@
           {{ publicUrl }}
         </p>
       </div>
-    </div>
+      </div>
+    </component>
 
     <canvas
       ref="cardCanvas"
@@ -135,12 +138,14 @@ const props = withDefaults(
     displayName: string;
     variant?: 'light' | 'dark';
     showKit?: boolean;
+    compact?: boolean;
     goalTitle?: string | null;
     goalPercent?: number | null;
   }>(),
   {
     variant: 'light',
     showKit: true,
+    compact: false,
     goalTitle: null,
     goalPercent: null,
   },
@@ -382,3 +387,17 @@ async function downloadCard() {
   trackShare('support_card');
 }
 </script>
+
+<style scoped>
+.compact-share-url { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #e7dfee; border-radius: 10px; background: #f7f4fb; font-size: 12px; color: #6d3db0; }
+.compact-share-url span:last-child { overflow-wrap: anywhere; min-width: 0; }.compact-share-url span:first-child { color: #6d3db0; }
+.compact-share > div:nth-child(2) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.compact-share > div:nth-child(2) > button { grid-column: 1 / -1; border-radius: 10px; background: #7540b4; color: #fff; box-shadow: none; font-size: 13px; padding: 10px 12px; }
+.compact-share > div:nth-child(2) > a { border-radius: 10px; padding: 8px; font-size: 11px; text-align: center; background: #d7b3f308; border-color: #e7dfee; color: #6d3db0; }
+.compact-share > div:nth-child(2) > details { grid-column: 1 / -1; }
+.compact-share > div:nth-child(2) > details > summary { text-align: center; border: 0; border-radius: 8px; font-size: 11px; padding: 4px 8px; color: #70647e; background: transparent; }
+.compact-share > div:nth-child(2) > details > div { right: 0; width: 100%; }
+.share-kit-summary { display: flex; justify-content: space-between; gap: 12px; cursor: pointer; list-style: none; padding-top: 12px; border-top: 1px solid #e7dfee; font-size: 12px; color: #70647e; }
+.share-kit-summary::-webkit-details-marker { display: none; }.compact-share .share-kit-details > div { display: flex; flex-direction: column; margin-top: 12px; }.compact-share .share-kit-details > div > div:first-child { background: #ffffff; border-color: #e7dfee; }.compact-share .share-kit-details > div > div:last-child { font-size: 12px; }.compact-share .share-kit-details p { color: #70647e; }
+.compact-share :is(a, button, summary):focus-visible { outline: 2px solid #7c4ac0; outline-offset: 3px; }
+</style>
