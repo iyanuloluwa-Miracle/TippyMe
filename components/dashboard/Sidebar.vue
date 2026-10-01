@@ -44,7 +44,7 @@
     </div>
 
     <nav class="relative flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-3 pt-2" aria-label="Dashboard">
-      <p :class="collapsed ? 'sr-only' : 'px-3 pb-2 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-[#80718f]'">
+      <p :class="collapsed ? 'sr-only' : 'px-3 pb-2 text-[0.6875rem] font-bold uppercase tracking-[0.18em] text-[#53445f]'">
         Workspace
       </p>
 
@@ -58,7 +58,7 @@
         :class="
           isActive(link.to)
             ? 'bg-[#eee5fa] text-[#542b85]'
-            : 'text-[#6b5b7b] hover:bg-[#f5effc] hover:text-[#603197]'
+            : 'text-[#4e3b60] hover:bg-[#f5effc] hover:text-[#603197]'
         "
         @click="emit('navigate')"
       >
@@ -76,7 +76,7 @@
         v-if="publicPath"
         :to="publicPath"
         :title="collapsed ? 'Public page' : undefined"
-        class="sidebar-link group flex shrink-0 items-center gap-3 rounded-2xl px-3 py-2.5 text-[0.9375rem] font-bold text-[#6b5b7b] transition-all duration-200 hover:bg-[#f5effc] hover:text-[#603197] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+        class="sidebar-link group flex shrink-0 items-center gap-3 rounded-2xl px-3 py-2.5 text-[0.9375rem] font-bold text-[#4e3b60] transition-all duration-200 hover:bg-[#f5effc] hover:text-[#603197] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-white"
         @click="emit('navigate')"
       >
         <span
@@ -106,11 +106,11 @@
           decoding="async"
         >
         <div :class="collapsed ? 'sr-only' : 'min-w-0'">
-          <p class="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[#80718f]">
+          <p class="text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-[#53445f]">
             Signed in
           </p>
           <p
-            class="truncate text-sm font-medium text-[#4e3b60]"
+            class="truncate text-sm font-bold text-[#4e3b60]"
             :title="auth.user.email"
           >
             {{ auth.user.email }}
@@ -119,7 +119,7 @@
       </div>
       <button
         type="button"
-        class="motion-cta mt-4 flex w-full items-center justify-center gap-2 rounded-full border border-[#e7dfee] bg-white py-2.5 text-sm font-semibold text-[#5d4276] transition hover:border-cheer-leaf/40 hover:bg-[#f5effc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
+        class="motion-cta mt-4 flex w-full items-center justify-center gap-2 rounded-full border border-[#e7dfee] bg-white py-2.5 text-sm font-bold text-[#5d4276] transition hover:border-cheer-leaf/40 hover:bg-[#f5effc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:opacity-60"
         :title="collapsed ? 'Sign out' : undefined"
         :disabled="loggingOut"
         @click="onLogout"

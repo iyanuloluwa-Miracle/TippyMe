@@ -4,7 +4,7 @@
     <div class="flex flex-wrap gap-2.5">
       <button
         type="button"
-        class="motion-cta motion-cta-primary rounded-full px-4 py-2.5 text-sm font-semibold transition disabled:opacity-60"
+        class="motion-cta motion-cta-primary rounded-full px-4 py-2.5 text-sm font-bold transition disabled:opacity-60"
         :class="
           isDark
             ? 'bg-cheer-mint text-cheer-ink shadow-[0_10px_28px_-12px_rgba(238, 230, 255,0.65)] hover:bg-white'
@@ -18,7 +18,7 @@
         :href="whatsappHref"
         target="_blank"
         rel="noopener noreferrer"
-        class="motion-cta rounded-full px-4 py-2.5 text-sm font-semibold transition"
+        class="motion-cta rounded-full px-4 py-2.5 text-sm font-bold transition"
         :class="
           isDark
             ? 'border border-white/20 bg-white/10 text-white hover:border-white/35 hover:bg-white/15'
@@ -30,7 +30,7 @@
       </a>
       <NuxtLink
         :to="publicPath"
-        class="motion-cta rounded-full px-4 py-2.5 text-sm font-semibold transition"
+        class="motion-cta rounded-full px-4 py-2.5 text-sm font-bold transition"
         :class="
           isDark
             ? 'border border-white/20 bg-white/10 text-white hover:border-white/35 hover:bg-white/15'
@@ -41,7 +41,7 @@
       </NuxtLink>
       <details class="relative">
         <summary
-          class="motion-cta cursor-pointer list-none rounded-full px-4 py-2.5 text-sm font-semibold transition [&::-webkit-details-marker]:hidden"
+          class="motion-cta cursor-pointer list-none rounded-full px-4 py-2.5 text-sm font-bold transition [&::-webkit-details-marker]:hidden"
           :class="
             isDark
               ? 'border border-white/20 bg-white/10 text-white hover:border-white/35 hover:bg-white/15'
@@ -54,7 +54,7 @@
           class="absolute right-0 z-20 mt-2 w-64 overflow-hidden rounded-2xl border border-black/8 bg-white p-2 shadow-xl shadow-cheer-ink/15"
           role="menu"
         >
-          <p class="px-3 pb-2 pt-1.5 text-xs font-medium text-cheer-ink/50">
+          <p class="px-3 pb-2 pt-1.5 text-xs font-bold text-cheer-ink/80">
             Share your Tippy link
           </p>
           <a
@@ -63,7 +63,7 @@
             :href="item.href"
             :target="item.external ? '_blank' : undefined"
             :rel="item.external ? 'noopener noreferrer' : undefined"
-            class="block rounded-xl px-3 py-2.5 text-sm font-semibold text-cheer-ink transition hover:bg-cheer-mint/45"
+            class="block rounded-xl px-3 py-2.5 text-sm font-bold text-cheer-ink transition hover:bg-cheer-mint/45"
             role="menuitem"
             @click="onShareClick(item, $event)"
           >
@@ -92,7 +92,7 @@
         >
         <button
           type="button"
-          class="text-xs font-semibold underline-offset-2 hover:underline"
+          class="text-xs font-bold underline-offset-2 hover:underline"
           :class="isDark ? 'text-cheer-mint' : 'text-cheer-leaf'"
           @click="downloadCard"
         >
@@ -100,19 +100,19 @@
         </button>
       </div>
       <div class="flex flex-col justify-center gap-1.5 text-sm leading-relaxed">
-        <p :class="isDark ? 'font-semibold text-white/85' : 'font-semibold text-cheer-ink/85'">
+        <p :class="isDark ? 'font-bold text-white/85' : 'font-bold text-cheer-ink/85'">
           Paste your Tippy link in WhatsApp, X, or your bio — no bank details in the chat.
         </p>
         <p
           v-if="goalLine"
-          class="font-semibold"
+          class="font-bold"
           :class="isDark ? 'text-cheer-mint' : 'text-cheer-leaf'"
         >
           {{ goalLine }}
         </p>
         <p
           class="font-mono text-xs break-all"
-          :class="isDark ? 'text-white/45' : 'text-cheer-ink/45'"
+          :class="isDark ? 'text-white/45' : 'text-cheer-ink/80'"
         >
           {{ publicUrl }}
         </p>
@@ -393,11 +393,11 @@ async function downloadCard() {
 .compact-share-url span:last-child { overflow-wrap: anywhere; min-width: 0; }.compact-share-url span:first-child { color: #6d3db0; }
 .compact-share > div:nth-child(2) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
 .compact-share > div:nth-child(2) > button { grid-column: 1 / -1; border-radius: 10px; background: #7540b4; color: #fff; box-shadow: none; font-size: 13px; padding: 10px 12px; }
-.compact-share > div:nth-child(2) > a { border-radius: 10px; padding: 8px; font-size: 11px; text-align: center; background: #d7b3f308; border-color: #e7dfee; color: #6d3db0; }
+.compact-share > div:nth-child(2) > a { border-radius: 10px; padding: 8px; font-size: 12px; text-align: center; background: #d7b3f308; border-color: #e7dfee; color: #6d3db0; }
 .compact-share > div:nth-child(2) > details { grid-column: 1 / -1; }
-.compact-share > div:nth-child(2) > details > summary { text-align: center; border: 0; border-radius: 8px; font-size: 11px; padding: 4px 8px; color: #70647e; background: transparent; }
+.compact-share > div:nth-child(2) > details > summary { text-align: center; border: 0; border-radius: 8px; font-size: 12px; padding: 4px 8px; color: var(--dashboard-text-secondary, #53445f); background: transparent; }
 .compact-share > div:nth-child(2) > details > div { right: 0; width: 100%; }
-.share-kit-summary { display: flex; justify-content: space-between; gap: 12px; cursor: pointer; list-style: none; padding-top: 12px; border-top: 1px solid #e7dfee; font-size: 12px; color: #70647e; }
-.share-kit-summary::-webkit-details-marker { display: none; }.compact-share .share-kit-details > div { display: flex; flex-direction: column; margin-top: 12px; }.compact-share .share-kit-details > div > div:first-child { background: #ffffff; border-color: #e7dfee; }.compact-share .share-kit-details > div > div:last-child { font-size: 12px; }.compact-share .share-kit-details p { color: #70647e; }
+.share-kit-summary { display: flex; justify-content: space-between; gap: 12px; cursor: pointer; list-style: none; padding-top: 12px; border-top: 1px solid #e7dfee; font-size: 12px; color: var(--dashboard-text-secondary, #53445f); }
+.share-kit-summary::-webkit-details-marker { display: none; }.compact-share .share-kit-details > div { display: flex; flex-direction: column; margin-top: 12px; }.compact-share .share-kit-details > div > div:first-child { background: #ffffff; border-color: #e7dfee; }.compact-share .share-kit-details > div > div:last-child { font-size: 12px; }.compact-share .share-kit-details p { color: var(--dashboard-text-secondary, #53445f); }
 .compact-share :is(a, button, summary):focus-visible { outline: 2px solid #7c4ac0; outline-offset: 3px; }
 </style>

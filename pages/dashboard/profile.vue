@@ -44,7 +44,7 @@
         >
           Identity
         </h2>
-        <p class="mt-1 text-sm text-[#70647e]">
+        <p class="mt-1 text-sm text-[#53445f]">
           Name, bio, username, and photo on your public page.
         </p>
 
@@ -93,7 +93,7 @@
               >Bio</label>
               <button
                 type="button"
-                class="text-xs font-semibold text-[#6d3db0] hover:underline disabled:opacity-50"
+                class="text-xs font-bold text-[#6d3db0] hover:underline disabled:opacity-50"
                 :disabled="identityPending || aiBusy"
                 @click="polishBio"
               >
@@ -111,7 +111,7 @@
             />
             <p
               v-if="aiHint"
-              class="mt-1 text-xs text-[#70647e]"
+              class="mt-1 text-xs text-[#53445f]"
             >
               {{ aiHint }}
             </p>
@@ -123,7 +123,7 @@
               class="block text-sm text-[#261b38]"
             >Username</label>
             <div class="mt-1.5 flex items-center gap-2 rounded-xl border border-[#e7dfee] bg-[#ffffff] px-3.5 focus-within:border-cheer-leaf/40 focus-within:ring-2 focus-within:ring-cheer-leaf/30">
-              <span class="shrink-0 text-sm text-[#70647e]">/</span>
+              <span class="shrink-0 text-sm text-[#53445f]">/</span>
               <input
                 id="edit-username"
                 v-model="username"
@@ -144,7 +144,7 @@
             >
               {{ usernameStatus }}
             </p>
-            <p class="mt-1 text-xs text-[#70647e]">
+            <p class="mt-1 text-xs text-[#53445f]">
               Lowercase letters, numbers, underscores. 3–30 characters.
             </p>
           </div>
@@ -167,7 +167,7 @@
 
         <button
           type="button"
-          class="mt-5 inline-flex items-center justify-center rounded-full bg-cheer-leaf px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          class="mt-5 inline-flex items-center justify-center rounded-full bg-cheer-leaf px-6 py-2.5 text-sm font-bold text-white disabled:opacity-60"
           :disabled="identityPending || !canSaveIdentity"
           @click="saveIdentity"
         >
@@ -188,7 +188,7 @@
         >
           Social links
         </h2>
-        <p class="mt-1 text-sm text-[#70647e]">
+        <p class="mt-1 text-sm text-[#53445f]">
           Optional — add up to a few links supporters can follow.
         </p>
 
@@ -233,7 +233,7 @@
 
         <button
           type="button"
-          class="mt-3 text-sm font-semibold text-[#6d3db0] disabled:opacity-50"
+          class="mt-3 text-sm font-bold text-[#6d3db0] disabled:opacity-50"
           :disabled="socialPending || socialLinks.length >= 5"
           @click="addSocial"
         >
@@ -257,7 +257,7 @@
 
         <button
           type="button"
-          class="mt-5 inline-flex items-center justify-center rounded-full bg-cheer-leaf px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          class="mt-5 inline-flex items-center justify-center rounded-full bg-cheer-leaf px-6 py-2.5 text-sm font-bold text-white disabled:opacity-60"
           :disabled="socialPending"
           @click="saveSocial"
         >
@@ -278,7 +278,7 @@
         >
           Support settings
         </h2>
-        <p class="mt-1 text-sm text-[#70647e]">
+        <p class="mt-1 text-sm text-[#53445f]">
           Currency, message, and suggested tip amounts on your page.
         </p>
 
@@ -313,7 +313,7 @@
               <option value="KE">Kenya</option>
               <option value="ZA">South Africa</option>
             </select>
-            <p class="mt-1 text-xs text-[#70647e]">Choose where your Bachs payout account is based. This can be changed only before connecting payouts.</p>
+            <p class="mt-1 text-xs text-[#53445f]">Choose where your Bachs payout account is based. This can be changed only before connecting payouts.</p>
           </div>
 
           <div>
@@ -335,7 +335,7 @@
           <div>
             <label for="edit-thank-you" class="block text-sm text-[#261b38]">Automatic thank-you email</label>
             <textarea id="edit-thank-you" v-model="thankYouMessage" rows="3" maxlength="500" class="mt-1.5 w-full rounded-xl border border-[#e7dfee] bg-[#ffffff] px-3.5 py-2.5 text-base outline-none focus:ring-2 focus:ring-cheer-leaf/30" placeholder="Thank you for helping me keep making…" :disabled="settingsPending" />
-            <p class="mt-1 text-xs text-[#70647e]">Sent in the supporter’s receipt only after Bachs verifies payment.</p>
+            <p class="mt-1 text-xs text-[#53445f]">Sent in the supporter’s receipt only after Bachs verifies payment.</p>
           </div>
 
           <div>
@@ -352,13 +352,13 @@
                 :disabled="settingsPending"
               >
             </div>
-            <p class="mt-1 text-xs text-[#70647e]">
+            <p class="mt-1 text-xs text-[#53445f]">
               Decimal amounts (e.g. 1000.00). Up to 5 amounts.
             </p>
           </div>
 
           <div class="rounded-2xl border border-[#e7dfee] bg-[#b58bea0d] p-4">
-            <label class="flex items-center gap-2 text-sm font-semibold text-[#261b38]">
+            <label class="flex items-center gap-2 text-sm font-bold text-[#261b38]">
               <input
                 v-model="goalActive"
                 type="checkbox"
@@ -422,7 +422,7 @@
 
         <button
           type="button"
-          class="mt-5 inline-flex items-center justify-center rounded-full bg-cheer-leaf px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          class="mt-5 inline-flex items-center justify-center rounded-full bg-cheer-leaf px-6 py-2.5 text-sm font-bold text-white disabled:opacity-60"
           :disabled="settingsPending"
           @click="saveSettings"
         >
@@ -434,13 +434,13 @@
         <h2 class="text-xl font-extrabold tracking-tight text-[#261b38]">
           Page and account
         </h2>
-        <p class="mt-2 text-sm font-semibold leading-relaxed text-[#70647e]">
+        <p class="mt-2 text-sm font-bold leading-relaxed text-[#53445f]">
           Pausing hides your public link. Closing signs you out and keeps payment records. It does not delete Bachs history.
         </p>
         <div class="mt-4 flex flex-wrap gap-2.5">
           <button
             type="button"
-            class="rounded-full border border-[#e7dfee] bg-[#f7f4fb] px-4 py-2.5 text-sm font-semibold text-[#261b38] hover:border-cheer-leaf/40 disabled:opacity-60"
+            class="rounded-full border border-[#e7dfee] bg-[#f7f4fb] px-4 py-2.5 text-sm font-bold text-[#261b38] hover:border-cheer-leaf/40 disabled:opacity-60"
             :disabled="accountBusy || !profile"
             @click="togglePage"
           >
@@ -448,7 +448,7 @@
           </button>
           <button
             type="button"
-            class="rounded-full border border-[#e7dfee] bg-[#f7f4fb] px-4 py-2.5 text-sm font-semibold text-[#261b38] hover:border-cheer-leaf/40 disabled:opacity-60"
+            class="rounded-full border border-[#e7dfee] bg-[#f7f4fb] px-4 py-2.5 text-sm font-bold text-[#261b38] hover:border-cheer-leaf/40 disabled:opacity-60"
             :disabled="accountBusy"
             @click="downloadTips"
           >
@@ -456,7 +456,7 @@
           </button>
           <button
             type="button"
-            class="rounded-full border border-[#f3d0d7] bg-[#fff1f3] px-4 py-2.5 text-sm font-semibold text-[#ac3047] hover:bg-[#ffe5eb] disabled:opacity-60"
+            class="rounded-full border border-[#f3d0d7] bg-[#fff1f3] px-4 py-2.5 text-sm font-bold text-[#ac3047] hover:bg-[#ffe5eb] disabled:opacity-60"
             :disabled="accountBusy"
             @click="closeAccount"
           >
@@ -466,7 +466,7 @@
         <p v-if="accountError" class="mt-3 text-sm text-[#ac3047]" role="alert">
           {{ accountError }}
         </p>
-        <p v-if="accountNotice" class="mt-3 text-sm font-semibold text-[#6d3db0]">
+        <p v-if="accountNotice" class="mt-3 text-sm font-bold text-[#6d3db0]">
           {{ accountNotice }}
         </p>
       </section>
@@ -480,18 +480,18 @@
         :display-name="profile.displayName"
       />
 
-      <p class="pb-4 text-center text-sm text-[#70647e]">
+      <p class="pb-4 text-center text-sm text-[#53445f]">
         <NuxtLink
           v-if="profile.publicPath"
           :to="profile.publicPath"
-          class="font-semibold text-[#6d3db0] hover:underline"
+          class="font-bold text-[#6d3db0] hover:underline"
         >
           View public page
         </NuxtLink>
-        <span class="mx-2 text-[#70647e]">·</span>
+        <span class="mx-2 text-[#53445f]">·</span>
         <NuxtLink
           to="/dashboard"
-          class="font-semibold text-[#70647e] hover:underline"
+          class="font-bold text-[#53445f] hover:underline"
         >
           Back to overview
         </NuxtLink>
@@ -917,8 +917,8 @@ async function closeAccount() {
 </script>
 
 <style scoped>
-.settings-layout { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 24px; align-items: start; }.settings-sidebar { position: sticky; top: 24px; }.settings-nav { display: grid; gap: 8px; }.settings-nav a { display: flex; align-items: center; gap: 12px; border: 1px solid transparent; border-radius: 12px; padding: 12px; color: #70647e; }.settings-nav a.selected { border-color: #bc92e83d; background: #b491db17; color: #6d3db0; }.settings-nav a:hover { background: #b491db0c; }.settings-nav-icon { width: 22px; font-size: 22px; color: #6d3db0; }.settings-nav a > span:nth-child(2) { flex: 1; }.settings-nav strong { display: block; font-size: 14px; }.settings-nav small { display: block; font-size: 11px; color: #70647e; margin-top: 3px; }.settings-preview { padding: 24px 16px; margin-top: 24px; border-top: 1px solid #e7dfee; text-align: center; }.settings-monogram { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 20px; margin: 16px auto; background: #b697df20; border: 1px solid #d8b4fe29; color: #6d3db0; font-size: 28px; }.settings-preview > strong { display: block; font-size: 19px; overflow-wrap: anywhere; }.settings-preview > span:not(:first-child) { font-size: 12px; color: #70647e; overflow-wrap: anywhere; }.settings-preview p { font-size: 12px; color: #70647e; line-height: 1.5; overflow-wrap: anywhere; }.settings-preview small { font-size: 11px; color: #70647e; }.profile-editor { min-width: 0; }.profile-editor > section { scroll-margin-top: 24px; }.profile-editor > p:last-child { margin-top: 24px; }.settings-form { max-width: 880px; }.settings-form > button.bg-cheer-leaf { border-radius: 12px; background: #7540b4; color: #fff; }
+.settings-layout { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 24px; align-items: start; }.settings-sidebar { position: sticky; top: 24px; }.settings-nav { display: grid; gap: 8px; }.settings-nav a { display: flex; align-items: center; gap: 12px; border: 1px solid transparent; border-radius: 12px; padding: 12px; color: var(--dashboard-text-secondary, #53445f); }.settings-nav a.selected { border-color: #bc92e83d; background: #b491db17; color: #542b85; }.settings-nav a:hover { background: #b491db0c; }.settings-nav-icon { width: 22px; font-size: 22px; color: #6d3db0; }.settings-nav a > span:nth-child(2) { flex: 1; }.settings-nav strong { display: block; font-size: 14px; font-weight: 800; line-height: 1.4; }.settings-nav small { display: block; font-size: 12px; font-weight: 700; line-height: 1.5; color: var(--dashboard-text-secondary, #53445f); margin-top: 3px; }.settings-preview { padding: 24px 16px; margin-top: 24px; border-top: 1px solid #e7dfee; text-align: center; }.settings-monogram { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 20px; margin: 16px auto; background: #b697df20; border: 1px solid #d8b4fe29; color: #6d3db0; font-size: 28px; }.settings-preview > strong { display: block; font-size: 19px; overflow-wrap: anywhere; }.settings-preview > span:not(:first-child) { font-size: 12px; color: var(--dashboard-text-secondary, #53445f); overflow-wrap: anywhere; }.settings-preview p { font-size: 12px; color: var(--dashboard-text-secondary, #53445f); line-height: 1.5; overflow-wrap: anywhere; }.settings-preview small { font-size: 12px; color: var(--dashboard-text-secondary, #53445f); }.profile-editor { min-width: 0; }.profile-editor > section { scroll-margin-top: 24px; }.profile-editor > p:last-child { margin-top: 24px; }.settings-form { max-width: 880px; }.settings-form > button.bg-cheer-leaf { border-radius: 12px; background: #7540b4; color: #fff; }
 .settings-form > button.bg-cheer-leaf:hover { background: #603197; }.settings-form :is(input, textarea, select) { color: #261b38; }.settings-form input[type='checkbox'] { accent-color: #7c4ac0; }.settings-danger { border-color: #f3d0d7; }
-@media (max-width: 1100px) { .settings-layout { grid-template-columns: 180px minmax(0, 1fr); gap: 16px; }.settings-nav a { gap: 8px; padding: 10px; }.settings-nav small { font-size: 10px; } }
+@media (max-width: 1100px) { .settings-layout { grid-template-columns: 180px minmax(0, 1fr); gap: 16px; }.settings-nav a { gap: 8px; padding: 10px; }.settings-nav small { font-size: 12px; } }
 @media (max-width: 800px) { .settings-layout { grid-template-columns: minmax(0, 1fr); }.settings-sidebar { position: static; }.settings-preview { display: none; }.settings-nav { display: flex; overflow-x: auto; padding-bottom: 8px; }.settings-nav a { flex-shrink: 0; }.settings-nav small, .settings-nav a > span:last-child { display: none; }.settings-nav strong { font-size: 12px; }.settings-nav-icon { font-size: 18px; width: 18px; } }
 </style>
