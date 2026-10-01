@@ -122,7 +122,6 @@
           </section>
         </div>
       </div>
-      <footer class="workspace-footer"><span class="footer-mark" aria-hidden="true">✦</span> Built for the work you believe in.<span>TippyMe</span></footer>
     </template>
   </div>
 </template>
@@ -429,7 +428,6 @@ function formatMoney(amount: string, currency: string) {
 .quote-symbol { color: #6d3db0; font-size: 36px; line-height: .7; }.supporter-notes { list-style: none; padding: 0; margin: 8px 0 0; }.supporter-notes li { padding: 16px 0; border-bottom: 1px solid var(--workspace-border); }.supporter-notes li:last-child { padding-bottom: 0; border-bottom: 0; }.supporter-notes blockquote { margin: 0; color: #261b38; font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }.supporter-notes p { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12px; color: var(--dashboard-text-secondary, #53445f); margin: 12px 0 0; }.supporter-notes p > span:last-child { margin-left: auto; }
 .empty-state { text-align: center; padding: 32px 16px; color: var(--workspace-muted); }.empty-state h3 { color: #261b38; font-size: 17px; margin: 8px 0; }.empty-state p { font-size: 13px; margin: 8px 0 16px; }.empty-symbol { color: #6d3db0; font-size: 32px; }
 .workspace-error { display: flex; flex-wrap: wrap; gap: 16px; margin: 16px 0; padding: 16px; border: 1px solid #f3d0d7; border-radius: 16px; color: #ac3047; background: #fff1f3; }.workspace-error button, .inline-error button { text-decoration: underline; }.inline-error { color: #ac3047; font-size: 13px; margin: 12px 0; }
-.workspace-footer { display: flex; align-items: center; gap: 8px; padding: 32px 0 0; font-size: 12px; color: var(--dashboard-text-secondary, #53445f); }.workspace-footer > span:last-child { margin-left: auto; font-weight: 800; }.footer-mark { color: #6d3db0; }
 .workspace-loading { padding-top: 32px; }.skeleton { background: #bc9bea13; border: 1px solid var(--workspace-border); border-radius: 20px; }.skeleton-heading { height: 56px; width: 60%; margin-bottom: 32px; }.skeleton-card { height: 320px; }.skeleton-metric { height: 128px; }
 .creator-workspace :is(a, button, summary):focus-visible { outline: 2px solid #7c4ac0; outline-offset: 4px; }
 @media (min-width: 1800px) { .creator-workspace { padding-top: 32px; } }

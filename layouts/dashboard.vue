@@ -73,9 +73,10 @@
         </div>
       </header>
 
-      <main class="relative min-h-0 w-full flex-1 overflow-y-auto pb-24">
+      <main class="relative min-h-0 w-full flex-1 overflow-y-auto">
         <slot />
       </main>
+      <DashboardFooter />
     </div>
     <LandingAskTippyMe v-if="auth.user" v-show="!mobileOpen" :key="auth.user.id" dashboard />
   </div>

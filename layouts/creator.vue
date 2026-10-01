@@ -39,7 +39,7 @@
         <NuxtLink
           v-if="auth.isAuthenticated"
           to="/dashboard"
-          class="motion-cta motion-cta-primary inline-flex items-center gap-1.5 rounded-full bg-cheer-leaf px-4 py-2 text-sm font-semibold text-white transition hover:bg-cheer-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf focus-visible:ring-offset-2"
+          class="motion-cta motion-cta-primary inline-flex items-center gap-1.5 rounded-full bg-cheer-leaf px-4 py-2 text-sm font-bold text-white transition hover:bg-cheer-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf focus-visible:ring-offset-2"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -59,7 +59,7 @@
         <NuxtLink
           v-else
           to="/signup"
-          class="motion-cta motion-cta-primary inline-flex items-center rounded-full bg-cheer-leaf px-4 py-2 text-sm font-semibold text-white transition hover:bg-cheer-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf focus-visible:ring-offset-2"
+          class="motion-cta motion-cta-primary inline-flex items-center rounded-full bg-cheer-leaf px-4 py-2 text-sm font-bold text-white transition hover:bg-cheer-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf focus-visible:ring-offset-2"
         >
           Create yours
         </NuxtLink>
@@ -82,12 +82,12 @@
         <span aria-hidden="true">·</span>
         <NuxtLink
           to="/privacy"
-          class="font-semibold text-cheer-leaf transition hover:text-cheer-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf"
+          class="font-bold text-cheer-leaf transition hover:text-cheer-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf"
         >Privacy</NuxtLink>
         <span aria-hidden="true">·</span>
         <NuxtLink
           to="/terms"
-          class="font-semibold text-cheer-leaf transition hover:text-cheer-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf"
+          class="font-bold text-cheer-leaf transition hover:text-cheer-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf"
         >Terms</NuxtLink>
       </div>
     </footer>
@@ -105,5 +105,5 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.creator-page-shell { background: radial-gradient(ellipse 80% 35% at 0% 0%, #e2d4ef70, transparent 75%), radial-gradient(ellipse 55% 40% at 100% 60%, #e5dbf350, transparent 75%), #f7f4fb; }.creator-page-shell > div[aria-hidden='true'] { display: none; }.creator-page-header { border-bottom: 1px solid #e7dfee; background: #ffffff; }.creator-page-header > div { max-width: 1160px; padding-top: 20px; padding-bottom: 20px; }.creator-page-header img { filter: none; }.creator-page-header span { color: #30213f; }.creator-page-header > div > a:not(:first-child) { color: #ffffff; background: #7540b4; border: 1px solid #7540b4; border-radius: 12px; font-size: 13px; }.creator-page-shell > footer { border-color: #e3d9ef; }.creator-page-shell > footer > div { color: #7c6a8b; }.creator-page-shell > footer a { color: #70459a; }
+.creator-page-shell { font-weight: 700; background: radial-gradient(ellipse 80% 35% at 0% 0%, #e2d4ef70, transparent 75%), radial-gradient(ellipse 55% 40% at 100% 60%, #e5dbf350, transparent 75%), #f7f4fb; }.creator-page-shell > div[aria-hidden='true'] { display: none; }.creator-page-header { border-bottom: 1px solid #e7dfee; background: #ffffff; }.creator-page-header > div { max-width: 1160px; padding-top: 20px; padding-bottom: 20px; }.creator-page-header img { filter: none; }.creator-page-header span { color: #30213f; }.creator-page-header > div > a:not(:first-child) { color: #ffffff; background: #7540b4; border: 1px solid #7540b4; border-radius: 12px; font-size: 13px; }.creator-page-shell > footer { border-color: #e3d9ef; }.creator-page-shell > footer > div { color: #53445f; }.creator-page-shell > footer a { color: #70459a; }
 </style>
