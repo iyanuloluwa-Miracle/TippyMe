@@ -207,6 +207,8 @@
       <section
         class="motion-animate motion-animate-delay-3 mt-5 overflow-hidden rounded-[1.75rem] border border-black/6 bg-white/80 shadow-[0_1px_0_rgba(26, 18, 40,0.04)] backdrop-blur-md"
         aria-label="Payout and settlement"
+        id="payouts"
+        style="scroll-margin-top: 7rem"
       >
         <div class="flex flex-col gap-4 border-b border-black/6 px-5 py-5 sm:flex-row sm:items-start sm:justify-between sm:px-7 sm:py-6">
           <div class="max-w-2xl">
@@ -566,6 +568,11 @@ function onAvatarUploaded(url: string) {
 
 onMounted(async () => {
   await loadAll();
+  // This section is rendered only after the account request finishes.
+  if (window.location.hash === '#payouts') {
+    await nextTick();
+    document.getElementById('payouts')?.scrollIntoView({ behavior: 'auto', block: 'start' });
+  }
 });
 
 async function loadAll() {

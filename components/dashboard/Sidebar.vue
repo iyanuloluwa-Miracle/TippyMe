@@ -1,6 +1,7 @@
 <template>
   <aside
-    class="relative flex h-full w-[17.5rem] shrink-0 flex-col overflow-hidden text-white"
+    class="dashboard-sidebar relative flex h-full shrink-0 flex-col overflow-hidden text-white"
+    :class="{ 'dashboard-sidebar--collapsed': collapsed }"
     style="
       background:
         radial-gradient(ellipse 90% 60% at 0% 0%, rgba(238, 230, 255, 0.16), transparent 55%),
@@ -18,7 +19,7 @@
       aria-hidden="true"
     />
 
-    <div class="relative flex h-[4.5rem] items-center px-5">
+    <div class="sidebar-brand relative flex shrink-0 items-center gap-2 px-5">
       <NuxtLink
         to="/"
         aria-label="TippyMe home"
@@ -33,14 +34,32 @@
           height="28"
           decoding="async"
         >
-        <span class="text-lg font-bold leading-none tracking-tight">
+        <span :class="collapsed ? 'sr-only' : 'text-lg font-bold leading-none tracking-tight'">
           TippyMe
         </span>
       </NuxtLink>
+      <button
+        v-if="collapsible"
+        type="button"
+        class="sidebar-toggle"
+        :aria-label="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        :aria-expanded="!collapsed"
+        :title="collapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        @click="emit('toggle')"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="h-5 w-5">
+          <rect x="3" y="4" width="18" height="16" rx="3" />
+          <path d="M9 4v16" />
+          <path :d="collapsed ? 'm13 9 3 3-3 3' : 'm16 9-3 3 3 3'" />
+        </svg>
+      </button>
+      <button v-if="drawer" type="button" class="sidebar-toggle" aria-label="Close navigation" @click="emit('close')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true" class="h-5 w-5"><path d="m6 6 12 12M18 6 6 18" /></svg>
+      </button>
     </div>
 
-    <nav class="relative flex flex-1 flex-col gap-1.5 px-3 pt-2" aria-label="Dashboard">
-      <p class="px-3 pb-2 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-white/35">
+    <nav class="relative flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-3 pt-2" aria-label="Dashboard">
+      <p :class="collapsed ? 'sr-only' : 'px-3 pb-2 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-white/35'">
         Workspace
       </p>
 
@@ -48,7 +67,9 @@
         v-for="link in primaryLinks"
         :key="link.to"
         :to="link.to"
-        class="group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-[0.9375rem] font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-mint focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1228]"
+        :aria-current="isActive(link.to) ? 'page' : undefined"
+        :title="collapsed ? link.label : undefined"
+        class="sidebar-link group flex shrink-0 items-center gap-3 rounded-2xl px-3 py-2.5 text-[0.9375rem] font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-mint focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1228]"
         :class="
           isActive(link.to)
             ? 'bg-cheer-mint text-cheer-ink shadow-[0_8px_24px_-10px_rgba(238, 230, 255,0.7)]'
@@ -57,78 +78,38 @@
         @click="emit('navigate')"
       >
         <span
-          class="flex h-8 w-8 items-center justify-center rounded-xl transition-colors"
-          :class="
-            isActive(link.to)
-              ? 'bg-cheer-ink/10 text-cheer-ink'
-              : 'bg-white/[0.06] text-white/50 group-hover:text-cheer-mint'
-          "
+          class="workspace-icon"
+          :class="{ 'workspace-icon--active': isActive(link.to) }"
           aria-hidden="true"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.75"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="h-4 w-4"
-          >
-            <path
-              v-if="link.to === '/dashboard'"
-              d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-5H10v5H5a1 1 0 0 1-1-1v-9.5Z"
-            />
-            <template v-else-if="link.to === '/dashboard/tips'">
-              <path d="M12 3v18" />
-              <path d="M17 8H9.5a2.5 2.5 0 0 0 0 5H14a2.5 2.5 0 0 1 0 5H6" />
-            </template>
-            <template v-else>
-              <circle
-                cx="12"
-                cy="8"
-                r="3.25"
-              />
-              <path d="M5.5 19.5c1.6-3.2 4-4.75 6.5-4.75s4.9 1.55 6.5 4.75" />
-            </template>
-          </svg>
+          <DashboardNavIcon :name="link.icon" />
         </span>
-        {{ link.label }}
+        <span :class="collapsed ? 'sr-only' : 'whitespace-nowrap'">{{ link.label }}</span>
       </NuxtLink>
 
       <NuxtLink
         v-if="publicPath"
         :to="publicPath"
-        class="group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-[0.9375rem] font-bold text-white/65 transition-all duration-200 hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-mint focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1228]"
+        :title="collapsed ? 'Public page' : undefined"
+        class="sidebar-link group flex shrink-0 items-center gap-3 rounded-2xl px-3 py-2.5 text-[0.9375rem] font-bold text-white/65 transition-all duration-200 hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-mint focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1228]"
         @click="emit('navigate')"
       >
         <span
-          class="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.06] text-white/50 transition-colors group-hover:text-cheer-mint"
+          class="workspace-icon"
           aria-hidden="true"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.75"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="h-4 w-4"
-          >
-            <path d="M10 6H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-3" />
-            <path d="M14 4h6v6" />
-            <path d="M10 14 20 4" />
-          </svg>
+          <DashboardNavIcon name="public" />
         </span>
-        Public page
+        <span :class="collapsed ? 'sr-only' : 'whitespace-nowrap'">Public page</span>
       </NuxtLink>
     </nav>
 
-    <div class="relative mt-auto border-t border-white/10 px-4 py-5">
+    <div class="relative mt-auto shrink-0 border-t border-white/10 px-4 py-5">
       <div
         v-if="auth.user?.email"
         class="flex items-center gap-3"
+        :class="{ 'justify-center': collapsed }"
+        :title="collapsed ? auth.user.email : undefined"
       >
         <img
           :src="avatarSrc"
@@ -139,7 +120,7 @@
           height="40"
           decoding="async"
         >
-        <div class="min-w-0">
+        <div :class="collapsed ? 'sr-only' : 'min-w-0'">
           <p class="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white/35">
             Signed in
           </p>
@@ -153,11 +134,13 @@
       </div>
       <button
         type="button"
-        class="motion-cta mt-4 w-full rounded-full border border-white/15 bg-white/[0.06] px-4 py-2.5 text-sm font-semibold text-white transition hover:border-cheer-mint/40 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-mint focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1228] disabled:opacity-60"
+        class="motion-cta mt-4 flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/[0.06] py-2.5 text-sm font-semibold text-white transition hover:border-cheer-mint/40 hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-mint focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1228] disabled:opacity-60"
+        :title="collapsed ? 'Sign out' : undefined"
         :disabled="loggingOut"
         @click="onLogout"
       >
-        {{ loggingOut ? 'Signing out…' : 'Sign out' }}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="h-5 w-5 shrink-0"><path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5M10 12h11m-4-4 4 4-4 4" /></svg>
+        <span :class="{ 'sr-only': collapsed }">{{ loggingOut ? 'Signing out…' : 'Sign out' }}</span>
       </button>
     </div>
   </aside>
@@ -169,10 +152,15 @@ import { resolveAvatarUrl } from '~/utils/avatar';
 
 const props = defineProps<{
   publicPath?: string | null;
+  collapsed?: boolean;
+  collapsible?: boolean;
+  drawer?: boolean;
 }>();
 
 const emit = defineEmits<{
   navigate: [];
+  toggle: [];
+  close: [];
 }>();
 
 const route = useRoute();
@@ -180,7 +168,16 @@ const auth = useAuthStore();
 const loggingOut = ref(false);
 const avatarUrlState = useState<string | null>('dashboardAvatarUrl', () => null);
 
-const primaryLinks = dashboardNavLinks;
+const workspaceIcons = {
+  '/dashboard': 'overview',
+  '/dashboard/tips': 'tips',
+  '/dashboard/analytics': 'analytics',
+  '/dashboard/profile': 'profile',
+} as const;
+const primaryLinks = dashboardNavLinks.map((link) => ({
+  ...link,
+  icon: workspaceIcons[link.to as keyof typeof workspaceIcons],
+}));
 
 const avatarSrc = computed(() => {
   const username = props.publicPath?.replace(/^\//, '').trim();
@@ -207,3 +204,63 @@ async function onLogout() {
   }
 }
 </script>
+
+<style scoped>
+.dashboard-sidebar { width: 17.5rem; max-width: 100vw; transition: width .22s ease; }
+.dashboard-sidebar--collapsed { width: 5.25rem; }
+.sidebar-brand { min-height: 4.5rem; }
+.sidebar-toggle {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin-left: auto;
+  border: 1px solid #ffffff18;
+  border-radius: .7rem;
+  color: #dfcef9;
+  background: #ffffff08;
+  transition: color .2s ease, background .2s ease;
+}
+.sidebar-toggle:hover { color: #ceff83; background: #9362ff25; }
+.sidebar-toggle:focus-visible { outline: 2px solid #ceff83; outline-offset: 3px; }
+.dashboard-sidebar--collapsed .sidebar-brand { flex-direction: column; justify-content: center; min-height: 7rem; padding: .8rem 0; gap: .8rem; }
+.dashboard-sidebar--collapsed .sidebar-toggle { margin-left: 0; }
+.dashboard-sidebar--collapsed .sidebar-link { justify-content: center; gap: 0; padding: .6rem .5rem; }
+.workspace-icon {
+  --nav-icon-accent: #c9b2fa;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid #ffffff12;
+  border-radius: .75rem;
+  color: #c9bcdf;
+  background: linear-gradient(145deg, #ffffff0e, #ffffff04);
+  box-shadow: inset 0 1px 0 #ffffff06;
+  transition: color .2s ease, border-color .2s ease, background .2s ease, transform .2s ease;
+}
+.workspace-icon svg { width: 1.4rem; height: 1.4rem; }
+.group:hover .workspace-icon, .group:focus-visible .workspace-icon {
+  --nav-icon-accent: #ceff83;
+  color: #f0e8ff;
+  border-color: #c9b2fa40;
+  background: #9362ff20;
+  transform: translateY(-1px);
+}
+.workspace-icon.workspace-icon--active,
+.group:hover .workspace-icon--active,
+.group:focus-visible .workspace-icon--active {
+  --nav-icon-accent: #ceff83;
+  color: #f0e8ff;
+  border-color: #67409e;
+  background: linear-gradient(145deg, #603699, #3b1d7a);
+  box-shadow: 0 3px 8px #3b1d7a25, inset 0 1px 0 #ffffff20;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-sidebar, .sidebar-toggle, .sidebar-link { transition: none; }
+  .workspace-icon { transition: none; }
+  .group:hover .workspace-icon, .group:focus-visible .workspace-icon { transform: none; }
+}
+</style>

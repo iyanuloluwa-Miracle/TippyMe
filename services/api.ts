@@ -1,3 +1,4 @@
+import type { AssistantReply, AssistantTopic } from '~/types/assistant';
 import type {
   HealthResponse,
   PublicUser,
@@ -100,6 +101,12 @@ export function createApiClient(
   return {
     getHealth: () => request<HealthResponse>('/api/health'),
     getReady: () => request<HealthResponse>('/api/ready'),
+
+    askDashboardAssistant: (question: string, previousTopic?: AssistantTopic) =>
+      request<AssistantReply>('/api/ai/dashboard-assistant', {
+        method: 'POST',
+        body: JSON.stringify({ question, previousTopic }),
+      }),
 
     requestOtp: (email: string) =>
       request<{

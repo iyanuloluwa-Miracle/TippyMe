@@ -10,23 +10,31 @@
     />
 
     <div class="relative z-10 hidden md:sticky md:top-0 md:flex md:h-dvh md:shrink-0">
-      <DashboardSidebar :public-path="publicPath" />
+      <DashboardSidebar
+        :public-path="publicPath"
+        :collapsed="sidebarCollapsed"
+        collapsible
+        @toggle="sidebarCollapsed = !sidebarCollapsed"
+      />
     </div>
 
     <Teleport to="body">
       <div
         v-if="mobileOpen"
         class="fixed inset-0 z-50 md:hidden"
+        @keydown.esc="closeMobileNav"
       >
         <button
           type="button"
           class="absolute inset-0 bg-cheer-ink/40 backdrop-blur-[3px]"
           aria-label="Close navigation"
-          @click="mobileOpen = false"
+          @click="closeMobileNav"
         />
         <div class="absolute inset-y-0 left-0 shadow-2xl shadow-black/40">
           <DashboardSidebar
             :public-path="publicPath"
+            drawer
+            @close="closeMobileNav"
             @navigate="mobileOpen = false"
           />
         </div>
@@ -38,9 +46,11 @@
         class="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-cheer-leaf/10 bg-white/90 px-4 backdrop-blur-md md:hidden"
       >
         <button
+          ref="mobileToggle"
           type="button"
           class="inline-flex h-9 w-9 items-center justify-center rounded-full text-cheer-ink transition hover:bg-cheer-mint/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cheer-leaf"
           aria-label="Open navigation"
+          :aria-expanded="mobileOpen"
           @click="mobileOpen = true"
         >
           <svg
@@ -72,16 +82,28 @@
         </div>
       </header>
 
-      <main class="relative min-h-0 w-full flex-1 overflow-y-auto">
+      <main class="relative min-h-0 w-full flex-1 overflow-y-auto pb-24">
         <slot />
       </main>
     </div>
+    <LandingAskTippyMe v-if="auth.user" v-show="!mobileOpen" :key="auth.user.id" dashboard />
   </div>
 </template>
 
 <script setup lang="ts">
 const { publicPath, ensureLoaded } = useDashboardNav();
 const mobileOpen = ref(false);
+const mobileToggle = ref<HTMLButtonElement | null>(null);
+const sidebarCollapsed = useCookie<boolean>('tippyme-sidebar-collapsed', {
+  default: () => false,
+  sameSite: 'lax',
+  maxAge: 60 * 60 * 24 * 365,
+});
+function closeMobileNav() {
+  mobileOpen.value = false;
+  mobileToggle.value?.focus();
+}
+const auth = useAuthStore();
 const route = useRoute();
 
 watch(
