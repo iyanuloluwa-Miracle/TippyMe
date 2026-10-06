@@ -12,7 +12,6 @@ import type { CreatorProfile, User } from '../../db/types';
 import { AuditAction } from '../../db/enums';
 import {
   BachsProviderError,
-  bachsPublicMessage,
 } from '../payments/bachs/bachs.errors';
 import { BachsHttpClient } from '../payments/bachs/bachs-http.client';
 import { accountCanReceiveDestinationCharges } from './payout-readiness';
@@ -353,20 +352,43 @@ export class ConnectService {
   }
 
   private throwConnectError(err: unknown): never {
+    if (err instanceof ApiError) throw err;
     if (err instanceof BachsProviderError) {
       if (err.kind === 'FORBIDDEN') {
         throw new ApiError(
           403,
           'CONNECT_NOT_ENABLED',
-          'Bachs Connect is not enabled for this platform account. Activate the connect capability and grant this API key connected_accounts:write access, then try again.',
+          'Bachs Connect is not enabled for this platform account. Activate Connect and grant this API key connected_accounts:write, then try again.',
         );
       }
+      if (err.kind === 'UNAUTHORIZED') {
+        throw new ApiError(
+          502,
+          'CONNECT_UNAUTHORIZED',
+          'Bachs rejected the API key for Connect. Check BACHS_API_KEY and Connect permissions.',
+        );
+      }
+      if (err.kind === 'NOT_FOUND') {
+        throw new ApiError(
+          502,
+          'CONNECT_NOT_FOUND',
+          'Bachs Connect could not find that account or endpoint. Confirm Connect is enabled on your Bachs platform, then try again.',
+        );
+      }
+      if (err.kind === 'VALIDATION') {
+        throw new ApiError(
+          400,
+          'CONNECT_VALIDATION',
+          'Bachs could not start Connect onboarding with the current profile details. Check payout country and try again.',
+        );
+      }
+      // Never forward Bachs 404/4xx as TippyMe route status — browsers report it as "onboard 404".
       throw new ApiError(
-        err.httpStatus && err.httpStatus >= 400 && err.httpStatus < 500
-          ? err.httpStatus
-          : 503,
+        503,
         'CONNECT_FAILED',
-        bachsPublicMessage(err.kind),
+        err.kind === 'RATE_LIMITED'
+          ? 'Bachs is busy. Wait a moment and try Connect again.'
+          : 'Unable to start Bachs Connect right now. Please try again shortly.',
       );
     }
     console.error(
