@@ -48,6 +48,7 @@ export class ConnectService {
     const refreshUrl = `${appUrl}/dashboard/connect/refresh`;
 
     // Already linked — mint a fresh hosted link if live Bachs is configured.
+    let recreateAfterStale = false;
     if (profile.bachsAccountId && !profile.bachsAccountId.startsWith('acct_stub_')) {
       const payoutsReady = await this.refreshPayoutReadiness(profile, { force: true });
       if (!this.http.isConfigured) {
@@ -70,7 +71,33 @@ export class ConnectService {
           stub: false,
         };
       } catch (err) {
-        this.throwConnectError(err);
+        // Stale / cross-environment account ids 404 on Bachs — clear and recreate.
+        if (
+          err instanceof BachsProviderError &&
+          (err.kind === 'NOT_FOUND' || err.kind === 'VALIDATION')
+        ) {
+          console.warn(
+            `Connect: clearing stale bachsAccountId=${profile.bachsAccountId} kind=${err.kind} code=${err.providerErrorCode ?? 'none'}`,
+          );
+          await CreatorProfileModel.updateOne(
+            { _id: profile.id },
+            {
+              $set: {
+                bachsAccountId: null,
+                bachsPayoutsReady: false,
+                bachsPayoutsCheckedAt: null,
+                fridayPayoutEnabled: false,
+                updatedAt: new Date(),
+              },
+            },
+          );
+          profile.bachsAccountId = null;
+          profile.bachsPayoutsReady = false;
+          profile.fridayPayoutEnabled = false;
+          recreateAfterStale = true;
+        } else {
+          this.throwConnectError(err);
+        }
       }
     }
 
@@ -125,7 +152,7 @@ export class ConnectService {
             tippyme_username: profile.username,
           },
         },
-        `connect_${profile.id}`.slice(0, 255),
+        `connect_${profile.id}${recreateAfterStale ? `_r${Date.now()}` : ''}`.slice(0, 255),
       );
 
       if (!account.id) {
@@ -358,21 +385,21 @@ export class ConnectService {
         throw new ApiError(
           403,
           'CONNECT_NOT_ENABLED',
-          'Bachs Connect is not enabled for this platform account. Activate Connect and grant this API key connected_accounts:write, then try again.',
+          'Bachs Connect is not fully active on your platform yet. Finish Bachs business verification, ensure the Connect capability is active, and give this API key connected_accounts:write.',
         );
       }
       if (err.kind === 'UNAUTHORIZED') {
         throw new ApiError(
           502,
           'CONNECT_UNAUTHORIZED',
-          'Bachs rejected the API key for Connect. Check BACHS_API_KEY and Connect permissions.',
+          'Bachs rejected the API key. Use a key with connected_accounts:write, and match sandbox vs live (sk_sandbox_ → sandbox-api, sk_live_ → api.bachs.io).',
         );
       }
       if (err.kind === 'NOT_FOUND') {
         throw new ApiError(
           502,
           'CONNECT_NOT_FOUND',
-          'Bachs Connect could not find that account or endpoint. Confirm Connect is enabled on your Bachs platform, then try again.',
+          'Bachs could not find that Connect account or endpoint. Finish platform Connect setup, confirm the API base URL matches your key, then try again.',
         );
       }
       if (err.kind === 'VALIDATION') {

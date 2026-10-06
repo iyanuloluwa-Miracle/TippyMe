@@ -1,6 +1,7 @@
 import { getServerEnv } from '../../../lib/env';
 import {
   BACHS_API_VERSION_PREFIX,
+  BACHS_PRODUCTION_BASE_URL,
   BACHS_REQUEST_TIMEOUT_MS,
   BACHS_SANDBOX_BASE_URL,
 } from './bachs.constants';
@@ -117,10 +118,26 @@ export class BachsHttpClient {
   }
 
   private baseUrl(): string {
-    return (
-      getServerEnv().BACHS_API_BASE_URL?.replace(/\/$/, '') ||
-      BACHS_SANDBOX_BASE_URL
-    );
+    const configured = getServerEnv().BACHS_API_BASE_URL?.replace(/\/$/, '');
+    if (configured) return configured;
+    const key = getServerEnv().BACHS_API_KEY?.trim() ?? '';
+    if (key.startsWith('sk_live_')) return BACHS_PRODUCTION_BASE_URL;
+    return BACHS_SANDBOX_BASE_URL;
+  }
+
+  /** Warn when key environment and base URL disagree (common Connect 401/404 cause). */
+  private assertKeyMatchesBaseUrl(): void {
+    const key = this.apiKey();
+    const base = this.baseUrl().toLowerCase();
+    const liveKey = key.startsWith('sk_live_');
+    const sandboxKey = key.startsWith('sk_sandbox_');
+    const liveBase = base.includes('sandbox') === false && base.includes('bachs.io');
+    const sandboxBase = base.includes('sandbox');
+    if ((liveKey && sandboxBase) || (sandboxKey && liveBase && !sandboxBase)) {
+      console.error(
+        `Bachs config mismatch: key_prefix=${key.slice(0, 10)}… base=${base}`,
+      );
+    }
   }
 
   private apiKey(): string {
@@ -203,6 +220,25 @@ export class BachsHttpClient {
     });
   }
 
+  /** Warn when key environment and base URL disagree (common Connect 401/404 cause). */
+  private assertKeyMatchesBaseUrl(): void {
+    const key = this.apiKey();
+    const base = this.baseUrl().toLowerCase();
+    const sandboxKey = key.startsWith('sk_sandbox_');
+    const liveKey = key.startsWith('sk_live_');
+    const sandboxBase = base.includes('sandbox');
+    if (sandboxKey && !sandboxBase) {
+      console.error(
+        `Bachs config mismatch: sandbox key against non-sandbox base=${base}`,
+      );
+    }
+    if (liveKey && sandboxBase) {
+      console.error(
+        `Bachs config mismatch: live key against sandbox base=${base}`,
+      );
+    }
+  }
+
   private async request<T>(
     method: 'GET' | 'POST',
     path: string,
@@ -213,6 +249,7 @@ export class BachsHttpClient {
       accountId?: string;
     },
   ): Promise<T> {
+    this.assertKeyMatchesBaseUrl();
     const url = `${this.baseUrl()}${BACHS_API_VERSION_PREFIX}${path}`;
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey()}`,
@@ -252,14 +289,17 @@ export class BachsHttpClient {
 
     if (!opts.expectedStatuses.includes(response.status)) {
       let providerErrorCode: string | undefined;
+      let providerDetail: string | undefined;
       try {
         const errBody = (await response.json()) as BachsErrorBody;
         providerErrorCode = errBody.error_code;
+        providerDetail =
+          typeof errBody.detail === 'string' ? errBody.detail.slice(0, 200) : undefined;
       } catch {
         // ignore parse errors
       }
       console.error(
-        `Bachs ${method} ${path} status=${response.status} code=${providerErrorCode ?? 'none'}`,
+        `Bachs ${method} ${path} status=${response.status} code=${providerErrorCode ?? 'none'} detail=${providerDetail ?? 'none'}`,
       );
       throw new BachsProviderError(
         mapHttpStatusToKind(response.status),
