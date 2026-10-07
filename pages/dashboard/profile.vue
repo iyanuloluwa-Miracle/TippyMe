@@ -282,6 +282,14 @@
           Currency, message, and suggested tip amounts on your page.
         </p>
 
+        <div
+          v-if="needsCurrencyMigration"
+          class="mt-4 rounded-2xl border border-[#f3d0d7] bg-[#fff1f3] px-4 py-3 text-sm text-[#ac3047]"
+          role="alert"
+        >
+          Your preferred currency (ZAR) is no longer supported by Bachs. Choose a collection currency such as USD or NGN and save before supporters can tip you or you connect payouts.
+        </div>
+
         <div class="mt-5 space-y-4">
           <div>
             <label
@@ -292,8 +300,14 @@
               id="edit-currency"
               v-model="currency"
               class="mt-1.5 w-full rounded-xl border border-[#e7dfee] bg-[#ffffff] px-3.5 py-2.5 text-base"
-              :disabled="settingsPending"
+              :disabled="settingsPending || payoutCountryLocked"
             >
+              <option
+                v-if="needsCurrencyMigration"
+                value="ZAR"
+              >
+                ZAR (unsupported — choose another)
+              </option>
               <option
                 v-for="c in currencies"
                 :key="c"
@@ -302,18 +316,47 @@
                 {{ c }}
               </option>
             </select>
+            <p class="mt-1 text-xs text-[#53445f]">
+              {{ payoutCountryLocked
+                ? 'Preferred currency is locked because Bachs Connect is already linked.'
+                : 'Tips are priced in this currency. Bachs offers card for USD/NGN, bank transfer for NGN, and mobile money for most other local currencies. Pricing currency is separate from where you withdraw in Bachs.' }}
+            </p>
           </div>
 
           <div>
             <label for="edit-payout-country" class="block text-sm text-[#261b38]">Payout country</label>
-            <select id="edit-payout-country" v-model="payoutCountry" class="mt-1.5 w-full rounded-xl border border-[#e7dfee] bg-[#ffffff] px-3.5 py-2.5 text-base" :disabled="settingsPending">
+            <select
+              id="edit-payout-country"
+              v-model="payoutCountry"
+              class="mt-1.5 w-full rounded-xl border border-[#e7dfee] bg-[#ffffff] px-3.5 py-2.5 text-base"
+              :disabled="settingsPending || payoutCountryLocked"
+            >
               <option value="">Choose your country</option>
-              <option value="NG">Nigeria</option>
-              <option value="GH">Ghana</option>
-              <option value="KE">Kenya</option>
-              <option value="ZA">South Africa</option>
+              <option
+                v-for="country in payoutCountryOptions"
+                :key="country.code"
+                :value="country.code"
+              >
+                {{ country.label }}
+              </option>
+              <option
+                v-if="showLegacyZaPayoutCountry"
+                value="ZA"
+              >
+                South Africa (legacy — choose another)
+              </option>
             </select>
-            <p class="mt-1 text-xs text-[#53445f]">Choose where your Bachs payout account is based. This can be changed only before connecting payouts.</p>
+            <p class="mt-1 text-xs text-[#53445f]">
+              {{ payoutCountryLocked
+                ? 'Payout country is locked because Bachs Connect is already linked.'
+                : 'Choose where your Bachs payout account is based. This can be changed only before connecting payouts. Withdrawals are handled in Bachs, not TippyMe.' }}
+            </p>
+            <p
+              v-if="needsLegacyPayoutMigration"
+              class="mt-1 text-xs text-[#ac3047]"
+            >
+              South Africa is no longer available for new payout setup. Pick a supported payout country when you change currency.
+            </p>
           </div>
 
           <div>
@@ -504,6 +547,13 @@
 <script setup lang="ts">
 import type { CreatorProfile, SocialPlatform } from '~/types/api';
 import { ApiClientError } from '~/services/api';
+import {
+  ALLOWED_CURRENCIES,
+  PAYOUT_COUNTRY_OPTIONS,
+  SUGGESTED_PAYOUT_COUNTRY,
+  isAllowedCurrency,
+  isLegacyUnsupportedCurrency,
+} from '~/utils/bachs-currencies';
 
 definePageMeta({
   layout: 'dashboard',
@@ -582,12 +632,40 @@ const platforms: SocialPlatform[] = [
   'WEBSITE',
   'OTHER',
 ];
-const currencies = ['NGN', 'USD', 'GHS', 'KES', 'ZAR'];
+const currencies = [...ALLOWED_CURRENCIES];
+const payoutCountryOptions = PAYOUT_COUNTRY_OPTIONS;
+const syncingProfile = ref(false);
+const needsCurrencyMigration = computed(() =>
+  isLegacyUnsupportedCurrency(currency.value),
+);
+const showLegacyZaPayoutCountry = computed(
+  () => payoutCountry.value === 'ZA' || profile.value?.payoutCountry === 'ZA',
+);
+const payoutCountryLocked = computed(
+  () => Boolean(profile.value?.payoutCountryLocked),
+);
+const needsLegacyPayoutMigration = computed(
+  () =>
+    !payoutCountryLocked.value &&
+    (payoutCountry.value === 'ZA' || needsCurrencyMigration.value),
+);
 
 const canSaveIdentity = computed(() => {
   return Boolean(displayName.value.trim()) && usernameOk.value && username.value.length >= 3;
 });
 
+watch(currency, (next, prev) => {
+  if (syncingProfile.value || payoutCountryLocked.value) return;
+  if (!isAllowedCurrency(next)) return;
+  // Clear legacy ZA when leaving ZAR so the creator must pick a supported country.
+  if (prev && isLegacyUnsupportedCurrency(prev) && payoutCountry.value === 'ZA') {
+    payoutCountry.value = SUGGESTED_PAYOUT_COUNTRY[next] ?? '';
+    return;
+  }
+  if (payoutCountry.value) return;
+  const suggested = SUGGESTED_PAYOUT_COUNTRY[next];
+  if (suggested) payoutCountry.value = suggested;
+});
 
 onMounted(async () => {
   await loadProfile();
@@ -598,6 +676,7 @@ onUnmounted(() => {
 });
 
 function applyProfile(p: CreatorProfile) {
+  syncingProfile.value = true;
   profile.value = p;
   displayName.value = p.displayName;
   bio.value = p.bio ?? '';
@@ -612,8 +691,14 @@ function applyProfile(p: CreatorProfile) {
   }));
   supportMessage.value = p.supportMessage ?? '';
   thankYouMessage.value = p.thankYouMessage ?? '';
-  currency.value = p.currency || 'NGN';
-  payoutCountry.value = p.payoutCountry ?? '';
+  const nextCurrency = p.currency || 'NGN';
+  const storedPayout = p.payoutCountry ?? '';
+  const suggested =
+    !storedPayout && isAllowedCurrency(nextCurrency)
+      ? SUGGESTED_PAYOUT_COUNTRY[nextCurrency] ?? ''
+      : '';
+  currency.value = nextCurrency;
+  payoutCountry.value = storedPayout || suggested;
   tipAmounts.value =
     p.suggestedTipAmounts.length > 0
       ? [...p.suggestedTipAmounts]
@@ -630,6 +715,9 @@ function applyProfile(p: CreatorProfile) {
   goalTargetAmount.value = p.goalTargetAmount ?? '';
 
   setFromProfile(p);
+  nextTick(() => {
+    syncingProfile.value = false;
+  });
 }
 
 async function loadProfile() {
@@ -800,6 +888,29 @@ async function saveSettings() {
   settingsError.value = null;
   settingsSuccess.value = null;
   try {
+    if (isLegacyUnsupportedCurrency(currency.value)) {
+      settingsError.value =
+        'Choose a supported preferred currency (for example USD or NGN) before saving.';
+      $toast.error(settingsError.value);
+      return;
+    }
+    if (!payoutCountryLocked.value && payoutCountry.value === 'ZA') {
+      settingsError.value =
+        'Choose a supported payout country before saving. South Africa is no longer available for new Bachs payout setup.';
+      $toast.error(settingsError.value);
+      return;
+    }
+    if (
+      !payoutCountryLocked.value &&
+      isLegacyUnsupportedCurrency(profile.value?.currency ?? '') &&
+      !isLegacyUnsupportedCurrency(currency.value) &&
+      !payoutCountry.value
+    ) {
+      settingsError.value =
+        'Choose a payout country when switching away from ZAR.';
+      $toast.error(settingsError.value);
+      return;
+    }
     const amounts = tipAmounts.value.map((a) => a.trim()).filter(Boolean);
     if (amounts.length === 0) {
       settingsError.value = 'Add at least one suggested tip amount.';
@@ -810,7 +921,11 @@ async function saveSettings() {
       supportMessage: supportMessage.value.trim() || null,
       thankYouMessage: thankYouMessage.value.trim() || null,
       currency: currency.value,
-      payoutCountry: payoutCountry.value || undefined,
+      payoutCountry: payoutCountry.value
+        ? payoutCountry.value
+        : payoutCountryLocked.value
+          ? undefined
+          : null,
       suggestedTipAmounts: amounts,
       goalActive: goalActive.value,
       goalTitle: goalActive.value ? goalTitle.value.trim() || null : null,

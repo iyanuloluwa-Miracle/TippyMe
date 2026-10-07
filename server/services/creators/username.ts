@@ -79,9 +79,17 @@ export const SUPPORT_MESSAGE_MAX = 500;
 export const MAX_SOCIAL_LINKS = 8;
 export const MAX_SUGGESTED_TIPS = 5;
 
-/** Currencies TippyMe accepts for creator defaults (Bachs decimal-string aligned). */
-export const ALLOWED_CURRENCIES = ['NGN', 'USD', 'GHS', 'KES', 'ZAR'] as const;
-export type AllowedCurrency = (typeof ALLOWED_CURRENCIES)[number];
+export {
+  ALLOWED_CURRENCIES,
+  ALLOWED_PAYOUT_COUNTRIES,
+  PAYOUT_COUNTRY_OPTIONS,
+  SUGGESTED_PAYOUT_COUNTRY,
+  isAllowedCurrency,
+  isAllowedPayoutCountry,
+  isLegacyUnsupportedCurrency,
+  type AllowedCurrency,
+  type AllowedPayoutCountry,
+} from '../../../utils/bachs-currencies';
 
 export type UsernameValidationResult =
   | { ok: true; username: string }

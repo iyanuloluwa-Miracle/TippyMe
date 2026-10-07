@@ -41,6 +41,7 @@ export interface CreatorProfile {
   verificationStatus: 'NONE' | 'VERIFIED';
   currency: string;
   payoutCountry: string | null;
+  payoutCountryLocked?: boolean;
   suggestedTipAmounts: string[];
   isActive: boolean;
   goalTitle: string | null;

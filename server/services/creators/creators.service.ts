@@ -54,7 +54,7 @@ import {
 } from './dashboard.types';
 import { buildSettlementStatus } from './settlement.types';
 import { ConnectService, platformFeePercent } from './connect.service';
-import { isDestinationSettled } from './payout-readiness';
+import { hasLiveBachsConnect, isDestinationSettled } from './payout-readiness';
 import { convertAmount, tryConvertCurrencyTotals, type CurrencyTotal } from './currency-conversion';
 import { isAllowedAvatarUrl, normalizeSavedAvatarUrl } from '../../../utils/avatar';
 import {
@@ -65,6 +65,9 @@ import {
   MAX_SOCIAL_LINKS,
   MAX_SUGGESTED_TIPS,
   SUPPORT_MESSAGE_MAX,
+  isAllowedPayoutCountry,
+  isLegacyUnsupportedCurrency,
+  SUGGESTED_PAYOUT_COUNTRY,
   normalizeUsername,
   validateUsernameFormat,
   usernameValidationMessage,
@@ -203,6 +206,11 @@ export class CreatorsService {
     const suggestedTipAmounts = this.normalizeTipAmounts(
       dto.suggestedTipAmounts ?? ['1000.00', '2500.00', '5000.00'],
     );
+    const currency = this.requireValidCurrency(dto.currency ?? 'NGN');
+    const payoutCountry = this.resolveCreatePayoutCountry(
+      dto.payoutCountry,
+      currency,
+    );
 
     try {
       const profileId = await withTransaction(async (session) => {
@@ -215,7 +223,8 @@ export class CreatorsService {
               bio: dto.bio?.trim() || null,
               avatarUrl,
               supportMessage: dto.supportMessage?.trim() || null,
-              currency: (dto.currency ?? 'NGN').toUpperCase(),
+              currency,
+              payoutCountry,
               suggestedTipAmounts,
             },
           ],
@@ -349,7 +358,7 @@ export class CreatorsService {
       supportMessage?: string | null;
       thankYouMessage?: string | null;
       currency?: AllowedCurrency;
-      payoutCountry?: string;
+      payoutCountry?: string | null;
       suggestedTipAmounts?: string[];
       goalTitle?: string | null;
       goalTargetAmount?: string | null;
@@ -367,19 +376,76 @@ export class CreatorsService {
         ? null
         : this.requireValidSupportMessage(dto.thankYouMessage);
     }
+    const connectLocked = hasLiveBachsConnect(profile.bachsAccountId);
     if (dto.currency !== undefined) {
-      data.currency = this.requireValidCurrency(dto.currency);
+      const nextCurrency = this.requireValidCurrency(dto.currency);
+      if (connectLocked && nextCurrency !== profile.currency) {
+        throw new ApiError(
+          409,
+          'CURRENCY_LOCKED',
+          'Preferred currency cannot change after Bachs Connect is linked. Contact support if you need to update it.',
+        );
+      }
+      data.currency = nextCurrency;
     }
+    const migratingOffZar =
+      dto.currency !== undefined &&
+      isLegacyUnsupportedCurrency(profile.currency) &&
+      !isLegacyUnsupportedCurrency(data.currency ?? profile.currency);
     if (dto.payoutCountry !== undefined) {
-      const country = dto.payoutCountry.trim().toUpperCase();
-      if (!['NG', 'GH', 'KE', 'ZA'].includes(country)) {
-        throw new ApiError(400, 'INVALID_PAYOUT_COUNTRY', 'Choose a supported payout country.');
+      if (dto.payoutCountry === null || dto.payoutCountry.trim() === '') {
+        if (connectLocked) {
+          throw new ApiError(
+            409,
+            'PAYOUT_COUNTRY_LOCKED',
+            'Payout country cannot be cleared after Bachs Connect is linked.',
+          );
+        }
+        data.payoutCountry = null;
+      } else {
+        const country = dto.payoutCountry.trim().toUpperCase();
+        const linkedCountry = profile.payoutCountry ?? null;
+        const stillOnZar = isLegacyUnsupportedCurrency(
+          data.currency ?? profile.currency,
+        );
+        // Legacy ZA only while the profile is still on ZAR and currency is not changing off ZAR.
+        const unchangedLegacyZa =
+          country === 'ZA' &&
+          linkedCountry === 'ZA' &&
+          stillOnZar &&
+          !migratingOffZar;
+        if (!isAllowedPayoutCountry(country) && !unchangedLegacyZa) {
+          throw new ApiError(
+            400,
+            'INVALID_PAYOUT_COUNTRY',
+            'Choose a supported payout country.',
+          );
+        }
+        if (connectLocked && country !== linkedCountry) {
+          throw new ApiError(
+            409,
+            'PAYOUT_COUNTRY_LOCKED',
+            'Contact support to change the country of a linked payout account.',
+          );
+        }
+        data.payoutCountry = country;
       }
-      const linkedCountry = profile.payoutCountry ?? null;
-      if (profile.bachsAccountId && !profile.bachsAccountId.startsWith('acct_stub_') && country !== linkedCountry) {
-        throw new ApiError(409, 'PAYOUT_COUNTRY_LOCKED', 'Contact support to change the country of a linked payout account.');
-      }
-      data.payoutCountry = country;
+    } else if (
+      data.currency &&
+      data.currency !== profile.currency &&
+      (profile.payoutCountry ?? null) === 'ZA'
+    ) {
+      throw new ApiError(
+        400,
+        'INVALID_PAYOUT_COUNTRY',
+        'Update your payout country — South Africa is no longer available for new Bachs payout setup.',
+      );
+    } else if (migratingOffZar && (profile.payoutCountry ?? null) === 'ZA') {
+      throw new ApiError(
+        400,
+        'INVALID_PAYOUT_COUNTRY',
+        'Update your payout country when switching away from ZAR.',
+      );
     }
     if (dto.suggestedTipAmounts !== undefined) {
       data.suggestedTipAmounts = this.normalizeTipAmounts(
@@ -1018,6 +1084,13 @@ export class CreatorsService {
 
   private requireValidCurrency(raw: string): AllowedCurrency {
     const currency = raw.trim().toUpperCase();
+    if (isLegacyUnsupportedCurrency(currency)) {
+      throw new ApiError(
+        400,
+        'INVALID_CURRENCY',
+        'ZAR is no longer supported. Choose a Bachs collection currency such as USD or NGN.',
+      );
+    }
     if (!(ALLOWED_CURRENCIES as readonly string[]).includes(currency)) {
       throw new ApiError(
         400,
@@ -1026,6 +1099,33 @@ export class CreatorsService {
       );
     }
     return currency as AllowedCurrency;
+  }
+
+  /** Prefer an explicit country; otherwise soft-map from preferred currency (not for XOF/USD). */
+  private resolveCreatePayoutCountry(
+    raw: string | undefined,
+    currency: AllowedCurrency,
+  ): string | null {
+    if (raw !== undefined && raw.trim()) {
+      const country = raw.trim().toUpperCase();
+      if (!isAllowedPayoutCountry(country)) {
+        throw new ApiError(
+          400,
+          'INVALID_PAYOUT_COUNTRY',
+          'Choose a supported payout country.',
+        );
+      }
+      return country;
+    }
+    const suggested = SUGGESTED_PAYOUT_COUNTRY[currency] ?? null;
+    if (currency === 'XOF' && !suggested) {
+      throw new ApiError(
+        400,
+        'PAYOUT_COUNTRY_REQUIRED',
+        'Choose Senegal or Côte d’Ivoire for XOF payout setup.',
+      );
+    }
+    return suggested;
   }
 
   private requireValidUsername(raw: string): string {

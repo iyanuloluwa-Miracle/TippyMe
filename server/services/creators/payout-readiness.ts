@@ -27,6 +27,14 @@ export function accountCanReceiveDestinationCharges(
   return false;
 }
 
+/** True when a non-stub Bachs Connect account id is stored on the profile. */
+export function hasLiveBachsConnect(
+  bachsAccountId: string | null | undefined,
+): boolean {
+  const id = bachsAccountId?.trim() ?? '';
+  return id.length > 0 && !id.startsWith('acct_stub_');
+}
+
 export function isDestinationSettled(
   metadata: Record<string, unknown> | null | undefined,
 ): boolean {

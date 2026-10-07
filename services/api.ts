@@ -203,6 +203,7 @@ export function createApiClient(
       avatarUrl?: string;
       supportMessage?: string;
       currency?: string;
+      payoutCountry?: string;
       suggestedTipAmounts?: string[];
       socialLinks?: Omit<CreatorSocialLink, 'id'>[];
     }) =>
@@ -226,7 +227,7 @@ export function createApiClient(
       supportMessage?: string | null;
       thankYouMessage?: string | null;
       currency?: string;
-      payoutCountry?: string;
+      payoutCountry?: string | null;
       suggestedTipAmounts?: string[];
       goalTitle?: string | null;
       goalTargetAmount?: string | null;

@@ -290,6 +290,30 @@
               {{ c }}
             </option>
           </select>
+          <p class="mt-1 text-xs text-cheer-ink/50">
+            Tips are priced in this currency. Bachs offers card for USD/NGN, bank transfer for NGN, and mobile money for most other local currencies.
+          </p>
+        </div>
+        <div>
+          <label for="ob-payout-country" class="block text-sm text-cheer-ink">Payout country</label>
+          <select
+            id="ob-payout-country"
+            v-model="payoutCountry"
+            class="mt-1.5 w-full rounded-xl border border-black/10 bg-[#f7f4ff] px-3.5 py-2.5 text-base"
+            :disabled="pending"
+          >
+            <option value="">Choose your country</option>
+            <option
+              v-for="country in payoutCountryOptions"
+              :key="country.code"
+              :value="country.code"
+            >
+              {{ country.label }}
+            </option>
+          </select>
+          <p class="mt-1 text-xs text-cheer-ink/50">
+            Where your Bachs payout account will be based. Required before connecting payouts. XOF creators should pick Senegal or Côte d’Ivoire.
+          </p>
         </div>
         <div>
           <label for="ob-support" class="block text-sm text-cheer-ink">Support message</label>
@@ -389,6 +413,12 @@
 import type { CreatorProfile, SocialPlatform } from '~/types/api';
 import { ApiClientError } from '~/services/api';
 import { presetAvatarOptions } from '~/utils/avatar';
+import {
+  ALLOWED_CURRENCIES,
+  PAYOUT_COUNTRY_OPTIONS,
+  SUGGESTED_PAYOUT_COUNTRY,
+  isAllowedCurrency,
+} from '~/utils/bachs-currencies';
 import { normalizeClaimUsername } from '~/utils/username-claim';
 
 definePageMeta({
@@ -430,6 +460,7 @@ const uploadedAvatarUrl = computed(() => {
 });
 const supportMessage = ref('Thanks for supporting my work — every tip helps.');
 const currency = ref('NGN');
+const payoutCountry = ref('NG');
 const tipAmounts = ref(['1000.00', '2500.00', '5000.00']);
 const socialLinks = ref<{ platform: SocialPlatform; url: string }[]>([]);
 const createdProfile = ref<CreatorProfile | null>(null);
@@ -446,7 +477,18 @@ const platforms: SocialPlatform[] = [
   'WEBSITE',
   'OTHER',
 ];
-const currencies = ['NGN', 'USD', 'GHS', 'KES', 'ZAR'];
+const currencies = [...ALLOWED_CURRENCIES];
+const payoutCountryOptions = PAYOUT_COUNTRY_OPTIONS;
+
+watch(currency, (next) => {
+  if (!isAllowedCurrency(next)) return;
+  const suggested = SUGGESTED_PAYOUT_COUNTRY[next];
+  if (suggested) {
+    payoutCountry.value = suggested;
+    return;
+  }
+  // Currencies without a single-country default (USD, XOF) keep the user’s choice.
+});
 
 const appOrigin = computed(() => (config.public.appUrl as string) || '');
 
@@ -694,6 +736,13 @@ async function submitOnboarding() {
         sortOrder: i,
       }));
 
+    if (!payoutCountry.value) {
+      error.value =
+        currency.value === 'XOF'
+          ? 'Choose Senegal or Côte d’Ivoire for your payout country.'
+          : 'Choose your payout country before creating your page.';
+      return;
+    }
     const { profile } = await api.createCreator({
       username: username.value,
       displayName: displayName.value.trim(),
@@ -701,6 +750,7 @@ async function submitOnboarding() {
       avatarUrl: avatarUrl.value?.trim() || undefined,
       supportMessage: supportMessage.value.trim() || undefined,
       currency: currency.value,
+      payoutCountry: payoutCountry.value,
       suggestedTipAmounts: tipAmounts.value.filter(Boolean),
       socialLinks: links,
     });

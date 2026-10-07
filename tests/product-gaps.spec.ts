@@ -1,7 +1,11 @@
 import Decimal from 'decimal.js';
 import { expect, it } from 'vitest';
 import { raisedAmountForGoal } from '../server/services/creators/dashboard.types';
-import { accountCanReceiveDestinationCharges, isDestinationSettled } from '../server/services/creators/payout-readiness';
+import {
+  accountCanReceiveDestinationCharges,
+  hasLiveBachsConnect,
+  isDestinationSettled,
+} from '../server/services/creators/payout-readiness';
 import { buildSettlementStatus } from '../server/services/creators/settlement.types';
 import { platformFeePercent } from '../server/services/creators/connect.service';
 import {
@@ -81,4 +85,9 @@ it('keeps the same-currency goal total when conversion is unavailable', () => {
 
 it('exposes a finite platform fee percent', () => {
   expect(platformFeePercent()).toBeGreaterThanOrEqual(0);
+});
+
+it('does not treat stub Connect ids as live', () => {
+  expect(hasLiveBachsConnect('acct_stub_abc')).toBe(false);
+  expect(hasLiveBachsConnect('acct_abc')).toBe(true);
 });

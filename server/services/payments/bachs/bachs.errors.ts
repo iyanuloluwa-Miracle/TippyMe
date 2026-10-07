@@ -23,7 +23,10 @@ export class BachsProviderError extends Error {
     message: string,
     opts?: { httpStatus?: number; providerErrorCode?: string; cause?: unknown },
   ) {
-    super(message, opts?.cause ? { cause: opts.cause } : undefined);
+    super(message);
+    if (opts?.cause !== undefined) {
+      (this as Error & { cause?: unknown }).cause = opts.cause;
+    }
     this.name = 'BachsProviderError';
     this.kind = kind;
     this.httpStatus = opts?.httpStatus;

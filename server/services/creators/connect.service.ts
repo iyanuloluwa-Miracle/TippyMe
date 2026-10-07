@@ -14,11 +14,18 @@ import {
   BachsProviderError,
 } from '../payments/bachs/bachs.errors';
 import { BachsHttpClient } from '../payments/bachs/bachs-http.client';
-import { accountCanReceiveDestinationCharges } from './payout-readiness';
+import {
+  accountCanReceiveDestinationCharges,
+  hasLiveBachsConnect,
+} from './payout-readiness';
 import {
   buildSettlementStatus,
   type CreatorSettlementStatusDto,
 } from './settlement.types';
+import {
+  isAllowedPayoutCountry,
+  isLegacyUnsupportedCurrency,
+} from './username';
 
 const PAYOUTS_CACHE_MS = 15 * 60 * 1000;
 
@@ -40,6 +47,13 @@ export class ConnectService {
   async startOnboarding(userId: string): Promise<ConnectOnboardResult> {
     await useDb();
     const profile = await this.requireProfileWithUser(userId);
+    if (isLegacyUnsupportedCurrency(profile.currency)) {
+      throw new ApiError(
+        400,
+        'INVALID_CURRENCY',
+        'Update your preferred currency in profile settings before connecting Bachs. ZAR is no longer supported.',
+      );
+    }
     const appUrl = (getServerEnv().APP_URL ?? 'http://localhost:3000').replace(
       /\/$/,
       '',
@@ -60,6 +74,7 @@ export class ConnectService {
       }
 
       try {
+        await this.ensureNgnBalanceCurrency(profile.bachsAccountId, profile.currency);
         const link = await this.http.createAccountLink(profile.bachsAccountId, {
           type: 'onboarding',
           return_url: returnUrl,
@@ -72,10 +87,7 @@ export class ConnectService {
         };
       } catch (err) {
         // Stale / cross-environment account ids 404 on Bachs — clear and recreate.
-        if (
-          err instanceof BachsProviderError &&
-          (err.kind === 'NOT_FOUND' || err.kind === 'VALIDATION')
-        ) {
+        if (this.isStaleConnectAccountError(err)) {
           console.warn(
             `Connect: clearing stale bachsAccountId=${profile.bachsAccountId} kind=${err.kind} code=${err.providerErrorCode ?? 'none'}`,
           );
@@ -147,6 +159,9 @@ export class ConnectService {
             },
           },
           responsibilities: { fees: { collector: 'bachs' } },
+          ...(profile.currency.toUpperCase() === 'NGN'
+            ? { balance_currencies: { NGN: true } }
+            : {}),
           metadata: {
             tippyme_creator_id: profile.id,
             tippyme_username: profile.username,
@@ -162,8 +177,17 @@ export class ConnectService {
         );
       }
 
-      await CreatorProfileModel.updateOne(
-        { _id: profile.id },
+      await this.ensureNgnBalanceCurrency(account.id, profile.currency);
+
+      const linked = await CreatorProfileModel.findOneAndUpdate(
+        {
+          _id: profile.id,
+          $or: [
+            { bachsAccountId: null },
+            { bachsAccountId: { $exists: false } },
+            { bachsAccountId: { $regex: /^acct_stub_/ } },
+          ],
+        },
         {
           $set: {
             bachsAccountId: account.id,
@@ -172,14 +196,51 @@ export class ConnectService {
             updatedAt: new Date(),
           },
         },
+        { new: true },
       );
 
-      await this.audit(userId, profile.id, {
-        event: 'connect_account_created',
-        bachsAccountId: account.id,
-      });
+      let accountIdForLink = account.id;
+      if (linked?.bachsAccountId) {
+        accountIdForLink = linked.bachsAccountId;
+      } else {
+        const current = toPlain<CreatorProfile>(
+          await CreatorProfileModel.findOne({ _id: profile.id }).lean<
+            LeanDoc | null
+          >(),
+        );
+        if (hasLiveBachsConnect(current?.bachsAccountId)) {
+          accountIdForLink = current!.bachsAccountId!;
+        } else {
+          await CreatorProfileModel.updateOne(
+            { _id: profile.id },
+            {
+              $set: {
+                bachsAccountId: account.id,
+                bachsPayoutsReady: false,
+                bachsPayoutsCheckedAt: new Date(),
+                updatedAt: new Date(),
+              },
+            },
+          );
+        }
+      }
+      if (
+        accountIdForLink !== account.id &&
+        hasLiveBachsConnect(accountIdForLink)
+      ) {
+        await this.audit(userId, profile.id, {
+          event: 'connect_account_raced',
+          bachsAccountId: accountIdForLink,
+          discardedAccountId: account.id,
+        });
+      } else {
+        await this.audit(userId, profile.id, {
+          event: 'connect_account_created',
+          bachsAccountId: accountIdForLink,
+        });
+      }
 
-      const link = await this.http.createAccountLink(account.id, {
+      const link = await this.http.createAccountLink(accountIdForLink, {
         type: 'onboarding',
         return_url: returnUrl,
         refresh_url: refreshUrl,
@@ -187,7 +248,7 @@ export class ConnectService {
 
       return {
         settlement: buildSettlementStatus({
-          bachsAccountId: account.id,
+          bachsAccountId: accountIdForLink,
           fridayPayoutEnabled: profile.fridayPayoutEnabled,
           payoutsReady: false,
         }),
@@ -223,7 +284,48 @@ export class ConnectService {
     if (!country) {
       throw new ApiError(400, 'PAYOUT_COUNTRY_REQUIRED', 'Choose your payout country in profile settings before connecting Bachs.');
     }
+    if (country === 'ZA') {
+      throw new ApiError(
+        400,
+        'INVALID_PAYOUT_COUNTRY',
+        'South Africa is no longer supported for Bachs payout setup. Choose a supported payout country in profile settings.',
+      );
+    }
+    if (!isAllowedPayoutCountry(country)) {
+      throw new ApiError(
+        400,
+        'INVALID_PAYOUT_COUNTRY',
+        'Choose a supported payout country in profile settings before connecting Bachs.',
+      );
+    }
     return country;
+  }
+
+  /** Only drop a stored Connect id when Bachs says the account does not exist. */
+  private isStaleConnectAccountError(err: unknown): boolean {
+    return err instanceof BachsProviderError && err.kind === 'NOT_FOUND';
+  }
+
+  /**
+   * NGN tips can settle as NGN when the Connect account holds NGN.
+   * Best-effort: onboarding must not fail if Bachs rejects the update.
+   */
+  private async ensureNgnBalanceCurrency(
+    accountId: string,
+    currency: string,
+  ): Promise<void> {
+    if (!this.http.isConfigured || currency.toUpperCase() !== 'NGN') return;
+    try {
+      await this.http.updateConnectedAccount(accountId, {
+        balance_currencies: { NGN: true },
+      });
+    } catch (err) {
+      console.warn(
+        `Connect: failed to enable NGN balance currency account=${accountId}: ${
+          err instanceof Error ? err.message : 'unknown'
+        }`,
+      );
+    }
   }
 
   /**

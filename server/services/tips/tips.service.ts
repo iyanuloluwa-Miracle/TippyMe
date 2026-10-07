@@ -394,7 +394,9 @@ export class TipsService {
       throw new ApiError(
         400,
         'UNSUPPORTED_CURRENCY',
-        'Creator currency is not supported for tips.',
+        authoritative === 'ZAR'
+          ? 'This creator must update their preferred currency before they can receive tips.'
+          : 'Creator currency is not supported for tips.',
       );
     }
 

@@ -66,7 +66,16 @@ export interface BachsCreateConnectedAccountBody {
   responsibilities?: {
     fees?: { collector: 'bachs' | 'platform' };
   };
+  /** Currencies the Connect account holds as balances (USD is always held). */
+  balance_currencies?: Record<string, boolean>;
   metadata?: Record<string, string>;
+}
+
+export interface BachsUpdateConnectedAccountBody {
+  balance_currencies?: Record<string, boolean>;
+  display_name?: string;
+  contact_email?: string;
+  configuration?: BachsCreateConnectedAccountBody['configuration'];
 }
 
 export interface BachsConnectedAccountResponse {
@@ -194,6 +203,21 @@ export class BachsHttpClient {
     );
   }
 
+  /** Update Connect account fields (e.g. enable NGN balance holding). */
+  async updateConnectedAccount(
+    accountId: string,
+    body: BachsUpdateConnectedAccountBody,
+  ): Promise<BachsConnectedAccountResponse> {
+    return this.request<BachsConnectedAccountResponse>(
+      'POST',
+      `/accounts/${encodeURIComponent(accountId)}`,
+      {
+        body,
+        expectedStatuses: [200, 201],
+      },
+    );
+  }
+
   async createAccountLink(
     accountId: string,
     body: BachsCreateAccountLinkBody,
@@ -218,25 +242,6 @@ export class BachsHttpClient {
       expectedStatuses: [200, 201],
       accountId,
     });
-  }
-
-  /** Warn when key environment and base URL disagree (common Connect 401/404 cause). */
-  private assertKeyMatchesBaseUrl(): void {
-    const key = this.apiKey();
-    const base = this.baseUrl().toLowerCase();
-    const sandboxKey = key.startsWith('sk_sandbox_');
-    const liveKey = key.startsWith('sk_live_');
-    const sandboxBase = base.includes('sandbox');
-    if (sandboxKey && !sandboxBase) {
-      console.error(
-        `Bachs config mismatch: sandbox key against non-sandbox base=${base}`,
-      );
-    }
-    if (liveKey && sandboxBase) {
-      console.error(
-        `Bachs config mismatch: live key against sandbox base=${base}`,
-      );
-    }
   }
 
   private async request<T>(
