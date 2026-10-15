@@ -161,7 +161,7 @@
       v-if="(platformFeePercent ?? 0) > 0"
       class="text-xs leading-relaxed text-cheer-ink/55"
     >
-      If this creator’s Bachs payouts are enabled, a {{ platformFeePercent }}% platform fee is deducted from destination-charge tips. Bachs processes the payment. TippyMe confirms it only after verification.
+      A {{ platformFeePercent }}% platform fee is deducted from tips when calculating the creator’s withdrawable balance. Bachs processes the payment. TippyMe confirms it only after verification.
     </p>
 
     <p

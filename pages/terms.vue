@@ -30,7 +30,7 @@
           Support payments are processed by Bachs. By continuing to checkout, supporters agree to Bachs’ payment terms. TippyMe confirms a tip as paid only after Bachs verifies the payment. TippyMe is not a bank and does not hold a withdrawable wallet.
         </p>
         <p class="mt-2">
-          When a creator’s Bachs payouts are enabled, tips settle by destination charge and TippyMe keeps a platform fee (shown on the support page and creator dashboard, default 5%). Tips taken before payouts are enabled stay with TippyMe and are not the creator’s withdrawable balance. Refunds and disputes are processed by Bachs and are no longer counted as received.
+          Tips are collected by TippyMe via Bachs. Creators save a bank account and request payouts to that account. TippyMe keeps a platform fee (shown on the support page and creator dashboard, default 5%) when calculating withdrawable balance. Refunds and disputes are processed by Bachs and are no longer counted as received.
         </p>
       </section>
 

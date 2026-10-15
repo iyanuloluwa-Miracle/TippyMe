@@ -312,7 +312,7 @@
             </option>
           </select>
           <p class="mt-1 text-xs text-cheer-ink/50">
-            Where your Bachs payout account will be based. Required before connecting payouts. XOF creators should pick Senegal or Côte d’Ivoire.
+            Where you are based for payouts. You will add your bank account later on the dashboard. XOF creators should pick Senegal or Côte d’Ivoire.
           </p>
         </div>
         <div>

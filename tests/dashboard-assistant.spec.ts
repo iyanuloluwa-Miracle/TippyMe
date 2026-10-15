@@ -17,32 +17,35 @@ function account(): CreatorDashboardDto {
     linkViews: { lifetime: 20, thisWeek: 5 },
     conversion: { viewsToTipsRate: null, viewsToTipsPercent: null },
     supportGoal: null, recentTips: [], recentMessages: [], platformFeePercent: 3,
-    settlement: buildSettlementStatus({ bachsAccountId: null }),
+    settlement: buildSettlementStatus({ hasMethod: false }),
   };
 }
 
 describe('personalized dashboard answers', () => {
-  it('directs an unconnected creator to payout setup without promising a payout', () => {
+  it('directs a creator without bank details to payout setup', () => {
     const reply = answerDashboardQuestion('When is my payout?', account());
-    expect(reply.answer).toContain('haven’t connected Bachs');
-    expect(reply.answer).toContain('not your current bank or withdrawable balance');
-    expect(reply.answer).toContain('can’t confirm an individual bank transfer');
+    expect(reply.answer).toContain('haven’t saved a bank account');
+    expect(reply.answer).toContain('Available balance');
     expect(reply.actions[0]?.to).toBe('/dashboard#payouts');
   });
-  it('distinguishes incomplete onboarding from an enabled payout account', () => {
+  it('distinguishes pending bank approval from ready', () => {
     const d = account();
-    d.settlement = buildSettlementStatus({ bachsAccountId: 'acct_private' });
+    d.settlement = buildSettlementStatus({
+      hasMethod: true,
+      methodStatus: 'PENDING_DESTINATION',
+    });
     const reply = answerDashboardQuestion('Why can’t I withdraw?', d);
-    expect(reply.answer).toContain('payout setup is not complete');
-    expect(JSON.stringify(reply)).not.toContain('acct_private');
+    expect(reply.answer).toContain('has not approved');
   });
-  it('reports Friday configuration without inventing a bank arrival date', () => {
+  it('reports ready bank payouts', () => {
     const d = account();
-    d.settlement = buildSettlementStatus({ bachsAccountId: 'acct_private', payoutsReady: true, fridayPayoutEnabled: true });
-    const reply = answerDashboardQuestion('Will I get paid Friday?', d);
-    expect(reply.answer).toContain('Automatic Friday payouts are configured');
-    expect(reply.answer).toContain('can’t confirm');
-    expect(reply.answer).not.toContain('will arrive');
+    d.settlement = buildSettlementStatus({
+      hasMethod: true,
+      methodStatus: 'READY',
+    });
+    const reply = answerDashboardQuestion('Can I get paid?', d);
+    expect(reply.answer).toContain('ready for payouts');
+    expect(reply.answer).toContain('Request a payout');
   });
   it('keeps unconvertible currencies separate and exposes no supporter details', () => {
     const d = account();

@@ -9,8 +9,9 @@ it('allows a verified reversal of a paid tip but rejects stale failure events', 
   expect(mapVerificationToStatuses('refunded')).toEqual({ tipStatus: 'REFUNDED', paymentStatus: 'REFUNDED' });
 });
 
-it('does not present a demo Connect ID as a real payout account', () => {
-  const status = buildSettlementStatus({ bachsAccountId: 'acct_stub_demo', fridayPayoutEnabled: true });
+it('does not mark payouts ready without a saved bank method', () => {
+  const status = buildSettlementStatus({ hasMethod: false });
   expect(status.readiness).toBe('NOT_CONFIGURED');
-  expect(status.automatedFridayPayout).toBe('FUTURE_CAPABILITY');
+  expect(status.bankPayoutReady).toBe(false);
+  expect(status.tippyInitiatedPayoutAvailable).toBe(false);
 });

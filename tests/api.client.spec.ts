@@ -107,11 +107,9 @@ describe('createApiClient', () => {
             },
             settlement: {
               readiness: 'NOT_CONFIGURED',
-              bachsConnectAccountId: null,
-              tippyHoldsWithdrawableBalance: false,
+              bankPayoutReady: false,
               tippyInitiatedPayoutAvailable: false,
-              automatedFridayPayout: 'FUTURE_CAPABILITY',
-              message: 'Payout setup is not available yet.',
+              message: 'Add your bank account to receive payouts.',
             },
           },
         }),
@@ -125,9 +123,7 @@ describe('createApiClient', () => {
       expect(calledUrl).toBe('http://localhost:3001/api/creators/me/dashboard');
       expect(calledInit?.credentials).toBe('include');
       expect(result.dashboard.totals.successfulTipCount).toBe(0);
-      expect(result.dashboard.settlement.tippyHoldsWithdrawableBalance).toBe(
-        false,
-      );
+      expect(result.dashboard.settlement.bankPayoutReady).toBe(false);
     } finally {
       globalThis.fetch = originalFetch;
     }

@@ -79,38 +79,30 @@ describe('toPublicSupporterNoteDto', () => {
 });
 
 describe('buildSettlementStatus', () => {
-  it('keeps Friday payout as FUTURE_CAPABILITY without a Tippy wallet', () => {
-    const status = buildSettlementStatus({ bachsAccountId: null });
+  it('starts not configured without a bank method', () => {
+    const status = buildSettlementStatus({ hasMethod: false });
     expect(status.readiness).toBe('NOT_CONFIGURED');
-    expect(status.tippyHoldsWithdrawableBalance).toBe(false);
+    expect(status.bankPayoutReady).toBe(false);
     expect(status.tippyInitiatedPayoutAvailable).toBe(false);
-    expect(status.destinationChargesEnabled).toBe(false);
-    expect(status.automatedFridayPayout).toBe('FUTURE_CAPABILITY');
-    expect(status.message.toLowerCase()).toContain('bachs');
-    expect(status.message.toLowerCase()).toContain('friday');
+    expect(status.message.toLowerCase()).toContain('bank');
   });
 
-  it('still refuses Tippy wallets when Connect id is present but payouts are not enabled', () => {
+  it('marks pending when destination is not ready', () => {
     const status = buildSettlementStatus({
-      bachsAccountId: 'acct_test',
-      fridayPayoutEnabled: false,
+      hasMethod: true,
+      methodStatus: 'PENDING_DESTINATION',
     });
-    expect(status.readiness).toBe('ONBOARDING');
-    expect(status.bachsConnectAccountId).toBe('acct_test');
-    expect(status.tippyHoldsWithdrawableBalance).toBe(false);
-    expect(status.destinationChargesEnabled).toBe(false);
-    expect(status.automatedFridayPayout).toBe('NOT_ENABLED');
+    expect(status.readiness).toBe('PENDING');
+    expect(status.bankPayoutReady).toBe(false);
   });
 
-  it('marks Friday payout CONFIGURED only when payouts are enabled', () => {
+  it('marks ready when bank destination is READY', () => {
     const status = buildSettlementStatus({
-      bachsAccountId: 'acct_test',
-      fridayPayoutEnabled: true,
-      payoutsReady: true,
+      hasMethod: true,
+      methodStatus: 'READY',
     });
-    expect(status.readiness).toBe('CONNECTED');
-    expect(status.destinationChargesEnabled).toBe(true);
-    expect(status.automatedFridayPayout).toBe('CONFIGURED');
-    expect(status.message.toLowerCase()).toContain('friday');
+    expect(status.readiness).toBe('READY');
+    expect(status.bankPayoutReady).toBe(true);
+    expect(status.tippyInitiatedPayoutAvailable).toBe(true);
   });
 });

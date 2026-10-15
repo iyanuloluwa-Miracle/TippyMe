@@ -47,7 +47,7 @@
           Payments and financial data
         </h2>
         <p class="mt-2">
-          Card and bank payment details are handled by Bachs during checkout. TippyMe does not store full card numbers. We store tip amounts, currency, status, and references needed for confirmations and the creator dashboard. When Bachs payouts are enabled, a platform fee is taken only on destination-charge tips. That fee is shown before checkout.
+          Card and bank payment details for supporter checkout are handled by Bachs. TippyMe does not store full card numbers. Creators may save bank account details for payouts; account numbers are encrypted at rest and only the last four digits are shown in the dashboard. We store tip amounts, currency, status, and references needed for confirmations and payouts. A platform fee (default 5%) is deducted when calculating withdrawable balance.
         </p>
       </section>
 
@@ -56,7 +56,7 @@
           Processors
         </h2>
         <ul class="mt-2 list-disc space-y-2 pl-5">
-          <li>Bachs processes payments and Connect payouts.</li>
+          <li>Bachs processes supporter checkout and creator bank payouts.</li>
           <li>Resend sends verification codes, receipts, and account emails.</li>
           <li>Google may be used if you choose Continue with Google.</li>
           <li>Byteship stores profile photos you upload.</li>

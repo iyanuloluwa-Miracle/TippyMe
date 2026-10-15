@@ -22,7 +22,7 @@
           <button type="button" :disabled="pending" @click="clearChat">New chat</button>
         </div>
         <div ref="messageList" class="ask-tippy-me__messages" role="log" aria-label="Conversation" aria-live="polite" :aria-busy="pending">
-          <p class="ask-tippy-me__message">{{ dashboard ? 'Let’s make sense of your creator account. Ask about your payout setup, Friday payouts, support, or goals.' : 'Hi! Ask me about receiving support with TippyMe.' }}</p>
+          <p class="ask-tippy-me__message">{{ dashboard ? 'Let’s make sense of your creator account. Ask about bank payouts, support, themes, or goals.' : 'Hi! Ask me about receiving support with TippyMe.' }}</p>
           <div v-for="(message, index) in messages" :key="index" class="ask-tippy-me__entry" :class="{ 'ask-tippy-me__entry--user': message.role === 'user' }">
             <span class="ask-tippy-me__speaker">{{ message.role === 'user' ? 'You' : 'TippyMe' }}</span>
             <p class="ask-tippy-me__message" :class="{ 'ask-tippy-me__message--user': message.role === 'user' }">{{ message.text }}</p>
@@ -102,7 +102,7 @@ const prompts = [
 ];
 
 const suggestions = computed(() => props.dashboard
-  ? ['Is my payout setup complete?', 'When are my Friday payouts?', 'How much support have I received?']
+  ? ['Is my bank payout ready?', 'How do I get paid?', 'How much support have I received?']
   : prompts.map((prompt) => prompt.question));
 
 watch(isOpen, async (open) => {

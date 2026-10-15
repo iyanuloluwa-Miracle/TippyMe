@@ -203,7 +203,7 @@ export const trustItems: readonly TrustItem[] = [
     id: 'bachs',
     title: 'Processed through Bachs',
     description:
-      'Checkout and settlement run on Bachs infrastructure. Automatic Friday payouts via Bachs Connect are coming — TippyMe is not a bank and does not hold balances for you.',
+      'Checkout runs on Bachs. Creators save a bank account and request payouts from TippyMe. TippyMe is not a bank — it routes support to your account.',
   },
   {
     id: 'privacy',
@@ -256,7 +256,7 @@ export const faqItems: readonly FaqItem[] = [
     id: 'how-paid',
     question: 'How do I get paid?',
     answer:
-      'Payments are processed by Bachs. TippyMe is the creator page, messages, and dashboard — not a bank. Automatic Friday payouts via Bachs Connect are coming when Connect settlement is enabled; TippyMe does not hold a withdrawable balance.',
+      'Payments are processed by Bachs. TippyMe is the creator page, messages, and dashboard. Save your bank details and request payouts when you are ready.',
   },
   {
     id: 'share-link',

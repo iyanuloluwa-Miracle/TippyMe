@@ -14,15 +14,13 @@ import {
 } from '../server/services/tips/confirmation-token';
 import { toStatusOnlyTipDto } from '../server/services/tips/tips.types';
 
-it('treats an account id without enabled payouts as onboarding, not settled', () => {
+it('treats a saved bank without READY status as pending', () => {
   const status = buildSettlementStatus({
-    bachsAccountId: 'acct_live',
-    fridayPayoutEnabled: true,
-    payoutsReady: false,
+    hasMethod: true,
+    methodStatus: 'PENDING_DESTINATION',
   });
-  expect(status.readiness).toBe('ONBOARDING');
-  expect(status.destinationChargesEnabled).toBe(false);
-  expect(status.automatedFridayPayout).toBe('NOT_ENABLED');
+  expect(status.readiness).toBe('PENDING');
+  expect(status.bankPayoutReady).toBe(false);
 });
 
 it('accepts enabled transfer or payout capabilities only', () => {
