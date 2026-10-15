@@ -175,6 +175,58 @@
         </button>
       </section>
 
+      <!-- Page theme -->
+      <section
+        v-show="activeSection === 'theme'"
+        id="theme"
+        class="studio-card settings-form"
+        aria-labelledby="theme-heading"
+      >
+        <h2 id="theme-heading" class="text-xl font-extrabold tracking-tight text-[#261b38]">
+          Page theme
+        </h2>
+        <p class="mt-1 text-sm text-[#53445f]">
+          Make your public page feel like yours. Pick a full visual theme — not just a color chip.
+        </p>
+        <div class="theme-grid mt-5" role="listbox" aria-label="Public page themes">
+          <button
+            v-for="theme in pageThemes"
+            :key="theme.id"
+            type="button"
+            role="option"
+            class="theme-card"
+            :aria-selected="pageThemeId === theme.id"
+            :class="{ selected: pageThemeId === theme.id }"
+            :disabled="themePending"
+            :style="themePreviewStyle(theme.id)"
+            @click="pageThemeId = theme.id"
+          >
+            <span class="theme-swatch" aria-hidden="true" />
+            <strong>{{ theme.name }}</strong>
+            <small>{{ theme.tagline }}</small>
+          </button>
+        </div>
+        <p v-if="themeError" class="mt-3 text-sm text-[#ac3047]" role="alert">{{ themeError }}</p>
+        <p v-if="themeSuccess" class="mt-3 text-sm text-[#6d3db0]" role="status">{{ themeSuccess }}</p>
+        <div class="mt-5 flex flex-wrap gap-3">
+          <button
+            type="button"
+            class="inline-flex items-center justify-center rounded-full bg-cheer-leaf px-6 py-2.5 text-sm font-bold text-white disabled:opacity-60"
+            :disabled="themePending || pageThemeId === (profile.pageThemeId || 'classic')"
+            @click="saveTheme"
+          >
+            {{ themePending ? 'Saving…' : 'Save theme' }}
+          </button>
+          <NuxtLink
+            v-if="profile.publicPath"
+            :to="profile.publicPath"
+            class="inline-flex items-center justify-center rounded-full border border-[#e7dfee] px-6 py-2.5 text-sm font-bold text-[#6d3db0]"
+          >
+            Preview page ↗
+          </NuxtLink>
+        </div>
+      </section>
+
       <!-- Social -->
       <section
         v-show="activeSection === 'links'"
@@ -287,7 +339,7 @@
           class="mt-4 rounded-2xl border border-[#f3d0d7] bg-[#fff1f3] px-4 py-3 text-sm text-[#ac3047]"
           role="alert"
         >
-          Your preferred currency (ZAR) is no longer supported by Bachs. Choose a collection currency such as USD or NGN and save before supporters can tip you or you connect payouts.
+          Your preferred currency (ZAR) is no longer supported by Bachs. Choose a collection currency such as USD or NGN and save before supporters can tip you.
         </div>
 
         <div class="mt-5 space-y-4">
@@ -318,8 +370,8 @@
             </select>
             <p class="mt-1 text-xs text-[#53445f]">
               {{ payoutCountryLocked
-                ? 'Preferred currency is locked because Bachs Connect is already linked.'
-                : 'Tips are priced in this currency. Bachs offers card for USD/NGN, bank transfer for NGN, and mobile money for most other local currencies. Pricing currency is separate from where you withdraw in Bachs.' }}
+                ? 'Preferred currency is locked.'
+                : 'Tips are priced in this currency. Bachs offers card for USD/NGN, bank transfer for NGN, and mobile money for most other local currencies. Bank payouts currently support NGN.' }}
             </p>
           </div>
 
@@ -348,8 +400,8 @@
             </select>
             <p class="mt-1 text-xs text-[#53445f]">
               {{ payoutCountryLocked
-                ? 'Payout country is locked because Bachs Connect is already linked.'
-                : 'Choose where your Bachs payout account is based. This can be changed only before connecting payouts. Withdrawals are handled in Bachs, not TippyMe.' }}
+                ? 'Payout country is locked.'
+                : 'Choose where you are based. You will add your bank account on the dashboard payouts panel.' }}
             </p>
             <p
               v-if="needsLegacyPayoutMigration"
@@ -546,6 +598,12 @@
 
 <script setup lang="ts">
 import type { CreatorProfile, SocialPlatform } from '~/types/api';
+import {
+  PAGE_THEMES,
+  getPageTheme,
+  normalizePageThemeId,
+  type PageThemeId,
+} from '~/utils/page-themes';
 import { ApiClientError } from '~/services/api';
 import {
   ALLOWED_CURRENCIES,
@@ -569,6 +627,7 @@ const api = useApi();
 const settingsRoute = useRoute();
 const settingsSections = [
   { id: 'profile', label: 'Profile', description: 'Name, photo & bio', icon: '◈' },
+  { id: 'theme', label: 'Page theme', description: 'Visual look & feel', icon: '◐' },
   { id: 'links', label: 'Social links', description: 'Connect your worlds', icon: '↗' },
   { id: 'support', label: 'Support settings', description: 'Amounts, messages & goals', icon: '♡' },
   { id: 'sharing', label: 'Sharing tools', description: 'Embeds & GitHub badges', icon: '✦' },
@@ -607,6 +666,21 @@ const tipAmounts = ref(['1000.00', '2500.00', '5000.00']);
 const goalActive = ref(false);
 const goalTitle = ref('');
 const goalTargetAmount = ref('');
+const pageThemeId = ref<PageThemeId>('classic');
+const pageThemes = PAGE_THEMES;
+const themePending = ref(false);
+const themeError = ref<string | null>(null);
+const themeSuccess = ref<string | null>(null);
+
+function themePreviewStyle(id: PageThemeId) {
+  const theme = getPageTheme(id);
+  return {
+    '--preview-bg': theme.vars['--page-bg'],
+    '--preview-ink': theme.vars['--page-ink'],
+    '--preview-accent': theme.vars['--page-accent'],
+    '--preview-surface': theme.vars['--page-surface'],
+  } as Record<string, string>;
+}
 const aiBusy = ref(false);
 const aiHint = ref<string | null>(null);
 
@@ -699,6 +773,7 @@ function applyProfile(p: CreatorProfile) {
       : '';
   currency.value = nextCurrency;
   payoutCountry.value = storedPayout || suggested;
+  pageThemeId.value = normalizePageThemeId(p.pageThemeId);
   tipAmounts.value =
     p.suggestedTipAmounts.length > 0
       ? [...p.suggestedTipAmounts]
@@ -883,6 +958,26 @@ async function saveSocial() {
   }
 }
 
+async function saveTheme() {
+  themePending.value = true;
+  themeError.value = null;
+  themeSuccess.value = null;
+  try {
+    const { profile: updated } = await api.updateMyCreatorSettings({
+      pageThemeId: pageThemeId.value,
+    });
+    applyProfile(updated);
+    themeSuccess.value = 'Theme saved. Preview your public page to see it live.';
+    $toast.success(themeSuccess.value);
+  } catch (err) {
+    themeError.value =
+      err instanceof ApiClientError ? err.message : 'Could not save theme.';
+    $toast.error(themeError.value);
+  } finally {
+    themePending.value = false;
+  }
+}
+
 async function saveSettings() {
   settingsPending.value = true;
   settingsError.value = null;
@@ -1034,6 +1129,13 @@ async function closeAccount() {
 <style scoped>
 .settings-layout { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 24px; align-items: start; }.settings-sidebar { position: sticky; top: 24px; }.settings-nav { display: grid; gap: 8px; }.settings-nav a { display: flex; align-items: center; gap: 12px; border: 1px solid transparent; border-radius: 12px; padding: 12px; color: var(--dashboard-text-secondary, #53445f); }.settings-nav a.selected { border-color: #bc92e83d; background: #b491db17; color: #542b85; }.settings-nav a:hover { background: #b491db0c; }.settings-nav-icon { width: 22px; font-size: 22px; color: #6d3db0; }.settings-nav a > span:nth-child(2) { flex: 1; }.settings-nav strong { display: block; font-size: 14px; font-weight: 800; line-height: 1.4; }.settings-nav small { display: block; font-size: 12px; font-weight: 700; line-height: 1.5; color: var(--dashboard-text-secondary, #53445f); margin-top: 3px; }.settings-preview { padding: 24px 16px; margin-top: 24px; border-top: 1px solid #e7dfee; text-align: center; }.settings-monogram { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 20px; margin: 16px auto; background: #b697df20; border: 1px solid #d8b4fe29; color: #6d3db0; font-size: 28px; }.settings-preview > strong { display: block; font-size: 19px; overflow-wrap: anywhere; }.settings-preview > span:not(:first-child) { font-size: 12px; color: var(--dashboard-text-secondary, #53445f); overflow-wrap: anywhere; }.settings-preview p { font-size: 12px; color: var(--dashboard-text-secondary, #53445f); line-height: 1.5; overflow-wrap: anywhere; }.settings-preview small { font-size: 12px; color: var(--dashboard-text-secondary, #53445f); }.profile-editor { min-width: 0; }.profile-editor > section { scroll-margin-top: 24px; }.profile-editor > p:last-child { margin-top: 24px; }.settings-form { max-width: 880px; }.settings-form > button.bg-cheer-leaf { border-radius: 12px; background: #7540b4; color: #fff; }
 .settings-form > button.bg-cheer-leaf:hover { background: #603197; }.settings-form :is(input, textarea, select) { color: #261b38; }.settings-form input[type='checkbox'] { accent-color: #7c4ac0; }.settings-danger { border-color: #f3d0d7; }
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.theme-card { display: grid; gap: 6px; text-align: left; padding: 14px; border: 1px solid #e7dfee; border-radius: 16px; background: #fff; color: #261b38; transition: border-color .15s, transform .15s; }
+.theme-card:hover { transform: translateY(-1px); border-color: #c9a8ef; }
+.theme-card.selected { border-color: #7c4ac0; box-shadow: inset 0 0 0 1px #7c4ac0; }
+.theme-swatch { display: block; height: 72px; border-radius: 12px; background: var(--preview-bg); border: 1px solid color-mix(in srgb, var(--preview-ink) 12%, transparent); position: relative; overflow: hidden; }
+.theme-swatch::after { content: ''; position: absolute; left: 12px; bottom: 12px; width: 42%; height: 10px; border-radius: 999px; background: var(--preview-accent); box-shadow: 0 0 0 6px color-mix(in srgb, var(--preview-surface) 80%, transparent); }
+.theme-card strong { font-size: 14px; }.theme-card small { color: #53445f; font-size: 12px; line-height: 1.4; }
 @media (max-width: 1100px) { .settings-layout { grid-template-columns: 180px minmax(0, 1fr); gap: 16px; }.settings-nav a { gap: 8px; padding: 10px; }.settings-nav small { font-size: 12px; } }
 @media (max-width: 800px) { .settings-layout { grid-template-columns: minmax(0, 1fr); }.settings-sidebar { position: static; }.settings-preview { display: none; }.settings-nav { display: flex; overflow-x: auto; padding-bottom: 8px; }.settings-nav a { flex-shrink: 0; }.settings-nav small, .settings-nav a > span:last-child { display: none; }.settings-nav strong { font-size: 12px; }.settings-nav-icon { font-size: 18px; width: 18px; } }
 </style>
