@@ -189,6 +189,8 @@ export function uniqueViolationFields(err: unknown): string[] {
 export {
   UserModel,
   CreatorProfileModel,
+  CreatorPayoutMethodModel,
+  PayoutRequestModel,
   TipPageViewModel,
   SocialLinkModel,
   PaymentTransactionModel,

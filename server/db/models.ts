@@ -3,6 +3,7 @@ import mongoose, { Schema, type Model, type ClientSession } from 'mongoose';
 import type {
   User, CreatorProfile, TipPageView, SocialLink, PaymentTransaction,
   Tip, WebhookEvent, OtpChallenge, Notification, AuditLog, CreatorReply,
+  CreatorPayoutMethod, PayoutRequest,
 } from './types';
 import {
   AuditAction,
@@ -12,6 +13,8 @@ import {
   OtpPurpose,
   PaymentProvider,
   PaymentStatus,
+  PayoutMethodStatus,
+  PayoutRequestStatus,
   SocialPlatform,
   TipStatus,
 } from './enums';
@@ -82,6 +85,7 @@ const creatorProfileSchema = new Schema(
     bachsPayoutsReady: { type: Boolean, required: true, default: false },
     bachsPayoutsCheckedAt: { type: Date, default: null },
     fridayPayoutEnabled: { type: Boolean, required: true, default: false },
+    pageThemeId: { type: String, default: 'classic' },
     goalTitle: { type: String, default: null },
     goalTargetAmount: { type: String, default: null },
     goalActive: { type: Boolean, required: true, default: false },
@@ -91,6 +95,59 @@ const creatorProfileSchema = new Schema(
   }),
   baseOptions,
 );
+
+const creatorPayoutMethodSchema = new Schema(
+  withId({
+    creatorId: { type: String, required: true, unique: true },
+    bankCode: { type: String, required: true },
+    bankName: { type: String, default: null },
+    accountNumberEncrypted: { type: String, required: true },
+    accountNumberLast4: { type: String, required: true, maxlength: 4 },
+    accountName: { type: String, default: null },
+    payoutCurrency: { type: String, required: true, default: 'NGN', maxlength: 3 },
+    bachsDestinationId: { type: String, default: null },
+    status: {
+      type: String,
+      required: true,
+      enum: Object.values(PayoutMethodStatus),
+      default: PayoutMethodStatus.PENDING_DESTINATION,
+    },
+    lastError: { type: String, default: null },
+    createdAt: { type: Date, default: () => new Date() },
+    updatedAt: { type: Date, default: () => new Date() },
+  }),
+  baseOptions,
+);
+creatorPayoutMethodSchema.pre('save', function () {
+  (this as { updatedAt: Date }).updatedAt = new Date();
+});
+
+const payoutRequestSchema = new Schema(
+  withId({
+    creatorId: { type: String, required: true },
+    payoutMethodId: { type: String, required: true },
+    amount: { type: String, required: true },
+    currency: { type: String, required: true, maxlength: 3 },
+    platformFeePercent: { type: Number, required: true, default: 5 },
+    status: {
+      type: String,
+      required: true,
+      enum: Object.values(PayoutRequestStatus),
+      default: PayoutRequestStatus.REQUESTED,
+    },
+    bachsPayoutId: { type: String, default: null },
+    failureReason: { type: String, default: null },
+    createdAt: { type: Date, default: () => new Date() },
+    updatedAt: { type: Date, default: () => new Date() },
+  }),
+  baseOptions,
+);
+payoutRequestSchema.index({ creatorId: 1, createdAt: -1 });
+payoutRequestSchema.index({ bachsPayoutId: 1 }, { sparse: true });
+payoutRequestSchema.index({ status: 1, createdAt: 1 });
+payoutRequestSchema.pre('save', function () {
+  (this as { updatedAt: Date }).updatedAt = new Date();
+});
 creatorProfileSchema.index({ isActive: 1 });
 creatorProfileSchema.index({ createdAt: 1 });
 creatorProfileSchema.index(
@@ -345,6 +402,14 @@ export const UserModel = getModel<User>('User', userSchema);
 export const CreatorProfileModel = getModel<CreatorProfile>(
   'CreatorProfile',
   creatorProfileSchema,
+);
+export const CreatorPayoutMethodModel = getModel<CreatorPayoutMethod>(
+  'CreatorPayoutMethod',
+  creatorPayoutMethodSchema,
+);
+export const PayoutRequestModel = getModel<PayoutRequest>(
+  'PayoutRequest',
+  payoutRequestSchema,
 );
 export const TipPageViewModel = getModel<TipPageView>('TipPageView', tipPageViewSchema);
 export const CreatorReplyModel = getModel<CreatorReply>('CreatorReply', creatorReplySchema);

@@ -6,6 +6,8 @@ import type {
   OtpPurpose as OtpPurposeValues,
   PaymentProvider as PaymentProviderValues,
   PaymentStatus as PaymentStatusValues,
+  PayoutMethodStatus as PayoutMethodStatusValues,
+  PayoutRequestStatus as PayoutRequestStatusValues,
   SocialPlatform as SocialPlatformValues,
   TipStatus as TipStatusValues,
 } from './enums';
@@ -28,6 +30,10 @@ export type NotificationProvider =
   (typeof NotificationProviderValues)[keyof typeof NotificationProviderValues];
 export type AuditAction =
   (typeof AuditActionValues)[keyof typeof AuditActionValues];
+export type PayoutMethodStatus =
+  (typeof PayoutMethodStatusValues)[keyof typeof PayoutMethodStatusValues];
+export type PayoutRequestStatus =
+  (typeof PayoutRequestStatusValues)[keyof typeof PayoutRequestStatusValues];
 
 /** Plain document shapes used across services (string ids, no Mongoose internals). */
 
@@ -62,6 +68,8 @@ export type CreatorProfile = {
   bachsPayoutsReady?: boolean;
   bachsPayoutsCheckedAt?: Date | null;
   fridayPayoutEnabled: boolean;
+  /** Curated public-page visual theme id. Defaults to classic. */
+  pageThemeId?: string | null;
   goalTitle: string | null;
   goalTargetAmount: string | null;
   goalActive: boolean;
@@ -71,6 +79,36 @@ export type CreatorProfile = {
     suggestedTipAmounts: string[] | null;
     goalTargetAmount: string | null;
   } | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreatorPayoutMethod = {
+  id: string;
+  creatorId: string;
+  bankCode: string;
+  bankName: string | null;
+  accountNumberEncrypted: string;
+  accountNumberLast4: string;
+  accountName: string | null;
+  payoutCurrency: string;
+  bachsDestinationId: string | null;
+  status: PayoutMethodStatus;
+  lastError: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type PayoutRequest = {
+  id: string;
+  creatorId: string;
+  payoutMethodId: string;
+  amount: string;
+  currency: string;
+  platformFeePercent: number;
+  status: PayoutRequestStatus;
+  bachsPayoutId: string | null;
+  failureReason: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
