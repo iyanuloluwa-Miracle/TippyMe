@@ -1,8 +1,10 @@
 import Decimal from 'decimal.js';
 import {
   AuditLogModel,
+  CreatorPayoutMethodModel,
   CreatorProfileModel,
   PaymentTransactionModel,
+  PayoutRequestModel,
   SocialLinkModel,
   TipModel,
   TipPageViewModel,
@@ -16,14 +18,21 @@ import {
 } from '../../db';
 import { insertedId, type LeanDoc } from '../../db/lean';
 import type {
+  CreatorPayoutMethod,
   CreatorProfile,
   PaymentStatus,
   PaymentTransaction,
+  PayoutRequest,
   SocialLink,
   Tip,
   User,
 } from '../../db/types';
-import { AuditAction, SocialPlatform, TipStatus } from '../../db/enums';
+import {
+  AuditAction,
+  PayoutRequestStatus,
+  SocialPlatform,
+  TipStatus,
+} from '../../db/enums';
 import { ApiError } from '../../lib/errors';
 import { getServerEnv } from '../../lib/env';
 import { TransactionalNotificationsService } from '../notifications/transactional-notifications.service';
@@ -53,8 +62,8 @@ import {
   type PublicSupporterNoteDto,
 } from './dashboard.types';
 import { buildSettlementStatus } from './settlement.types';
-import { ConnectService, platformFeePercent } from './connect.service';
-import { hasLiveBachsConnect, isDestinationSettled } from './payout-readiness';
+import { platformFeePercent } from './platform-fee';
+import { normalizePageThemeId } from '../../../utils/page-themes';
 import { convertAmount, tryConvertCurrencyTotals, type CurrencyTotal } from './currency-conversion';
 import { isAllowedAvatarUrl, normalizeSavedAvatarUrl } from '../../../utils/avatar';
 import {
@@ -359,6 +368,7 @@ export class CreatorsService {
       thankYouMessage?: string | null;
       currency?: AllowedCurrency;
       payoutCountry?: string | null;
+      pageThemeId?: string;
       suggestedTipAmounts?: string[];
       goalTitle?: string | null;
       goalTargetAmount?: string | null;
@@ -376,17 +386,11 @@ export class CreatorsService {
         ? null
         : this.requireValidSupportMessage(dto.thankYouMessage);
     }
-    const connectLocked = hasLiveBachsConnect(profile.bachsAccountId);
     if (dto.currency !== undefined) {
-      const nextCurrency = this.requireValidCurrency(dto.currency);
-      if (connectLocked && nextCurrency !== profile.currency) {
-        throw new ApiError(
-          409,
-          'CURRENCY_LOCKED',
-          'Preferred currency cannot change after Bachs Connect is linked. Contact support if you need to update it.',
-        );
-      }
-      data.currency = nextCurrency;
+      data.currency = this.requireValidCurrency(dto.currency);
+    }
+    if (dto.pageThemeId !== undefined) {
+      data.pageThemeId = normalizePageThemeId(dto.pageThemeId);
     }
     const migratingOffZar =
       dto.currency !== undefined &&
@@ -394,13 +398,6 @@ export class CreatorsService {
       !isLegacyUnsupportedCurrency(data.currency ?? profile.currency);
     if (dto.payoutCountry !== undefined) {
       if (dto.payoutCountry === null || dto.payoutCountry.trim() === '') {
-        if (connectLocked) {
-          throw new ApiError(
-            409,
-            'PAYOUT_COUNTRY_LOCKED',
-            'Payout country cannot be cleared after Bachs Connect is linked.',
-          );
-        }
         data.payoutCountry = null;
       } else {
         const country = dto.payoutCountry.trim().toUpperCase();
@@ -419,13 +416,6 @@ export class CreatorsService {
             400,
             'INVALID_PAYOUT_COUNTRY',
             'Choose a supported payout country.',
-          );
-        }
-        if (connectLocked && country !== linkedCountry) {
-          throw new ApiError(
-            409,
-            'PAYOUT_COUNTRY_LOCKED',
-            'Contact support to change the country of a linked payout account.',
           );
         }
         data.payoutCountry = country;
@@ -625,11 +615,13 @@ export class CreatorsService {
       }),
     ]);
 
-    const [recentTips, recentMessages, split, payoutsReady, lifetimeSum, periodSum] = await Promise.all([
+    const [recentTips, recentMessages, split, payoutMethod, lifetimeSum, periodSum] = await Promise.all([
       this.attachPaymentStatus(toPlainList<Tip>(recentTipDocs)),
       this.attachPaymentStatus(toPlainList<Tip>(recentMessageDocs)),
       this.splitPaidSettlement(creatorId),
-      new ConnectService().refreshPayoutReadiness(profile),
+      CreatorPayoutMethodModel.findOne({ creatorId })
+        .lean<LeanDoc | null>()
+        .then((doc) => toPlain<CreatorPayoutMethod>(doc)),
       tryConvertCurrencyTotals(lifetime.byCurrency, profile.currency),
       tryConvertCurrencyTotals(period.byCurrency, profile.currency),
     ]);
@@ -683,9 +675,8 @@ export class CreatorsService {
         .filter((t) => Boolean(t.message?.trim()))
         .map(toCreatorTipDto),
       settlement: buildSettlementStatus({
-        bachsAccountId: profile.bachsAccountId,
-        fridayPayoutEnabled: profile.fridayPayoutEnabled,
-        payoutsReady,
+        hasMethod: Boolean(payoutMethod),
+        methodStatus: payoutMethod?.status ?? null,
       }),
       platformFeePercent: platformFeePercent(),
     };
@@ -858,46 +849,40 @@ export class CreatorsService {
     }
   }
 
-  /** Split verified PAID tips into destination-settled vs platform-held. */
+  /**
+   * Split verified PAID tips (platform-collected) vs successful bank payouts.
+   * `held` = tip volume still on TippyMe; `settled` = amounts paid out to bank.
+   */
   private async splitPaidSettlement(creatorId: string): Promise<{
     settled: { currency: string; amount: string; count: number }[];
     held: { currency: string; amount: string; count: number }[];
   }> {
     const tips = await TipModel.find({ creatorId, status: TipStatus.PAID })
-      .select('amount currency paymentTransactionId')
+      .select('amount currency')
       .lean<LeanDoc[]>();
-    const paymentIds = tips
-      .map((tip) => tip.paymentTransactionId)
-      .filter((id): id is string => typeof id === 'string' && id.length > 0);
-    const payments = paymentIds.length
-      ? await PaymentTransactionModel.find({ _id: { $in: paymentIds } })
-          .select('metadata')
-          .lean<LeanDoc[]>()
-      : [];
-    const settledIds = new Set(
-      payments
-        .filter((payment) =>
-          isDestinationSettled(payment.metadata as Record<string, unknown> | null),
-        )
-        .map((payment) => String(payment._id)),
-    );
+    const payouts = await PayoutRequestModel.find({
+      creatorId,
+      status: PayoutRequestStatus.PAID,
+    })
+      .select('amount currency')
+      .lean<LeanDoc[]>();
 
-    const buckets = {
-      settled: new Map<string, { sum: Decimal; count: number }>(),
-      held: new Map<string, { sum: Decimal; count: number }>(),
-    };
+    const held = new Map<string, { sum: Decimal; count: number }>();
     for (const tip of tips) {
       const currency = String(tip.currency);
-      const amount = new Decimal(String(tip.amount));
-      const key =
-        typeof tip.paymentTransactionId === 'string' &&
-        settledIds.has(tip.paymentTransactionId)
-          ? 'settled'
-          : 'held';
-      const current = buckets[key].get(currency) ?? { sum: new Decimal(0), count: 0 };
-      current.sum = current.sum.plus(amount);
+      const current = held.get(currency) ?? { sum: new Decimal(0), count: 0 };
+      current.sum = current.sum.plus(String(tip.amount));
       current.count += 1;
-      buckets[key].set(currency, current);
+      held.set(currency, current);
+    }
+
+    const settled = new Map<string, { sum: Decimal; count: number }>();
+    for (const row of toPlainList<PayoutRequest>(payouts)) {
+      const currency = row.currency;
+      const current = settled.get(currency) ?? { sum: new Decimal(0), count: 0 };
+      current.sum = current.sum.plus(row.amount);
+      current.count += 1;
+      settled.set(currency, current);
     }
 
     const toList = (map: Map<string, { sum: Decimal; count: number }>) =>
@@ -907,7 +892,7 @@ export class CreatorsService {
         count: value.count,
       }));
 
-    return { settled: toList(buckets.settled), held: toList(buckets.held) };
+    return { settled: toList(settled), held: toList(held) };
   }
 
   /** PAID-tip sum and count for a tip filter, mirroring the old SQL aggregates. */

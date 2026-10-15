@@ -25,8 +25,7 @@ import {
   bachsPublicMessage,
 } from '../payments/bachs/bachs.errors';
 import { PaymentsService } from '../payments/payments.service';
-import { computePlatformFee } from '../creators/connect.service';
-import { ConnectService } from '../creators/connect.service';
+import { computePlatformFee, platformFeePercent } from '../creators/platform-fee';
 import { amountValidationMessage, validateTipAmount } from './amount';
 import { createConfirmationToken, confirmationTokenMatches } from './confirmation-token';
 import { sanitizeSupporterName, sanitizeTipMessage } from './message';
@@ -183,19 +182,10 @@ export class TipsService {
       '',
     );
 
-    let destination: string | null = null;
     let init;
     try {
-      const connect = new ConnectService();
-      const payoutsReady = await connect.refreshPayoutReadiness(creator);
-      const connectedAccount = creator.bachsAccountId?.trim() || null;
-      destination =
-        payoutsReady && connectedAccount && !connectedAccount.startsWith('acct_stub_')
-          ? connectedAccount
-          : null;
-      const platformFee = destination
-        ? computePlatformFee(amountResult.amount)
-        : null;
+      const feePercent = platformFeePercent();
+      const platformFee = computePlatformFee(amountResult.amount, feePercent);
       const confirmUrl = `${appUrl}/support/confirm/${tipId}?token=${encodeURIComponent(confirmation.token)}`;
 
       init = await this.payments.initializePayment({
@@ -209,12 +199,13 @@ export class TipsService {
         cancelUrl: `${appUrl}/${creator.username}`,
         customerEmail: supporterEmail,
         customerName,
-        bachsConnectAccountId: destination,
-        platformFee,
         metadata: {
           tip_id: tipId,
           creator_username: creator.username,
-          ...(destination ? { settled_via: 'destination_charge', settledVia: 'destination_charge' } : { settledVia: 'platform_hold' }),
+          settledVia: 'platform_balance',
+          settled_via: 'platform_balance',
+          platform_fee: platformFee,
+          platform_fee_percent: String(feePercent),
         },
       });
     } catch (err) {
@@ -251,7 +242,9 @@ export class TipsService {
               source: 'tip_create',
               creatorUsername: creator.username,
               checkoutUrl: init.checkoutUrl,
-              settledVia: destination ? 'destination_charge' : 'platform_hold',
+              settledVia: 'platform_balance',
+              platformFee: computePlatformFee(amountResult.amount),
+              platformFeePercent: platformFeePercent(),
               providerMeta: init.metadata ?? {},
             },
             updatedAt: new Date(),

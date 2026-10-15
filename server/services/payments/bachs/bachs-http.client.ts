@@ -112,6 +112,65 @@ export interface BachsBalanceSettingsBody {
   };
 }
 
+export interface BachsBank {
+  code?: string;
+  bank_code?: string;
+  name?: string;
+  bank_name?: string;
+  currency?: string;
+  country?: string;
+}
+
+export interface BachsBanksResponse {
+  data?: BachsBank[];
+  banks?: BachsBank[];
+}
+
+export interface BachsResolveAccountResponse {
+  account_number?: string;
+  account_name?: string;
+  bank_code?: string;
+}
+
+export interface BachsCreatePayoutDestinationBody {
+  type: 'bank_account' | 'mobile_money' | 'crypto_wallet';
+  currency: string;
+  bank_code: string;
+  account_number: string;
+  name?: string;
+  label?: string;
+  account_name?: string;
+}
+
+export interface BachsPayoutDestinationResponse {
+  id: string;
+  type?: string;
+  currency?: string;
+  bank_code?: string;
+  account_number?: string;
+  account_name?: string;
+  is_usable?: boolean;
+  status?: string;
+}
+
+export interface BachsCreatePayoutBody {
+  destination: string;
+  amount: string;
+  currency?: string;
+  description?: string;
+  metadata?: Record<string, string>;
+}
+
+export interface BachsPayoutResponse {
+  id: string;
+  status?: string;
+  amount?: string;
+  currency?: string;
+  destination?: string;
+  fee?: string;
+  failure_reason?: string;
+}
+
 interface BachsErrorBody {
   detail?: string;
   error_code?: string;
@@ -242,6 +301,81 @@ export class BachsHttpClient {
       expectedStatuses: [200, 201],
       accountId,
     });
+  }
+
+  /** List local banks for a currency/country (NGN payouts). */
+  async listBanks(params: {
+    currency?: string;
+    country?: string;
+  }): Promise<BachsBank[]> {
+    const query = new URLSearchParams();
+    if (params.currency) query.set('currency', params.currency);
+    if (params.country) query.set('country', params.country);
+    const qs = query.toString();
+    const path = qs ? `/banks?${qs}` : '/banks';
+    const raw = await this.request<BachsBanksResponse | BachsBank[]>(
+      'GET',
+      path,
+      { expectedStatuses: [200] },
+    );
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw.data)) return raw.data;
+    if (Array.isArray(raw.banks)) return raw.banks;
+    return [];
+  }
+
+  /** Resolve NGN account name when Bachs supports lookup. */
+  async resolveBankAccount(input: {
+    bank_code: string;
+    account_number: string;
+    currency?: string;
+  }): Promise<BachsResolveAccountResponse> {
+    return this.request<BachsResolveAccountResponse>(
+      'POST',
+      '/banks/resolve',
+      {
+        body: {
+          bank_code: input.bank_code,
+          account_number: input.account_number,
+          currency: input.currency ?? 'NGN',
+        },
+        expectedStatuses: [200, 201],
+      },
+    );
+  }
+
+  async createPayoutDestination(
+    body: BachsCreatePayoutDestinationBody,
+    idempotencyKey: string,
+  ): Promise<BachsPayoutDestinationResponse> {
+    return this.request<BachsPayoutDestinationResponse>(
+      'POST',
+      '/payouts/destinations',
+      {
+        body,
+        idempotencyKey,
+        expectedStatuses: [200, 201],
+      },
+    );
+  }
+
+  async createPayout(
+    body: BachsCreatePayoutBody,
+    idempotencyKey: string,
+  ): Promise<BachsPayoutResponse> {
+    return this.request<BachsPayoutResponse>('POST', '/payouts', {
+      body,
+      idempotencyKey,
+      expectedStatuses: [200, 201],
+    });
+  }
+
+  async getPayout(payoutId: string): Promise<BachsPayoutResponse> {
+    return this.request<BachsPayoutResponse>(
+      'GET',
+      `/payouts/${encodeURIComponent(payoutId)}`,
+      { expectedStatuses: [200] },
+    );
   }
 
   private async request<T>(

@@ -142,6 +142,35 @@ export class BachsPaymentProvider implements PaymentProviderPort {
     const providerEventId = envelope.id;
     const data = envelope.data ?? {};
 
+    // Bank payout webhooks — handled separately from tip checkout fulfilment.
+    if (
+      eventType === 'payout.paid' ||
+      eventType === 'payout.failed' ||
+      eventType === 'payout.succeeded' ||
+      eventType.startsWith('payout.')
+    ) {
+      return Promise.resolve({
+        acknowledged: true,
+        providerEventId,
+        eventType,
+        tipId: undefined,
+        verification: undefined,
+        payout: {
+          id:
+            (typeof data.id === 'string' && data.id) ||
+            (typeof data.payout_id === 'string' && data.payout_id) ||
+            undefined,
+          status:
+            (typeof data.status === 'string' && data.status) ||
+            (eventType.includes('fail') ? 'failed' : 'paid'),
+          failureReason:
+            typeof data.failure_reason === 'string'
+              ? data.failure_reason
+              : null,
+        },
+      });
+    }
+
     const tipId =
       (typeof data.tip_id === 'string' && data.tip_id) ||
       (typeof data.reference === 'string' && data.reference) ||

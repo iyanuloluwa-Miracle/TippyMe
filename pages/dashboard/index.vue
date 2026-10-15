@@ -47,10 +47,10 @@
           <p v-if="dashboard.totals.converted" class="summary-note">Approximate total at current exchange rates. Original currency totals are below.</p>
           <p v-else-if="dashboard.totals.successfulSupport === null && dashboard.totals.byCurrency.length > 1" class="summary-note">Currencies are shown separately where conversion is unavailable.</p>
           <div class="settlement-split">
-            <div><span><i class="status-dot status-dot--mint" />Settled to Bachs</span><strong>{{ settledSummary || 'None recorded' }}</strong></div>
-            <div><span><i class="status-dot status-dot--amber" />Held by TippyMe</span><strong>{{ heldSummary || 'None recorded' }}</strong></div>
+            <div><span><i class="status-dot status-dot--mint" />Paid out to bank</span><strong>{{ settledSummary || 'None recorded' }}</strong></div>
+            <div><span><i class="status-dot status-dot--amber" />Collected tips</span><strong>{{ heldSummary || 'None recorded' }}</strong></div>
           </div>
-          <div class="summary-bottom"><span>Support received, not a withdrawable balance.</span><NuxtLink to="/dashboard/tips">View transactions <span aria-hidden="true">↗</span></NuxtLink></div>
+          <div class="summary-bottom"><span>Available to withdraw is in Payouts (after {{ platformFeeLabel }} fee).</span><NuxtLink to="/dashboard/tips">View transactions <span aria-hidden="true">↗</span></NuxtLink></div>
           <details v-if="dashboard.totals.converted" class="currency-details">
             <summary>Original currency totals</summary>
             <p v-for="row in dashboard.totals.byCurrency" :key="row.currency">{{ formatMoney(row.amount, row.currency) }} · {{ row.count }} tips</p>
@@ -59,14 +59,62 @@
 
         <section id="payouts" class="workspace-card payout-card" aria-labelledby="payout-heading">
           <div class="card-heading"><h2 id="payout-heading">Payouts, made clear</h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" class="card-symbol"><rect x="3" y="5" width="18" height="14" rx="3" /><path d="M3 10h18M7 15h3" /></svg></div>
-          <div class="payout-status" :class="{ 'payout-status--ready': settlementReady }"><span class="status-dot" />{{ settlementLabel }}</div>
+          <div class="payout-status" :class="{ 'payout-status--ready': bankReady }"><span class="status-dot" />{{ settlementLabel }}</div>
           <p class="payout-description">{{ payoutDescription }}</p>
-          <dl class="payout-facts"><div><dt>Destination</dt><dd>{{ settlementReady ? 'Bachs balance' : 'Complete setup' }}</dd></div><div><dt>Friday payouts</dt><dd>{{ fridayLabel }}</dd></div></dl>
-          <button v-if="!settlementReady" type="button" class="workspace-button workspace-button--primary" :disabled="connectBusy" @click="startConnect">{{ connectBusy ? 'Connecting…' : settlementOnboarding ? 'Finish payout setup' : 'Connect Bachs payouts' }} <span aria-hidden="true">→</span></button>
-          <button v-else-if="dashboard.settlement.automatedFridayPayout !== 'CONFIGURED'" type="button" class="workspace-button workspace-button--primary" :disabled="connectBusy" @click="enableFriday">{{ connectBusy ? 'Saving…' : 'Enable Friday payouts' }} <span aria-hidden="true">→</span></button>
-          <button v-else type="button" class="workspace-button workspace-button--quiet" :disabled="connectBusy" @click="startConnect">{{ connectBusy ? 'Opening…' : 'Manage Bachs setup' }} <span aria-hidden="true">↗</span></button>
-          <p v-if="connectError" class="inline-error" role="alert">{{ connectError }}</p>
-          <details class="payout-details"><summary>How settlement works</summary><p>{{ dashboard.settlement.message }}</p><p>The {{ platformFeeLabel }} platform fee applies to tips settled by destination charge. Held tips are not a withdrawable balance.</p></details>
+          <p v-if="dashboard.currency !== 'NGN'" class="inline-error" role="status">
+            Bank payouts currently require NGN. Change your preferred currency in profile settings to enable withdrawals.
+          </p>
+          <p v-if="payoutOverview" class="payout-balance"><span>Available</span><strong>{{ formatMoney(payoutOverview.availableBalance, payoutOverview.currency) }}</strong></p>
+          <dl class="payout-facts">
+            <div><dt>Bank</dt><dd>{{ payoutOverview?.method ? `${payoutOverview.method.bankName || 'Bank'} ···${payoutOverview.method.accountNumberLast4}` : 'Not saved' }}</dd></div>
+            <div><dt>Account name</dt><dd>{{ payoutOverview?.method?.accountName || '—' }}</dd></div>
+          </dl>
+
+          <form v-if="!bankReady && dashboard.currency === 'NGN'" class="payout-bank-form" @submit.prevent="saveBank">
+            <label>
+              <span>Bank</span>
+              <select v-model="bankCode" required :disabled="payoutBusy || !banks.length">
+                <option value="" disabled>Select bank</option>
+                <option v-for="bank in banks" :key="bank.code" :value="bank.code">{{ bank.name }}</option>
+              </select>
+            </label>
+            <label>
+              <span>Account number</span>
+              <input v-model="accountNumber" type="text" inputmode="numeric" pattern="\d{10}" maxlength="10" placeholder="0123456789" required :disabled="payoutBusy" />
+            </label>
+            <button type="submit" class="workspace-button workspace-button--primary" :disabled="payoutBusy">{{ payoutBusy ? 'Saving…' : 'Save bank account' }} <span aria-hidden="true">→</span></button>
+          </form>
+
+          <div v-else class="payout-actions">
+            <button type="button" class="workspace-button workspace-button--primary" :disabled="payoutBusy || !canRequestPayout" @click="requestPayout">{{ payoutBusy ? 'Sending…' : 'Request payout' }} <span aria-hidden="true">→</span></button>
+            <button type="button" class="workspace-button workspace-button--quiet" :disabled="payoutBusy" @click="showBankForm = !showBankForm">{{ showBankForm ? 'Hide bank form' : 'Update bank' }}</button>
+          </div>
+
+          <form v-if="bankReady && showBankForm" class="payout-bank-form" @submit.prevent="saveBank">
+            <label>
+              <span>Bank</span>
+              <select v-model="bankCode" required :disabled="payoutBusy">
+                <option v-for="bank in banks" :key="bank.code" :value="bank.code">{{ bank.name }}</option>
+              </select>
+            </label>
+            <label>
+              <span>Account number</span>
+              <input v-model="accountNumber" type="text" inputmode="numeric" pattern="\d{10}" maxlength="10" required :disabled="payoutBusy" />
+            </label>
+            <button type="submit" class="workspace-button workspace-button--primary" :disabled="payoutBusy">{{ payoutBusy ? 'Saving…' : 'Update bank account' }}</button>
+          </form>
+
+          <p v-if="payoutError" class="inline-error" role="alert">{{ payoutError }}</p>
+
+          <ul v-if="payoutOverview?.recentRequests?.length" class="payout-history">
+            <li v-for="row in payoutOverview.recentRequests.slice(0, 4)" :key="row.id">
+              <span>{{ formatMoney(row.amount, row.currency) }}</span>
+              <span>{{ row.status }}</span>
+              <time :datetime="row.createdAt">{{ formatTipDate(row.createdAt) }}</time>
+            </li>
+          </ul>
+
+          <details class="payout-details"><summary>How settlement works</summary><p>{{ dashboard.settlement.message }}</p><p>A {{ platformFeeLabel }} platform fee is deducted when computing your withdrawable balance. Tips collect via Bachs; TippyMe pays your saved bank account when you request a payout.</p></details>
         </section>
       </div>
 
@@ -129,7 +177,9 @@
 <script setup lang="ts">
 import type {
   CreatorDashboard,
+  CreatorPayoutOverview,
   CreatorTip,
+  PayoutBankOption,
 } from '~/types/api';
 import { ApiClientError } from '~/services/api';
 
@@ -179,30 +229,45 @@ const greeting = computed(() => {
   return 'Good evening';
 });
 
-const settlementReady = computed(
-  () => dashboard.value?.settlement.destinationChargesEnabled === true,
+const payoutOverview = ref<CreatorPayoutOverview | null>(null);
+const banks = ref<PayoutBankOption[]>([]);
+const bankCode = ref('');
+const accountNumber = ref('');
+const showBankForm = ref(false);
+const payoutBusy = ref(false);
+const payoutError = ref<string | null>(null);
+
+const bankReady = computed(
+  () =>
+    payoutOverview.value?.method?.ready === true ||
+    dashboard.value?.settlement.bankPayoutReady === true,
 );
 
-const settlementOnboarding = computed(
-  () => dashboard.value?.settlement.readiness === 'ONBOARDING',
-);
-const payoutDescription = computed(() => settlementReady.value
-  ? 'New eligible tips settle to your connected Bachs balance. Your payout settings are right here.'
-  : settlementOnboarding.value
-    ? 'You’re almost there. Finish Bachs onboarding to enable payouts for new tips.'
-    : 'Connect your Bachs account to start settling new tips to your creator balance.');
+const payoutDescription = computed(() => {
+  if (bankReady.value) {
+    return 'Tips collect on TippyMe via Bachs. Request a payout to your saved bank account anytime.';
+  }
+  if (dashboard.value?.settlement.readiness === 'PENDING') {
+    return 'Bank details saved. Waiting for Bachs to approve your payout destination.';
+  }
+  if (dashboard.value?.settlement.readiness === 'FAILED') {
+    return 'We could not register that bank account. Check the details and save again.';
+  }
+  return 'Add your Nigerian bank account to receive payouts — no Bachs Connect setup required.';
+});
 
 const settlementLabel = computed(() => {
-  if (settlementReady.value) return 'Bachs payouts enabled';
-  if (settlementOnboarding.value) return 'Onboarding incomplete';
+  if (bankReady.value) return 'Bank payout ready';
+  if (dashboard.value?.settlement.readiness === 'PENDING') return 'Bank pending approval';
+  if (dashboard.value?.settlement.readiness === 'FAILED') return 'Bank setup failed';
   return 'Not configured yet';
 });
 
-const fridayLabel = computed(() => {
-  const status = dashboard.value?.settlement.automatedFridayPayout;
-  if (status === 'CONFIGURED') return 'Enabled';
-  if (status === 'NOT_ENABLED' && settlementReady.value) return 'Not enabled';
-  return 'After setup';
+const canRequestPayout = computed(() => {
+  if (dashboard.value?.currency !== 'NGN') return false;
+  const bal = Number(payoutOverview.value?.availableBalance ?? 0);
+  const min = Number(payoutOverview.value?.minPayoutAmount ?? 1000);
+  return Number.isFinite(bal) && bal >= min;
 });
 
 function moneyList(rows: { amount: string; currency: string }[] | undefined) {
@@ -211,59 +276,73 @@ function moneyList(rows: { amount: string; currency: string }[] | undefined) {
 }
 
 const platformFeeLabel = computed(() => {
-  const percent = dashboard.value?.platformFeePercent ?? 5;
+  const percent =
+    payoutOverview.value?.platformFeePercent ??
+    dashboard.value?.platformFeePercent ??
+    5;
   return `${percent}%`;
 });
 
 const heldSummary = computed(() => moneyList(dashboard.value?.totals.heldByCurrency));
 const settledSummary = computed(() => moneyList(dashboard.value?.totals.settledByCurrency));
 
-const connectBusy = ref(false);
-const connectError = ref<string | null>(null);
-
-async function startConnect() {
-  connectBusy.value = true;
-  connectError.value = null;
+async function loadPayout() {
   try {
-    const result = await api.startConnectOnboarding();
+    const [overview, bankList] = await Promise.all([
+      api.getPayoutOverview(),
+      api.listPayoutBanks(),
+    ]);
+    payoutOverview.value = overview;
+    banks.value = bankList.banks;
     if (dashboard.value) {
-      dashboard.value.settlement = result.settlement;
+      dashboard.value.settlement = overview.settlement;
+      dashboard.value.platformFeePercent = overview.platformFeePercent;
     }
-    if (result.onboardingUrl) {
-      openBachsOnboardingUrl(result.onboardingUrl);
-      return;
-    }
-    if (result.settlement.automatedFridayPayout !== 'CONFIGURED') {
-      const friday = await api.enableFridayPayout();
-      if (dashboard.value) {
-        dashboard.value.settlement = friday.settlement;
-      }
+    if (overview.method && !bankCode.value) {
+      bankCode.value = overview.method.bankCode;
     }
   } catch (err) {
-    connectError.value =
+    payoutError.value =
       err instanceof ApiClientError
         ? err.message
-        : 'Could not start Bachs Connect.';
-  } finally {
-    connectBusy.value = false;
+        : 'Could not load payout details.';
   }
 }
 
-async function enableFriday() {
-  connectBusy.value = true;
-  connectError.value = null;
+async function saveBank() {
+  payoutBusy.value = true;
+  payoutError.value = null;
   try {
-    const result = await api.enableFridayPayout();
-    if (dashboard.value) {
-      dashboard.value.settlement = result.settlement;
-    }
+    const selected = banks.value.find((b) => b.code === bankCode.value);
+    const overview = await api.savePayoutMethod({
+      bankCode: bankCode.value,
+      accountNumber: accountNumber.value,
+      bankName: selected?.name,
+    });
+    payoutOverview.value = overview;
+    if (dashboard.value) dashboard.value.settlement = overview.settlement;
+    accountNumber.value = '';
+    showBankForm.value = false;
   } catch (err) {
-    connectError.value =
-      err instanceof ApiClientError
-        ? err.message
-        : 'Could not enable Friday payouts.';
+    payoutError.value =
+      err instanceof ApiClientError ? err.message : 'Could not save bank details.';
   } finally {
-    connectBusy.value = false;
+    payoutBusy.value = false;
+  }
+}
+
+async function requestPayout() {
+  payoutBusy.value = true;
+  payoutError.value = null;
+  try {
+    const overview = await api.requestPayout();
+    payoutOverview.value = overview;
+    if (dashboard.value) dashboard.value.settlement = overview.settlement;
+  } catch (err) {
+    payoutError.value =
+      err instanceof ApiClientError ? err.message : 'Could not request payout.';
+  } finally {
+    payoutBusy.value = false;
   }
 }
 
@@ -302,6 +381,7 @@ async function loadAll() {
     const result = await api.getMyDashboard();
     dashboard.value = result.dashboard;
     void loadTips();
+    void loadPayout();
   } catch (err) {
     if (err instanceof ApiClientError && err.statusCode === 401) {
       auth.setUser(null);
@@ -407,10 +487,19 @@ function formatMoney(amount: string, currency: string) {
 .payout-status { display: flex; align-items: center; gap: 8px; width: fit-content; margin-top: 20px; padding: 4px 10px; border-radius: 8px; background: #fff6e7; color: #986015; font-size: 12px; font-weight: 700; }
 .payout-status--ready { color: #237350; background: #edf8f1; }
 .payout-description { color: var(--workspace-muted); font-size: 14px; line-height: 1.5; margin: 12px 0 16px; }
-.payout-facts { display: grid; gap: 8px; margin: 0 0 20px; font-size: 13px; }.payout-facts div { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }.payout-facts dt { color: var(--workspace-muted); }.payout-facts dd { margin: 0; font-weight: 700; }
+.payout-facts { display: grid; gap: 8px; margin: 0 0 16px; font-size: 13px; }.payout-facts div { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }.payout-facts dt { color: var(--workspace-muted); }.payout-facts dd { margin: 0; font-weight: 700; }
+.payout-balance { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 0 0 16px; padding: 12px 14px; border-radius: 12px; background: #f6f0ff; }
+.payout-balance span { color: var(--workspace-muted); font-size: 13px; }.payout-balance strong { font-size: 22px; letter-spacing: -.03em; }
+.payout-bank-form { display: grid; gap: 12px; margin: 0 0 12px; }
+.payout-bank-form label { display: grid; gap: 6px; font-size: 13px; color: var(--workspace-muted); }
+.payout-bank-form :is(select, input) { min-height: 40px; padding: 8px 12px; border: 1px solid #e7dfee; border-radius: 12px; color: #261b38; background: #fff; }
+.payout-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.payout-history { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+.payout-history li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; font-size: 12px; color: var(--workspace-muted); padding-top: 8px; border-top: 1px solid #eee8f4; }
+.payout-history li span:first-child { color: #261b38; font-weight: 700; }
 .workspace-button { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 40px; padding: 8px 16px; border: 1px solid #e7dfee; border-radius: 12px; font-size: 13px; font-weight: 800; text-decoration: none; transition: background .16s ease, border-color .16s ease; }
 .workspace-button--primary { color: #fff; background: #7540b4; border-color: #7540b4; }.workspace-button--primary:hover { background: #603197; }.workspace-button--quiet { color: #6d3db0; background: #ffffff; }.workspace-button--quiet:hover { background: #f1eafa; border-color: #e3caff55; }
-.workspace-button:disabled { opacity: .6; cursor: wait; }.payout-card > .workspace-button { margin-top: auto; }
+.workspace-button:disabled { opacity: .6; cursor: not-allowed; }
 .payout-details { margin-top: 12px; color: var(--workspace-muted); font-size: 12px; line-height: 1.5; }.payout-details summary { cursor: pointer; }.payout-details p { margin-top: 8px; }
 .metrics-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 24px 0; }
 .metric-card { position: relative; display: flex; align-items: flex-start; gap: 16px; padding: 24px; background: #ffffff; }

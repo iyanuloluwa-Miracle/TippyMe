@@ -46,7 +46,28 @@ export default defineApiHandler(async (event) => {
     throw new ApiError(401, 'WEBHOOK_INVALID', 'Invalid webhook signature.');
   }
 
-  if (!parsed.providerEventId || !parsed.eventType || !parsed.verification) {
+  if (!parsed.providerEventId || !parsed.eventType) {
+    throw new ApiError(
+      400,
+      'WEBHOOK_MALFORMED',
+      'Webhook acknowledged but missing required fields.',
+    );
+  }
+
+  if (parsed.payout?.id) {
+    const { PayoutService } = await import(
+      '../../services/creators/payout.service'
+    );
+    await new PayoutService().applyProviderPayoutUpdate({
+      bachsPayoutId: parsed.payout.id,
+      status: parsed.payout.status || parsed.eventType,
+      failureReason: parsed.payout.failureReason,
+    });
+    setResponseStatus(event, 200);
+    return { ok: true, outcome: 'payout_updated' };
+  }
+
+  if (!parsed.verification) {
     throw new ApiError(
       400,
       'WEBHOOK_MALFORMED',

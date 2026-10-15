@@ -4,7 +4,7 @@ import type {
   SocialPlatform,
 } from '../../db/types';
 import { decimalToAmountString } from '../tips/tips.types';
-import { hasLiveBachsConnect } from './payout-readiness';
+import { normalizePageThemeId } from '../../../utils/page-themes';
 
 export interface CreatorSocialLinkDto {
   id: string;
@@ -25,8 +25,9 @@ export interface CreatorProfileDto {
   verificationStatus: 'NONE' | 'VERIFIED';
   currency: string;
   payoutCountry: string | null;
-  /** True when a live Bachs Connect account is linked — payout country cannot change. */
+  /** Legacy field — Connect locks removed; always false. */
   payoutCountryLocked: boolean;
+  pageThemeId: string;
   suggestedTipAmounts: string[];
   isActive: boolean;
   goalTitle: string | null;
@@ -76,6 +77,7 @@ export interface UpdateCreatorSettingsInput {
   thankYouMessage?: string | null;
   currency?: string;
   payoutCountry?: string | null;
+  pageThemeId?: string;
   suggestedTipAmounts?: string[];
   goalTitle?: string | null;
   goalTargetAmount?: string | null;
@@ -111,7 +113,8 @@ export function toCreatorProfileDto(
     verificationStatus: profile.verificationStatus === 'VERIFIED' ? 'VERIFIED' : 'NONE',
     currency: profile.currency,
     payoutCountry: profile.payoutCountry ?? null,
-    payoutCountryLocked: hasLiveBachsConnect(profile.bachsAccountId),
+    payoutCountryLocked: false,
+    pageThemeId: normalizePageThemeId(profile.pageThemeId),
     suggestedTipAmounts: parseSuggestedTipAmounts(profile.suggestedTipAmounts),
     isActive: profile.isActive,
     goalTitle: profile.goalTitle ?? null,

@@ -228,6 +228,7 @@ export function createApiClient(
       thankYouMessage?: string | null;
       currency?: string;
       payoutCountry?: string | null;
+      pageThemeId?: string;
       suggestedTipAmounts?: string[];
       goalTitle?: string | null;
       goalTargetAmount?: string | null;
@@ -238,17 +239,30 @@ export function createApiClient(
         body: JSON.stringify(payload),
       }),
 
-    startConnectOnboarding: () =>
-      request<{
-        settlement: import('~/types/api').CreatorSettlementStatus;
-        onboardingUrl: string | null;
-        stub: boolean;
-      }>('/api/creators/me/connect/onboard', { method: 'POST' }),
+    getPayoutOverview: () =>
+      request<import('~/types/api').CreatorPayoutOverview>(
+        '/api/creators/me/payout',
+      ),
 
-    enableFridayPayout: () =>
-      request<{ settlement: import('~/types/api').CreatorSettlementStatus }>(
-        '/api/creators/me/connect/friday-payout',
-        { method: 'POST' },
+    listPayoutBanks: () =>
+      request<{ banks: import('~/types/api').PayoutBankOption[] }>(
+        '/api/creators/me/payout/banks',
+      ),
+
+    savePayoutMethod: (payload: {
+      bankCode: string;
+      accountNumber: string;
+      bankName?: string;
+    }) =>
+      request<import('~/types/api').CreatorPayoutOverview>(
+        '/api/creators/me/payout/method',
+        { method: 'POST', body: JSON.stringify(payload) },
+      ),
+
+    requestPayout: (payload?: { amount?: string }) =>
+      request<import('~/types/api').CreatorPayoutOverview>(
+        '/api/creators/me/payout/request',
+        { method: 'POST', body: JSON.stringify(payload ?? {}) },
       ),
 
     setPageActive: (active: boolean) =>

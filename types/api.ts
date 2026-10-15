@@ -42,6 +42,7 @@ export interface CreatorProfile {
   currency: string;
   payoutCountry: string | null;
   payoutCountryLocked?: boolean;
+  pageThemeId?: string;
   suggestedTipAmounts: string[];
   isActive: boolean;
   goalTitle: string | null;
@@ -218,13 +219,44 @@ export interface CreatorAnalytics {
 }
 
 export interface CreatorSettlementStatus {
-  readiness: 'NOT_CONFIGURED' | 'ONBOARDING' | 'CONNECTED';
-  bachsConnectAccountId: string | null;
-  tippyHoldsWithdrawableBalance: false;
-  tippyInitiatedPayoutAvailable: false;
-  automatedFridayPayout: 'NOT_ENABLED' | 'CONFIGURED' | 'FUTURE_CAPABILITY';
-  destinationChargesEnabled: boolean;
+  readiness: 'NOT_CONFIGURED' | 'PENDING' | 'READY' | 'FAILED';
+  bankPayoutReady: boolean;
+  tippyInitiatedPayoutAvailable: boolean;
   message: string;
+}
+
+export interface PayoutBankOption {
+  code: string;
+  name: string;
+}
+
+export interface MaskedPayoutMethod {
+  bankCode: string;
+  bankName: string | null;
+  accountNumberLast4: string;
+  accountName: string | null;
+  payoutCurrency: string;
+  status: 'PENDING_DESTINATION' | 'READY' | 'FAILED';
+  ready: boolean;
+}
+
+export interface PayoutRequestRow {
+  id: string;
+  amount: string;
+  currency: string;
+  status: 'REQUESTED' | 'PROCESSING' | 'PAID' | 'FAILED';
+  createdAt: string;
+  failureReason: string | null;
+}
+
+export interface CreatorPayoutOverview {
+  settlement: CreatorSettlementStatus;
+  method: MaskedPayoutMethod | null;
+  availableBalance: string;
+  currency: string;
+  platformFeePercent: number;
+  minPayoutAmount: string;
+  recentRequests: PayoutRequestRow[];
 }
 
 export interface CreatorTipsPage {

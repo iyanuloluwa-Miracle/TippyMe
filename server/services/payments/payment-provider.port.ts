@@ -72,6 +72,12 @@ export interface HandleWebhookResult {
   /** TippyMe tip id when resolvable — status transitions happen in PaymentsService. */
   tipId?: string;
   verification?: VerifyPaymentResult;
+  /** Bank payout webhook payload (platform → creator bank). */
+  payout?: {
+    id?: string;
+    status?: string;
+    failureReason?: string | null;
+  };
 }
 
 export interface PaymentProviderPort {

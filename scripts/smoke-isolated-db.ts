@@ -10,7 +10,8 @@ const { UserModel, CreatorProfileModel, OtpChallengeModel, RateLimitModel, conne
 const { CreatorsService } = await import('../server/services/creators/creators.service');
 const { signAccessToken, verifyAccessToken } = await import('../server/lib/auth');
 const { AuthService } = await import('../server/services/auth.service');
-const { ConnectService } = await import('../server/services/creators/connect.service');
+const { PayoutService } = await import('../server/services/creators/payout.service');
+const { CreatorPayoutMethodModel } = await import('../server/db/index');
 const { consumeRateLimit } = await import('../server/lib/rate-limit');
 const bcrypt = await import('bcryptjs');
 
@@ -82,20 +83,21 @@ try {
       await consumeRateLimit(`codex-smoke:${stamp}`, 1, 60_000) == null) {
     throw new Error('Shared rate limit smoke test failed');
   }
-  await CreatorProfileModel.updateOne({ _id: profileId }, { $set: { bachsAccountId: 'acct_codex_test' } });
-  const connect = new ConnectService({
-    isConfigured: true,
-    updateBalanceSettings: async () => { throw new Error('Simulated provider failure'); },
-  } as unknown as ConstructorParameters<typeof ConnectService>[0]);
-  let failed = false;
-  try { await connect.enableFridayPayout(userId); } catch { failed = true; }
-  const payoutProfile = await CreatorProfileModel.findOne({ _id: profileId });
-  if (!failed || payoutProfile?.fridayPayoutEnabled) throw new Error('Friday payout failure was saved as configured');
-  console.info('Isolated user, session, dashboard, currency, reset, rate limit, and payout failure smoke tests passed');
+  // Bank payout path: save method with stub Bachs client (no API key → local stub destination).
+  const payout = await new PayoutService().saveMethod(userId, {
+    bankCode: '058',
+    accountNumber: '0123456789',
+    bankName: 'Guaranty Trust Bank',
+  });
+  if (!payout.method?.ready || payout.settlement.readiness !== 'READY') {
+    throw new Error('Bank payout method smoke test failed');
+  }
+  console.info('Isolated user, session, dashboard, currency, reset, rate limit, and bank payout smoke tests passed');
 } finally {
   if (mongoose.connection.name === 'cheer_codex_test') {
     await OtpChallengeModel.deleteMany({ email: `codex-${stamp}@example.invalid` });
     await RateLimitModel.deleteMany({ _id: { $regex: `^codex-smoke:${stamp}:` } });
+    await CreatorPayoutMethodModel.deleteOne({ creatorId: profileId });
     await CreatorProfileModel.deleteOne({ _id: profileId });
     await UserModel.deleteOne({ _id: userId });
   }
