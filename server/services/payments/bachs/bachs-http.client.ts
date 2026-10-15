@@ -122,14 +122,17 @@ export interface BachsBank {
 }
 
 export interface BachsBanksResponse {
+  country?: string;
   data?: BachsBank[];
   banks?: BachsBank[];
 }
 
 export interface BachsResolveAccountResponse {
-  account_number?: string;
-  account_name?: string;
+  resolved?: boolean;
+  account_number?: string | null;
+  account_name?: string | null;
   bank_code?: string;
+  message?: string | null;
 }
 
 export interface BachsCreatePayoutDestinationBody {
@@ -303,16 +306,20 @@ export class BachsHttpClient {
     });
   }
 
-  /** List local banks for a currency/country (NGN payouts). */
+  /**
+   * List local banks for a payout country.
+   * Docs: GET /v1/reference/banks?country=NG
+   */
   async listBanks(params: {
     currency?: string;
     country?: string;
   }): Promise<BachsBank[]> {
     const query = new URLSearchParams();
-    if (params.currency) query.set('currency', params.currency);
     if (params.country) query.set('country', params.country);
+    // Currency is not a documented query param on this endpoint.
+    void params.currency;
     const qs = query.toString();
-    const path = qs ? `/banks?${qs}` : '/banks';
+    const path = qs ? `/reference/banks?${qs}` : '/reference/banks';
     const raw = await this.request<BachsBanksResponse | BachsBank[]>(
       'GET',
       path,
@@ -324,20 +331,24 @@ export class BachsHttpClient {
     return [];
   }
 
-  /** Resolve NGN account name when Bachs supports lookup. */
+  /**
+   * Resolve account holder name before registering a destination.
+   * Docs: POST /v1/misc/bank-accounts/resolve
+   */
   async resolveBankAccount(input: {
     bank_code: string;
     account_number: string;
     currency?: string;
+    country?: string;
   }): Promise<BachsResolveAccountResponse> {
     return this.request<BachsResolveAccountResponse>(
       'POST',
-      '/banks/resolve',
+      '/misc/bank-accounts/resolve',
       {
         body: {
           bank_code: input.bank_code,
           account_number: input.account_number,
-          currency: input.currency ?? 'NGN',
+          country: input.country ?? 'NG',
         },
         expectedStatuses: [200, 201],
       },

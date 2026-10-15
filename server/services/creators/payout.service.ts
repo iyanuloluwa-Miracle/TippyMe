@@ -61,9 +61,10 @@ const NGN_BANKS_FALLBACK: { code: string; name: string }[] = [
   { code: '215', name: 'Unity Bank' },
   { code: '035', name: 'Wema Bank' },
   { code: '057', name: 'Zenith Bank' },
-  { code: '999001', name: 'OPay' },
-  { code: '999002', name: 'PalmPay' },
-  { code: '999003', name: 'Kuda Bank' },
+  // Codes from Bachs GET /v1/reference/banks?country=NG (not Paystack placeholders).
+  { code: '305', name: 'Opay (Paycom)' },
+  { code: '100033', name: 'PALMPAY' },
+  { code: '50211', name: 'Kuda Micro-finance Bank' },
 ];
 
 export interface PayoutBankOption {
@@ -107,7 +108,6 @@ export class PayoutService {
     if (this.http.isConfigured) {
       try {
         const banks = await this.http.listBanks({
-          currency: 'NGN',
           country: 'NG',
         });
         const mapped = banks
@@ -198,11 +198,23 @@ export class PayoutService {
         const resolved = await this.http.resolveBankAccount({
           bank_code: bankCode,
           account_number: accountNumber,
-          currency: 'NGN',
+          country: 'NG',
         });
+        if (resolved.resolved === false) {
+          throw new ApiError(
+            400,
+            'ACCOUNT_UNRESOLVED',
+            resolved.message?.trim() ||
+              'That account number could not be verified for the selected bank. Check the bank and number, then try again.',
+          );
+        }
         accountName = resolved.account_name?.trim() || null;
-      } catch {
-        // Resolve is best-effort; destination create still validates.
+      } catch (err) {
+        if (err instanceof ApiError) throw err;
+        // Resolve failed at the network/API layer; destination create may still succeed.
+        console.warn(
+          `Bachs resolve bank account failed: ${err instanceof Error ? err.message : 'unknown'}`,
+        );
       }
     }
 
@@ -576,6 +588,7 @@ export class PayoutService {
 
     try {
       const accountNumber = openSecret(method.accountNumberEncrypted);
+      // Match Bachs NGN docs: type, currency, bank_code, account_number (+ optional name/label).
       const destination = await this.http.createPayoutDestination(
         {
           type: 'bank_account',
@@ -584,18 +597,24 @@ export class PayoutService {
           account_number: accountNumber,
           name: method.accountName || profile.displayName,
           label: `TippyMe @${profile.username}`,
-          account_name: method.accountName || undefined,
         },
-        `dest_${method.id}_${method.accountNumberLast4}`.slice(0, 255),
+        // Include bank + account so retries after fixing details are not stuck on a cached failure.
+        `dest_${method.id}_${method.bankCode}_${method.accountNumberLast4}`.slice(
+          0,
+          255,
+        ),
       );
 
+      // Docs: trust is_usable; sandbox often auto-approves, live may stay pending_review.
+      const status = (destination.status || '').toLowerCase();
+      const statusBlocks =
+        status === 'rejected' ||
+        status === 'failed' ||
+        status === 'disabled';
       const ready =
-        destination.is_usable !== false &&
         Boolean(destination.id) &&
-        (destination.status == null ||
-          ['active', 'approved', 'usable', 'ready'].includes(
-            destination.status.toLowerCase(),
-          ));
+        !statusBlocks &&
+        destination.is_usable !== false;
 
       const next = {
         ...method,
@@ -623,8 +642,17 @@ export class PayoutService {
     } catch (err) {
       const detail =
         err instanceof BachsProviderError
-          ? `Bachs could not register this bank account (${err.kind}).`
+          ? this.destinationFailureMessage(err)
           : 'Could not register bank account with Bachs.';
+      const clientStatus =
+        err instanceof BachsProviderError &&
+        (err.kind === 'VALIDATION' ||
+          err.kind === 'NOT_FOUND' ||
+          (err.providerErrorCode || '').toUpperCase() ===
+            'BANK_ROUTING_DETAILS_INVALID' ||
+          (err.providerErrorCode || '').toUpperCase() === 'VALIDATION_ERROR')
+          ? 400
+          : 502;
       await CreatorPayoutMethodModel.updateOne(
         { _id: method.id },
         {
@@ -638,8 +666,24 @@ export class PayoutService {
       console.error(
         `Payout destination failed method=${method.id}: ${err instanceof Error ? err.message : 'unknown'}`,
       );
-      throw new ApiError(502, 'PAYOUT_DESTINATION_FAILED', detail);
+      throw new ApiError(clientStatus, 'PAYOUT_DESTINATION_FAILED', detail);
     }
+  }
+
+  private destinationFailureMessage(err: BachsProviderError): string {
+    const code = (err.providerErrorCode || '').toUpperCase();
+    if (
+      code === 'BANK_ROUTING_DETAILS_INVALID' ||
+      code === 'VALIDATION_ERROR' ||
+      err.kind === 'VALIDATION' ||
+      err.kind === 'NOT_FOUND'
+    ) {
+      return 'That bank account could not be verified. Pick the bank from the list (e.g. Opay (Paycom)) and confirm the 10-digit account number.';
+    }
+    if (code === 'PAYOUT_CURRENCY_NOT_ENABLED') {
+      return 'NGN bank payouts are not enabled on this Bachs account yet.';
+    }
+    return `Bachs could not register this bank account (${err.kind}).`;
   }
 
   private mapPayoutStatus(raw?: string | null): PayoutRequest['status'] {

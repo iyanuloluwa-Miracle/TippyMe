@@ -299,7 +299,8 @@ async function loadPayout() {
       dashboard.value.platformFeePercent = overview.platformFeePercent;
     }
     if (overview.method && !bankCode.value) {
-      bankCode.value = overview.method.bankCode;
+      const known = bankList.banks.some((b) => b.code === overview.method!.bankCode);
+      bankCode.value = known ? overview.method.bankCode : '';
     }
   } catch (err) {
     payoutError.value =
@@ -326,6 +327,8 @@ async function saveBank() {
   } catch (err) {
     payoutError.value =
       err instanceof ApiClientError ? err.message : 'Could not save bank details.';
+    // Refresh so FAILED method + account name from a partial save are visible.
+    await loadPayout().catch(() => undefined);
   } finally {
     payoutBusy.value = false;
   }
