@@ -140,7 +140,11 @@ export class CreatorsService {
     }
 
     // Notes only — weekly tip totals stay private on the creator dashboard.
-    const [noteDocs, lifetime] = await Promise.all([
+    const activitySince = new Date();
+    activitySince.setUTCDate(activitySince.getUTCDate() - 83);
+    activitySince.setUTCHours(0, 0, 0, 0);
+
+    const [noteDocs, lifetime, activityTips] = await Promise.all([
       TipModel.find({
         creatorId: profile.id,
         status: TipStatus.PAID,
@@ -153,6 +157,13 @@ export class CreatorsService {
         creatorId: profile.id,
         status: TipStatus.PAID,
       }),
+      TipModel.find({
+        creatorId: profile.id,
+        status: TipStatus.PAID,
+        createdAt: { $gte: activitySince },
+      })
+        .select('createdAt')
+        .lean<LeanDoc[]>(),
     ]);
 
     const recentSupporterNotes = toPlainList<Tip>(noteDocs)
@@ -183,6 +194,7 @@ export class CreatorsService {
         return goal;
       })(),
       recentSupporterNotes,
+      supportActivity: this.buildSupportActivity(activityTips, activitySince),
       platformFeePercent: platformFeePercent(),
     };
   }
@@ -369,12 +381,19 @@ export class CreatorsService {
       currency?: AllowedCurrency;
       payoutCountry?: string | null;
       pageThemeId?: string;
+      coverImageUrl?: string | null;
       suggestedTipAmounts?: string[];
       goalTitle?: string | null;
       goalTargetAmount?: string | null;
       goalActive?: boolean;
       amountBasis?: CreatorProfile['amountBasis'];
     } = {};
+    if (dto.coverImageUrl !== undefined) {
+      data.coverImageUrl =
+        dto.coverImageUrl === null || dto.coverImageUrl.trim() === ''
+          ? null
+          : this.requireCoverImageUrl(dto.coverImageUrl);
+    }
     if (dto.supportMessage !== undefined) {
       data.supportMessage =
         dto.supportMessage === null
@@ -992,6 +1011,45 @@ export class CreatorsService {
       );
     }
     return avatarUrl;
+  }
+
+  private requireCoverImageUrl(raw: string): string {
+    const coverImageUrl = normalizeSavedAvatarUrl(raw.trim());
+    if (!coverImageUrl || !isAllowedAvatarUrl(coverImageUrl)) {
+      throw new ApiError(
+        400,
+        'INVALID_COVER_IMAGE',
+        'Upload a cover image from TippyMe before saving.',
+      );
+    }
+    return coverImageUrl;
+  }
+
+  /** Build a continuous 84-day (12-week) paid-tip heatmap series. */
+  private buildSupportActivity(
+    tips: LeanDoc[],
+    since: Date,
+  ): { date: string; count: number }[] {
+    const counts = new Map<string, number>();
+    for (const tip of tips) {
+      const createdAt = tip.createdAt instanceof Date
+        ? tip.createdAt
+        : new Date(String(tip.createdAt));
+      if (Number.isNaN(createdAt.getTime())) continue;
+      const key = createdAt.toISOString().slice(0, 10);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+
+    const days: { date: string; count: number }[] = [];
+    const cursor = new Date(since);
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    while (cursor <= today) {
+      const key = cursor.toISOString().slice(0, 10);
+      days.push({ date: key, count: counts.get(key) ?? 0 });
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+    return days;
   }
 
   private requireValidDisplayName(raw: string): string {

@@ -20,6 +20,7 @@ export interface CreatorProfileDto {
   displayName: string;
   bio: string | null;
   avatarUrl: string | null;
+  coverImageUrl: string | null;
   supportMessage: string | null;
   thankYouMessage: string | null;
   verificationStatus: 'NONE' | 'VERIFIED';
@@ -78,6 +79,7 @@ export interface UpdateCreatorSettingsInput {
   currency?: string;
   payoutCountry?: string | null;
   pageThemeId?: string;
+  coverImageUrl?: string | null;
   suggestedTipAmounts?: string[];
   goalTitle?: string | null;
   goalTargetAmount?: string | null;
@@ -108,6 +110,7 @@ export function toCreatorProfileDto(
     displayName: profile.displayName,
     bio: profile.bio,
     avatarUrl: profile.avatarUrl,
+    coverImageUrl: profile.coverImageUrl ?? null,
     supportMessage: profile.supportMessage,
     thankYouMessage: profile.thankYouMessage ?? null,
     verificationStatus: profile.verificationStatus === 'VERIFIED' ? 'VERIFIED' : 'NONE',

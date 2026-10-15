@@ -3,7 +3,7 @@ import { ApiError } from '../../lib/errors';
 import { getServerEnv } from '../../lib/env';
 
 const AVATAR_FOLDER_PREFIX = 'avatars';
-const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+export const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 const TOKEN_TTL_SECONDS = 15 * 60;
 
 const AVATAR_CONTENT_TYPES = new Set([
@@ -38,12 +38,17 @@ function extensionForContentType(contentType: string): string {
 }
 
 /**
- * Upload an avatar on the server (API key stays off the browser).
- * Avoids browser CORS / "Failed to fetch" against Byteship storage.
+ * Upload a public creator image (avatar or cover) via Byteship.
+ * API key stays on the server to avoid browser CORS issues.
  */
-export async function uploadAvatarForUser(
+export async function uploadCreatorImageForUser(
   userId: string,
-  input: { bytes: Buffer; contentType: string; filename?: string },
+  input: {
+    bytes: Buffer;
+    contentType: string;
+    filename?: string;
+    kind: 'avatar' | 'cover';
+  },
 ): Promise<{ url: string }> {
   const contentType = input.contentType.trim().toLowerCase();
   if (!AVATAR_CONTENT_TYPES.has(contentType)) {
@@ -66,10 +71,11 @@ export async function uploadAvatarForUser(
 
   const folder = avatarFolderForUser(userId);
   const ext = extensionForContentType(contentType);
-  const path = `${folder}/avatar.${ext}`;
+  const basename = input.kind === 'cover' ? 'cover' : 'avatar';
+  const path = `${folder}/${basename}.${ext}`;
   const file = new File(
     [new Uint8Array(input.bytes)],
-    input.filename?.trim() || `avatar.${ext}`,
+    input.filename?.trim() || `${basename}.${ext}`,
     { type: contentType },
   );
 
@@ -105,6 +111,22 @@ export async function uploadAvatarForUser(
   }
 }
 
+/** Upload an avatar on the server (API key stays off the browser). */
+export async function uploadAvatarForUser(
+  userId: string,
+  input: { bytes: Buffer; contentType: string; filename?: string },
+): Promise<{ url: string }> {
+  return uploadCreatorImageForUser(userId, { ...input, kind: 'avatar' });
+}
+
+/** Upload a wide cover / banner image for the public tip page. */
+export async function uploadCoverForUser(
+  userId: string,
+  input: { bytes: Buffer; contentType: string; filename?: string },
+): Promise<{ url: string }> {
+  return uploadCreatorImageForUser(userId, { ...input, kind: 'cover' });
+}
+
 export async function createAvatarUploadToken(userId: string): Promise<{
   token: string;
   expiresAt: string;
@@ -128,4 +150,4 @@ export async function createAvatarUploadToken(userId: string): Promise<{
   };
 }
 
-export { MAX_AVATAR_BYTES, AVATAR_FOLDER_PREFIX, AVATAR_CONTENT_TYPES };
+export { AVATAR_FOLDER_PREFIX, AVATAR_CONTENT_TYPES };

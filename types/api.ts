@@ -36,6 +36,7 @@ export interface CreatorProfile {
   displayName: string;
   bio: string | null;
   avatarUrl: string | null;
+  coverImageUrl?: string | null;
   supportMessage: string | null;
   thankYouMessage: string | null;
   verificationStatus: 'NONE' | 'VERIFIED';
@@ -72,11 +73,17 @@ export interface PublicSupporterNote {
   createdAt: string;
 }
 
+export interface SupportActivityDay {
+  date: string;
+  count: number;
+}
+
 export interface PublicCreatorPage {
   profile: CreatorProfile;
   tipsThisWeek: TipsThisWeek;
   supportGoal: SupportGoal | null;
   recentSupporterNotes: PublicSupporterNote[];
+  supportActivity?: SupportActivityDay[];
   platformFeePercent: number;
 }
 

@@ -11,7 +11,7 @@
         id="supporter-notes-heading"
         class="mt-1 text-xl font-bold tracking-tight text-cheer-ink"
       >
-        Notes with tips
+        A little wall of encouragement
       </h2>
     </div>
     <ul class="divide-y divide-black/5 px-5 sm:px-7">

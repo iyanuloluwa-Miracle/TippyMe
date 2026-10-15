@@ -72,6 +72,7 @@ const creatorProfileSchema = new Schema(
     displayName: { type: String, required: true },
     bio: { type: String, default: null },
     avatarUrl: { type: String, default: null },
+    coverImageUrl: { type: String, default: null },
     supportMessage: { type: String, default: null },
     thankYouMessage: { type: String, default: null, maxlength: 500 },
     verificationStatus: { type: String, enum: ['NONE', 'VERIFIED'], default: 'NONE' },

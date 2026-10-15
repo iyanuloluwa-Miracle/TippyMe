@@ -254,11 +254,18 @@ export interface TipsThisWeekDto {
   weekEnd: string;
 }
 
+export interface SupportActivityDayDto {
+  date: string;
+  count: number;
+}
+
 export interface PublicCreatorPageDto {
   profile: CreatorProfileDto;
   tipsThisWeek: TipsThisWeekDto;
   supportGoal: SupportGoalDto | null;
   recentSupporterNotes: PublicSupporterNoteDto[];
+  /** Daily paid-tip counts for the last ~12 weeks (public heatmap). */
+  supportActivity: SupportActivityDayDto[];
   /** Percent taken on destination-charge tips. 0 when unset. */
   platformFeePercent: number;
 }

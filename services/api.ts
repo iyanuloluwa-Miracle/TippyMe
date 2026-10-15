@@ -181,6 +181,16 @@ export function createApiClient(
       });
     },
 
+    /** Server-proxied cover / banner upload for the public tip page. */
+    uploadCover: (file: File) => {
+      const body = new FormData();
+      body.append('file', file);
+      return request<{ url: string }>('/api/creators/me/cover/upload', {
+        method: 'POST',
+        body,
+      });
+    },
+
     listMyTips: (query?: ListMyTipsQuery) => {
       const params = new URLSearchParams();
       if (query?.status) params.set('status', query.status);
@@ -229,6 +239,7 @@ export function createApiClient(
       currency?: string;
       payoutCountry?: string | null;
       pageThemeId?: string;
+      coverImageUrl?: string | null;
       suggestedTipAmounts?: string[];
       goalTitle?: string | null;
       goalTargetAmount?: string | null;

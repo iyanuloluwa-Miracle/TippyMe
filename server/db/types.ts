@@ -57,6 +57,8 @@ export type CreatorProfile = {
   displayName: string;
   bio: string | null;
   avatarUrl: string | null;
+  /** Optional wide banner on the public tip page. */
+  coverImageUrl?: string | null;
   supportMessage: string | null;
   thankYouMessage?: string | null;
   verificationStatus?: 'NONE' | 'VERIFIED';

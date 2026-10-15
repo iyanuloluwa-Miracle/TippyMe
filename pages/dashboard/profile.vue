@@ -51,6 +51,23 @@
         <div class="mt-5 space-y-4">
           <div>
             <p class="block text-sm text-[#261b38]">
+              Cover image
+            </p>
+            <p class="mt-1 text-xs text-[#6d5b82]">
+              Wide banner across the top of your public page — like Buy Me a Malt.
+            </p>
+            <div class="mt-2">
+              <CreatorCoverImageUploader
+                v-model="coverImageUrl"
+                :disabled="identityPending"
+                @uploaded="onCoverUploaded"
+                @removed="onCoverRemoved"
+              />
+            </div>
+          </div>
+
+          <div>
+            <p class="block text-sm text-[#261b38]">
               Profile photo
             </p>
             <div class="mt-2">
@@ -186,7 +203,7 @@
           Page theme
         </h2>
         <p class="mt-1 text-sm text-[#53445f]">
-          Make your public page feel like yours. Pick a full visual theme — not just a color chip.
+          Full-page look: background, fonts, buttons, and the tip card — not just a color chip.
         </p>
         <div class="theme-grid mt-5" role="listbox" aria-label="Public page themes">
           <button
@@ -201,7 +218,12 @@
             :style="themePreviewStyle(theme.id)"
             @click="pageThemeId = theme.id"
           >
-            <span class="theme-swatch" aria-hidden="true" />
+            <span class="theme-swatch" aria-hidden="true">
+              <span class="theme-swatch__cover" />
+              <span class="theme-swatch__avatar" />
+              <span class="theme-swatch__lines"><i /><i /><i /></span>
+              <span class="theme-swatch__cta" />
+            </span>
             <strong>{{ theme.name }}</strong>
             <small>{{ theme.tagline }}</small>
           </button>
@@ -626,8 +648,8 @@ const auth = useAuthStore();
 const api = useApi();
 const settingsRoute = useRoute();
 const settingsSections = [
-  { id: 'profile', label: 'Profile', description: 'Name, photo & bio', icon: '◈' },
-  { id: 'theme', label: 'Page theme', description: 'Visual look & feel', icon: '◐' },
+  { id: 'profile', label: 'Profile', description: 'Cover, photo & bio', icon: '◈' },
+  { id: 'theme', label: 'Page theme', description: 'Colors, fonts & vibe', icon: '◐' },
   { id: 'links', label: 'Social links', description: 'Connect your worlds', icon: '↗' },
   { id: 'support', label: 'Support settings', description: 'Amounts, messages & goals', icon: '♡' },
   { id: 'sharing', label: 'Sharing tools', description: 'Embeds & GitHub badges', icon: '✦' },
@@ -650,6 +672,7 @@ const profile = ref<CreatorProfile | null>(null);
 const displayName = ref('');
 const bio = ref('');
 const avatarUrl = ref<string | null>(null);
+const coverImageUrl = ref<string | null>(null);
 const username = ref('');
 const originalUsername = ref('');
 const usernameOk = ref(true);
@@ -755,6 +778,7 @@ function applyProfile(p: CreatorProfile) {
   displayName.value = p.displayName;
   bio.value = p.bio ?? '';
   avatarUrl.value = p.avatarUrl;
+  coverImageUrl.value = p.coverImageUrl ?? null;
   username.value = p.username;
   originalUsername.value = p.username;
   usernameOk.value = true;
@@ -828,6 +852,18 @@ function onAvatarUploaded(url: string) {
   if (profile.value) {
     profile.value.avatarUrl = url;
   }
+}
+
+function onCoverUploaded(url: string) {
+  coverImageUrl.value = url;
+  if (profile.value) profile.value.coverImageUrl = url;
+  $toast.success('Cover image saved.');
+}
+
+function onCoverRemoved() {
+  coverImageUrl.value = null;
+  if (profile.value) profile.value.coverImageUrl = null;
+  $toast.success('Cover image removed.');
 }
 
 function onUsernameInput() {
@@ -1133,8 +1169,33 @@ async function closeAccount() {
 .theme-card { display: grid; gap: 6px; text-align: left; padding: 14px; border: 1px solid #e7dfee; border-radius: 16px; background: #fff; color: #261b38; transition: border-color .15s, transform .15s; }
 .theme-card:hover { transform: translateY(-1px); border-color: #c9a8ef; }
 .theme-card.selected { border-color: #7c4ac0; box-shadow: inset 0 0 0 1px #7c4ac0; }
-.theme-swatch { display: block; height: 72px; border-radius: 12px; background: var(--preview-bg); border: 1px solid color-mix(in srgb, var(--preview-ink) 12%, transparent); position: relative; overflow: hidden; }
-.theme-swatch::after { content: ''; position: absolute; left: 12px; bottom: 12px; width: 42%; height: 10px; border-radius: 999px; background: var(--preview-accent); box-shadow: 0 0 0 6px color-mix(in srgb, var(--preview-surface) 80%, transparent); }
+.theme-swatch {
+  display: block; height: 92px; border-radius: 12px; background: var(--preview-bg);
+  border: 1px solid color-mix(in srgb, var(--preview-ink) 12%, transparent);
+  position: relative; overflow: hidden;
+}
+.theme-swatch__cover {
+  position: absolute; left: 8px; right: 8px; top: 8px; height: 28px; border-radius: 8px;
+  background: color-mix(in srgb, var(--preview-accent) 45%, transparent);
+}
+.theme-swatch__avatar {
+  position: absolute; left: 14px; top: 24px; width: 18px; height: 18px; border-radius: 6px;
+  background: var(--preview-surface); border: 1px solid color-mix(in srgb, var(--preview-ink) 15%, transparent);
+  box-shadow: 0 2px 6px #00000018;
+}
+.theme-swatch__lines {
+  position: absolute; left: 38px; top: 36px; display: grid; gap: 3px; width: 42%;
+}
+.theme-swatch__lines i {
+  display: block; height: 4px; border-radius: 999px;
+  background: color-mix(in srgb, var(--preview-ink) 35%, transparent);
+}
+.theme-swatch__lines i:nth-child(2) { width: 78%; opacity: .7; }
+.theme-swatch__lines i:nth-child(3) { width: 55%; opacity: .45; }
+.theme-swatch__cta {
+  position: absolute; right: 12px; bottom: 12px; width: 34%; height: 12px; border-radius: 999px;
+  background: var(--preview-accent);
+}
 .theme-card strong { font-size: 14px; }.theme-card small { color: #53445f; font-size: 12px; line-height: 1.4; }
 @media (max-width: 1100px) { .settings-layout { grid-template-columns: 180px minmax(0, 1fr); gap: 16px; }.settings-nav a { gap: 8px; padding: 10px; }.settings-nav small { font-size: 12px; } }
 @media (max-width: 800px) { .settings-layout { grid-template-columns: minmax(0, 1fr); }.settings-sidebar { position: static; }.settings-preview { display: none; }.settings-nav { display: flex; overflow-x: auto; padding-bottom: 8px; }.settings-nav a { flex-shrink: 0; }.settings-nav small, .settings-nav a > span:last-child { display: none; }.settings-nav strong { font-size: 12px; }.settings-nav-icon { font-size: 18px; width: 18px; } }
