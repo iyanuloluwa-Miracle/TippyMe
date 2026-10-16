@@ -25,8 +25,10 @@
     </div>
     <div
       v-else-if="tip"
-      class="space-y-6"
+      class="confirm-result space-y-6"
+      :class="{ 'confirm-result--paid': tip.status === 'PAID' }"
     >
+      <SupportPartyBurst v-if="tip.status === 'PAID'" />
       <div class="rounded-2xl border border-cheer-leaf/20 bg-cheer-mint/25 p-8 text-center">
         <p class="text-sm font-semibold text-cheer-leaf">
           {{ headline }}
@@ -266,3 +268,16 @@ async function load() {
   }
 }
 </script>
+
+<style scoped>
+.confirm-result--paid {
+  animation: confirm-pop 0.6s cubic-bezier(.16, .84, .32, 1);
+}
+@keyframes confirm-pop {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confirm-result--paid { animation: none; }
+}
+</style>
