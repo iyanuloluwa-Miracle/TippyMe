@@ -159,8 +159,7 @@ export interface BachsPayoutDestinationResponse {
 export interface BachsCreatePayoutBody {
   destination: string;
   amount: string;
-  currency?: string;
-  description?: string;
+  reference?: string;
   metadata?: Record<string, string>;
 }
 
@@ -171,6 +170,7 @@ export interface BachsPayoutResponse {
   currency?: string;
   destination?: string;
   fee?: string;
+  total_debited?: string;
   failure_reason?: string;
   metadata?: {
     tippyme_payout_request_id?: string;

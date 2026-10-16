@@ -273,6 +273,10 @@ const canRequestPayout = computed(() => {
 
 const payoutHoldReason = computed(() => {
   if (!bankReady.value || dashboard.value?.currency !== 'NGN' || canRequestPayout.value) return '';
+  const bal = Number(payoutOverview.value?.availableBalance ?? 0);
+  if (!Number.isFinite(bal) || bal <= 0) {
+    return 'Nothing is available to withdraw right now.';
+  }
   const min = payoutOverview.value?.minPayoutAmount;
   const currency = payoutOverview.value?.currency || 'NGN';
   if (!min) return '';
@@ -347,12 +351,17 @@ async function requestPayout() {
   payoutBusy.value = true;
   payoutError.value = null;
   try {
-    const overview = await api.requestPayout();
+    const overview = await api.requestPayout({
+      amount: payoutOverview.value?.availableBalance,
+    });
     payoutOverview.value = overview;
     if (dashboard.value) dashboard.value.settlement = overview.settlement;
+    await refreshDashboardTotals();
   } catch (err) {
     payoutError.value =
       err instanceof ApiClientError ? err.message : 'Could not request payout.';
+    await loadPayout().catch(() => undefined);
+    await refreshDashboardTotals();
   } finally {
     payoutBusy.value = false;
   }
@@ -385,6 +394,15 @@ onMounted(async () => {
     document.getElementById('payouts')?.scrollIntoView({ behavior: 'auto', block: 'start' });
   }
 });
+
+async function refreshDashboardTotals() {
+  try {
+    const result = await api.getMyDashboard();
+    dashboard.value = result.dashboard;
+  } catch {
+    // The payout card already shows the latest error.
+  }
+}
 
 async function loadAll() {
   loading.value = true;

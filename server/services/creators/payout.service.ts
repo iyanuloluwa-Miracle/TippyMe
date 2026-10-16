@@ -338,10 +338,15 @@ export class PayoutService {
     }
 
     const available = new Decimal(await this.computeAvailableBalance(profile));
-    const requested = input?.amount?.trim()
-      ? new Decimal(input.amount.trim())
-      : available;
+    const requested = parseRequestedAmount(input?.amount) ?? available;
 
+    if (!available.isFinite() || available.lte(0)) {
+      throw new ApiError(
+        400,
+        'INSUFFICIENT_BALANCE',
+        'Nothing is available to withdraw right now.',
+      );
+    }
     if (!requested.isFinite() || requested.lte(0)) {
       throw new ApiError(400, 'INVALID_PAYOUT_AMOUNT', 'Enter a valid payout amount.');
     }
@@ -410,26 +415,31 @@ export class PayoutService {
     }
 
     try {
-      const payout = await this.http.createPayout(
-        {
-          destination: method.bachsDestinationId,
-          amount,
-          currency: 'NGN',
-          description: `TippyMe payout @${profile.username}`,
-          metadata: {
-            tippyme_payout_request_id: requestRow.id,
-            tippyme_creator_id: profile.id,
+      const payout = unwrapPayout(
+        await this.http.createPayout(
+          {
+            destination: method.bachsDestinationId,
+            amount,
+            reference: `payout_${requestRow.id}`.slice(0, 128),
+            metadata: {
+              tippyme_payout_request_id: requestRow.id,
+              tippyme_creator_id: profile.id,
+            },
           },
-        },
-        `payout_${requestRow.id}`.slice(0, 255),
+          `payout_${requestRow.id}`.slice(0, 255),
+        ),
       );
 
       const status = this.mapPayoutStatus(payout.status);
+      const debited = normalizePayoutAmount(payout.total_debited);
+      const reserved =
+        debited && new Decimal(debited).gt(amount) ? debited : amount;
       await PayoutRequestModel.updateOne(
         { _id: requestRow.id },
         {
           $set: {
-            bachsPayoutId: payout.id,
+            amount: reserved,
+            bachsPayoutId: payout.id || null,
             status,
             failureReason:
               status === PayoutRequestStatus.FAILED
@@ -451,7 +461,9 @@ export class PayoutService {
       if (err instanceof ApiError) throw err;
       const message =
         err instanceof BachsProviderError
-          ? 'Bachs rejected this payout. Try again shortly.'
+          ? err.kind === 'VALIDATION'
+            ? 'Bachs could not send this amount. Their withdrawal fee is charged on top, or this balance was already paid out.'
+            : 'Bachs rejected this payout. Try again shortly.'
           : 'Unable to start payout right now.';
       await PayoutRequestModel.updateOne(
         { _id: requestRow.id },
@@ -892,6 +904,16 @@ export class PayoutService {
 
 function mongoId(value: string | undefined): string | undefined {
   return value && /^[a-f\d]{24}$/i.test(value) ? value : undefined;
+}
+
+function parseRequestedAmount(value: string | undefined): Decimal | null {
+  const raw = value?.trim();
+  if (!raw) return null;
+  try {
+    return new Decimal(raw);
+  } catch {
+    return null;
+  }
 }
 
 function normalizePayoutAmount(value: string | undefined): string | null {
