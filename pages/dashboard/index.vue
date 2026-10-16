@@ -89,6 +89,7 @@
             <button type="button" class="workspace-button workspace-button--primary" :disabled="payoutBusy || !canRequestPayout" @click="requestPayout">{{ payoutBusy ? 'Sending…' : 'Request payout' }} <span aria-hidden="true">→</span></button>
             <button type="button" class="workspace-button workspace-button--quiet" :disabled="payoutBusy" @click="showBankForm = !showBankForm">{{ showBankForm ? 'Hide bank form' : 'Update bank' }}</button>
           </div>
+          <p v-if="payoutHoldReason" class="payout-note">{{ payoutHoldReason }}</p>
 
           <form v-if="bankReady && showBankForm" class="payout-bank-form" @submit.prevent="saveBank">
             <label>
@@ -266,8 +267,16 @@ const settlementLabel = computed(() => {
 const canRequestPayout = computed(() => {
   if (dashboard.value?.currency !== 'NGN') return false;
   const bal = Number(payoutOverview.value?.availableBalance ?? 0);
-  const min = Number(payoutOverview.value?.minPayoutAmount ?? 1000);
+  const min = Number(payoutOverview.value?.minPayoutAmount ?? 100);
   return Number.isFinite(bal) && bal >= min;
+});
+
+const payoutHoldReason = computed(() => {
+  if (!bankReady.value || dashboard.value?.currency !== 'NGN' || canRequestPayout.value) return '';
+  const min = payoutOverview.value?.minPayoutAmount;
+  const currency = payoutOverview.value?.currency || 'NGN';
+  if (!min) return '';
+  return `Payouts start at ${formatMoney(min, currency)}. This balance is below that, so Request payout stays off.`;
 });
 
 function moneyList(rows: { amount: string; currency: string }[] | undefined) {
@@ -497,6 +506,7 @@ function formatMoney(amount: string, currency: string) {
 .payout-bank-form label { display: grid; gap: 6px; font-size: 13px; color: var(--workspace-muted); }
 .payout-bank-form :is(select, input) { min-height: 40px; padding: 8px 12px; border: 1px solid #e7dfee; border-radius: 12px; color: #261b38; background: #fff; }
 .payout-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.payout-note { margin: -4px 0 12px; color: var(--workspace-muted); font-size: 13px; line-height: 1.45; }
 .payout-history { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
 .payout-history li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; font-size: 12px; color: var(--workspace-muted); padding-top: 8px; border-top: 1px solid #eee8f4; }
 .payout-history li span:first-child { color: #261b38; font-weight: 700; }

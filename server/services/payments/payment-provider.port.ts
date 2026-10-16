@@ -77,6 +77,10 @@ export interface HandleWebhookResult {
     id?: string;
     status?: string;
     failureReason?: string | null;
+    amount?: string;
+    currency?: string;
+    destinationId?: string;
+    payoutRequestId?: string;
   };
 }
 

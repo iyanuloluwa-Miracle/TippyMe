@@ -24,7 +24,10 @@ import type {
   CreatorProfile,
   PayoutRequest,
 } from '../../db/types';
-import { BachsHttpClient } from '../payments/bachs/bachs-http.client';
+import {
+  BachsHttpClient,
+  type BachsPayoutResponse,
+} from '../payments/bachs/bachs-http.client';
 import { BachsProviderError } from '../payments/bachs/bachs.errors';
 import {
   computeCreatorNet,
@@ -35,7 +38,7 @@ import {
   type CreatorSettlementStatusDto,
 } from './settlement.types';
 
-const MIN_PAYOUT_NGN = new Decimal('1000.00');
+const MIN_PAYOUT_NGN = new Decimal('100.00');
 
 /** Fallback NGN banks when Bachs list-banks is unavailable. */
 const NGN_BANKS_FALLBACK: { code: string; name: string }[] = [
@@ -474,13 +477,20 @@ export class PayoutService {
     bachsPayoutId: string;
     status: string;
     failureReason?: string | null;
+    amount?: string;
+    currency?: string;
+    destinationId?: string;
+    payoutRequestId?: string;
   }): Promise<boolean> {
     await useDb();
-    const row = toPlain<PayoutRequest>(
+    let row = toPlain<PayoutRequest>(
       await PayoutRequestModel.findOne({
         bachsPayoutId: input.bachsPayoutId,
       }).lean<LeanDoc | null>(),
     );
+    if (!row) {
+      row = await this.linkUnmatchedPayout(input);
+    }
     if (!row) return false;
 
     const next = this.mapPayoutStatus(input.status);
@@ -686,6 +696,163 @@ export class PayoutService {
     return `Bachs could not register this bank account (${err.kind}).`;
   }
 
+  /**
+   * Bachs automatic withdrawals use a withdrawal id we never stored.
+   * Match the local request by metadata, or by the saved destination, and
+   * record a completed payout so the balance cannot be withdrawn twice.
+   */
+  private async linkUnmatchedPayout(input: {
+    bachsPayoutId: string;
+    status: string;
+    amount?: string;
+    currency?: string;
+    destinationId?: string;
+    payoutRequestId?: string;
+  }): Promise<PayoutRequest | null> {
+    const resolved = await this.resolvePayoutLink(input);
+    if (resolved.requestId) {
+      return this.claimPayoutRequest(resolved.requestId, input.bachsPayoutId);
+    }
+    if (!resolved.method) return null;
+    if (this.mapPayoutStatus(input.status) !== PayoutRequestStatus.PAID) {
+      return null;
+    }
+
+    const amount =
+      normalizePayoutAmount(input.amount) ??
+      normalizePayoutAmount(resolved.amount);
+    if (!amount) return null;
+
+    const currency = (input.currency || resolved.currency || 'NGN').toUpperCase();
+    try {
+      await PayoutRequestModel.create({
+        creatorId: resolved.method.creatorId,
+        payoutMethodId: resolved.method.id,
+        amount,
+        currency,
+        platformFeePercent: platformFeePercent(),
+        status: PayoutRequestStatus.REQUESTED,
+        bachsPayoutId: input.bachsPayoutId,
+      });
+    } catch (err) {
+      if (!isUniqueViolation(err)) throw err;
+    }
+
+    return toPlain<PayoutRequest>(
+      await PayoutRequestModel.findOne({
+        bachsPayoutId: input.bachsPayoutId,
+      }).lean<LeanDoc | null>(),
+    );
+  }
+
+  private async resolvePayoutLink(input: {
+    bachsPayoutId: string;
+    destinationId?: string;
+    payoutRequestId?: string;
+    amount?: string;
+    currency?: string;
+  }): Promise<{
+    requestId?: string;
+    method: CreatorPayoutMethod | null;
+    amount?: string;
+    currency?: string;
+  }> {
+    let requestId = mongoId(input.payoutRequestId);
+    let destinationId = input.destinationId;
+    let amount = input.amount;
+    let currency = input.currency;
+
+    if ((!requestId || !destinationId) && this.http.isConfigured) {
+      try {
+        const remote = unwrapPayout(
+          await this.http.getPayout(input.bachsPayoutId),
+        );
+        requestId =
+          requestId || mongoId(remote.metadata?.tippyme_payout_request_id);
+        destinationId = destinationId || remote.destination;
+        amount = amount || remote.amount;
+        currency = currency || remote.currency;
+      } catch (err) {
+        console.warn(
+          `Bachs payout lookup failed id=${input.bachsPayoutId}: ${err instanceof Error ? err.message : 'unknown'}`,
+        );
+      }
+    }
+
+    if (requestId) {
+      return { requestId, method: null, amount, currency };
+    }
+
+    const method = await this.findPayoutMethodForWithdrawal(destinationId);
+    if (!method) return { method: null, amount, currency };
+
+    const open = toPlain<PayoutRequest>(
+      await PayoutRequestModel.findOne({
+        creatorId: method.creatorId,
+        payoutMethodId: method.id,
+        status: {
+          $in: [PayoutRequestStatus.REQUESTED, PayoutRequestStatus.PROCESSING],
+        },
+        $or: [{ bachsPayoutId: null }, { bachsPayoutId: input.bachsPayoutId }],
+      })
+        .sort({ createdAt: -1 })
+        .lean<LeanDoc | null>(),
+    );
+
+    return {
+      requestId: open?.id,
+      method,
+      amount,
+      currency,
+    };
+  }
+
+  private async findPayoutMethodForWithdrawal(
+    destinationId: string | undefined,
+  ): Promise<CreatorPayoutMethod | null> {
+    if (destinationId) {
+      const match = toPlain<CreatorPayoutMethod>(
+        await CreatorPayoutMethodModel.findOne({
+          bachsDestinationId: destinationId,
+        }).lean<LeanDoc | null>(),
+      );
+      if (match) return match;
+    }
+
+    const methods = toPlainList<CreatorPayoutMethod>(
+      await CreatorPayoutMethodModel.find({
+        bachsDestinationId: { $type: 'string', $ne: '' },
+      })
+        .limit(2)
+        .lean<LeanDoc[]>(),
+    );
+    return methods.length === 1 ? methods[0]! : null;
+  }
+
+  private async claimPayoutRequest(
+    requestId: string,
+    bachsPayoutId: string,
+  ): Promise<PayoutRequest | null> {
+    const claimed = toPlain<PayoutRequest>(
+      await PayoutRequestModel.findOneAndUpdate(
+        {
+          _id: requestId,
+          $or: [{ bachsPayoutId: null }, { bachsPayoutId }],
+        },
+        { $set: { bachsPayoutId, updatedAt: new Date() } },
+        { new: true },
+      ).lean<LeanDoc | null>(),
+    );
+    if (claimed) return claimed;
+
+    return toPlain<PayoutRequest>(
+      await PayoutRequestModel.findOne({
+        _id: requestId,
+        bachsPayoutId,
+      }).lean<LeanDoc | null>(),
+    );
+  }
+
   private mapPayoutStatus(raw?: string | null): PayoutRequest['status'] {
     const s = (raw || '').toLowerCase();
     if (['paid', 'succeeded', 'success', 'completed'].includes(s)) {
@@ -721,4 +888,24 @@ export class PayoutService {
     }
     return profile;
   }
+}
+
+function mongoId(value: string | undefined): string | undefined {
+  return value && /^[a-f\d]{24}$/i.test(value) ? value : undefined;
+}
+
+function normalizePayoutAmount(value: string | undefined): string | null {
+  if (!value) return null;
+  try {
+    const amount = new Decimal(value);
+    if (!amount.isFinite() || amount.lte(0)) return null;
+    return amount.toFixed(2);
+  } catch {
+    return null;
+  }
+}
+
+function unwrapPayout(raw: BachsPayoutResponse): BachsPayoutResponse {
+  if (!raw.id && raw.data?.id) return raw.data;
+  return raw;
 }

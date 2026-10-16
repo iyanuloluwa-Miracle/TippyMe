@@ -172,6 +172,11 @@ export interface BachsPayoutResponse {
   destination?: string;
   fee?: string;
   failure_reason?: string;
+  metadata?: {
+    tippyme_payout_request_id?: string;
+    tippyme_creator_id?: string;
+  };
+  data?: BachsPayoutResponse;
 }
 
 interface BachsErrorBody {

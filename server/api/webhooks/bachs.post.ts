@@ -7,7 +7,7 @@ import { assertRateLimit } from '../../lib/rate-limit';
 /**
  * Bachs webhook receiver.
  * Requires raw body for signature verification.
- * Flow: verify signature → identify tip → GET checkout verify → validate → update.
+ * Flow: verify signature → update a payout, fulfil a tip checkout, or acknowledge other signed events.
  */
 export default defineApiHandler(async (event) => {
   const rawBody = await readRawBody(event, false);
@@ -54,25 +54,32 @@ export default defineApiHandler(async (event) => {
     );
   }
 
-  if (parsed.payout?.id) {
-    const { PayoutService } = await import(
-      '../../services/creators/payout.service'
-    );
-    await new PayoutService().applyProviderPayoutUpdate({
-      bachsPayoutId: parsed.payout.id,
-      status: parsed.payout.status || parsed.eventType,
-      failureReason: parsed.payout.failureReason,
-    });
+  if (parsed.payout) {
+    let updated = false;
+    if (parsed.payout.id) {
+      const { PayoutService } = await import(
+        '../../services/creators/payout.service'
+      );
+      updated = await new PayoutService().applyProviderPayoutUpdate({
+        bachsPayoutId: parsed.payout.id,
+        status: parsed.payout.status || parsed.eventType,
+        failureReason: parsed.payout.failureReason,
+        amount: parsed.payout.amount,
+        currency: parsed.payout.currency,
+        destinationId: parsed.payout.destinationId,
+        payoutRequestId: parsed.payout.payoutRequestId,
+      });
+      if (!updated) {
+        console.warn(
+          `Bachs ${parsed.eventType} ${parsed.providerEventId} did not match a payout request`,
+        );
+      }
+    }
     setResponseStatus(event, 200);
-    return { ok: true, outcome: 'payout_updated' };
-  }
-
-  if (!parsed.verification) {
-    throw new ApiError(
-      400,
-      'WEBHOOK_MALFORMED',
-      'Webhook acknowledged but missing required fields.',
-    );
+    return {
+      ok: true,
+      outcome: updated ? 'payout_updated' : 'payout_ignored',
+    };
   }
 
   const fulfilment = new WebhookFulfilmentService();

@@ -83,3 +83,61 @@ function parseV2Header(
 
   return { timestamp, signatures };
 }
+
+function webhookString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+/**
+ * Bachs bank-payout events identify the transfer as `withdrawal_id`
+ * (`pay_…`). Older payloads used `payout_id` or `id`.
+ */
+export function readBachsPayoutWebhook(
+  data: Record<string, unknown>,
+  eventType: string,
+): {
+  id?: string;
+  status: string;
+  failureReason: string | null;
+  amount?: string;
+  currency?: string;
+  destinationId?: string;
+  payoutRequestId?: string;
+} {
+  const id =
+    webhookString(data.withdrawal_id) ||
+    webhookString(data.payout_id) ||
+    webhookString(data.id);
+
+  const explicit = webhookString(data.status);
+  let status = explicit;
+  if (!status) {
+    if (eventType.includes('fail')) status = 'failed';
+    else if (eventType.endsWith('.paid') || eventType.endsWith('.succeeded')) {
+      status = 'paid';
+    } else status = 'processing';
+  }
+
+  const metadata =
+    data.metadata && typeof data.metadata === 'object'
+      ? (data.metadata as Record<string, unknown>)
+      : undefined;
+  const amountValue = data.amount;
+  const amount =
+    typeof amountValue === 'string' || typeof amountValue === 'number'
+      ? String(amountValue)
+      : undefined;
+
+  return {
+    id,
+    status,
+    failureReason: webhookString(data.failure_reason) ?? null,
+    amount,
+    currency: webhookString(data.currency),
+    destinationId:
+      webhookString(data.destination) || webhookString(data.destination_id),
+    payoutRequestId: metadata
+      ? webhookString(metadata.tippyme_payout_request_id)
+      : undefined,
+  };
+}

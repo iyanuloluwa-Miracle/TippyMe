@@ -1,6 +1,9 @@
 import { createHmac } from 'crypto';
 import { describe, expect, it } from 'vitest';
-import { verifyBachsWebhookSignature } from '../server/services/payments/bachs/bachs.webhook';
+import {
+  readBachsPayoutWebhook,
+  verifyBachsWebhookSignature,
+} from '../server/services/payments/bachs/bachs.webhook';
 
 const secret = 'whsec_test_secret';
 const rawBody = '{"id":"evt_test","type":"checkout.completed"}';
@@ -33,6 +36,35 @@ describe('verifyBachsWebhookSignature', () => {
         nowSeconds: Number(timestamp),
       }),
     ).toBe(true);
+  });
+
+  it('reads a payout.paid withdrawal id instead of treating it as a tip', () => {
+    const payout = readBachsPayoutWebhook(
+      {
+        withdrawal_id: 'pay_example',
+        reference: 'auto_example',
+        status: 'completed',
+        amount: '492.50',
+        currency: 'NGN',
+      },
+      'payout.paid',
+    );
+    expect(payout).toEqual({
+      id: 'pay_example',
+      status: 'completed',
+      failureReason: null,
+      amount: '492.50',
+      currency: 'NGN',
+      destinationId: undefined,
+      payoutRequestId: undefined,
+    });
+  });
+
+  it('does not mark payout.created as paid when Bachs omits a status', () => {
+    expect(
+      readBachsPayoutWebhook({ withdrawal_id: 'pay_example' }, 'payout.created')
+        .status,
+    ).toBe('processing');
   });
 
   it('rejects a stale V2 signature', () => {

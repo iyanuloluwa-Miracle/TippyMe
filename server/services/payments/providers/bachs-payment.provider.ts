@@ -2,7 +2,10 @@ import { getServerEnv } from '../../../lib/env';
 import { BACHS_CHECKOUT_STATUS } from '../bachs/bachs.constants';
 import { BachsHttpClient } from '../bachs/bachs-http.client';
 import { BachsProviderError } from '../bachs/bachs.errors';
-import { verifyBachsWebhookSignature } from '../bachs/bachs.webhook';
+import {
+  readBachsPayoutWebhook,
+  verifyBachsWebhookSignature,
+} from '../bachs/bachs.webhook';
 import type {
   HandleWebhookInput,
   HandleWebhookResult,
@@ -143,31 +146,14 @@ export class BachsPaymentProvider implements PaymentProviderPort {
     const data = envelope.data ?? {};
 
     // Bank payout webhooks — handled separately from tip checkout fulfilment.
-    if (
-      eventType === 'payout.paid' ||
-      eventType === 'payout.failed' ||
-      eventType === 'payout.succeeded' ||
-      eventType.startsWith('payout.')
-    ) {
+    if (eventType.startsWith('payout.')) {
       return Promise.resolve({
         acknowledged: true,
         providerEventId,
         eventType,
         tipId: undefined,
         verification: undefined,
-        payout: {
-          id:
-            (typeof data.id === 'string' && data.id) ||
-            (typeof data.payout_id === 'string' && data.payout_id) ||
-            undefined,
-          status:
-            (typeof data.status === 'string' && data.status) ||
-            (eventType.includes('fail') ? 'failed' : 'paid'),
-          failureReason:
-            typeof data.failure_reason === 'string'
-              ? data.failure_reason
-              : null,
-        },
+        payout: readBachsPayoutWebhook(data, eventType),
       });
     }
 
