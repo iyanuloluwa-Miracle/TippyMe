@@ -28,7 +28,37 @@
         <nav class="settings-nav" aria-label="Profile settings">
           <NuxtLink v-for="section in settingsSections" :key="section.id" :to="{ path: '/dashboard/profile', hash: '#' + section.id }" :aria-current="activeSection === section.id ? 'page' : undefined" :class="{ selected: activeSection === section.id }"><span class="settings-nav-icon" aria-hidden="true">{{ section.icon }}</span><span><strong>{{ section.label }}</strong><small>{{ section.description }}</small></span><span aria-hidden="true">›</span></NuxtLink>
         </nav>
-        <div class="settings-preview"><span class="studio-kicker">PROFILE PREVIEW</span><div class="settings-monogram" aria-hidden="true">{{ Array.from(displayName || 'Y')[0]?.toUpperCase() }}</div><strong>{{ displayName || 'Your creator name' }}</strong><span>@{{ username || 'yourname' }}</span><p>{{ bio || 'A few words about what you create.' }}</p><small>Save each section when you’re ready.</small></div>
+        <div class="settings-preview">
+          <span class="studio-kicker">PROFILE PREVIEW</span>
+          <div class="settings-preview__card">
+            <div
+              v-if="coverImageUrl"
+              class="settings-preview__cover"
+            >
+              <img
+                :src="coverImageUrl"
+                alt=""
+              >
+            </div>
+            <img
+              class="settings-preview__photo"
+              :src="previewAvatarSrc"
+              :alt="`${displayName || username || 'Creator'} profile photo`"
+              width="64"
+              height="64"
+            >
+            <strong>{{ displayName || 'Your creator name' }}</strong>
+            <span class="settings-preview__handle">@{{ username || 'yourname' }}</span>
+            <p>{{ bio || 'A few words about what you create.' }}</p>
+            <p
+              v-if="supportMessage.trim()"
+              class="settings-preview__mantra"
+            >
+              {{ supportMessage }}
+            </p>
+          </div>
+          <small>This matches your public page. Save each section to publish changes.</small>
+        </div>
       </aside>
       <div class="profile-editor">
       <!-- Identity -->
@@ -650,6 +680,7 @@ import {
   type PageThemeId,
 } from '~/utils/page-themes';
 import { ApiClientError } from '~/services/api';
+import { resolveAvatarUrl } from '~/utils/avatar';
 import {
   ALLOWED_CURRENCIES,
   PAYOUT_COUNTRY_OPTIONS,
@@ -706,6 +737,9 @@ const username = ref('');
 const originalUsername = ref('');
 const usernameOk = ref(true);
 const usernameStatus = ref<string | null>(null);
+const previewAvatarSrc = computed(() =>
+  resolveAvatarUrl(avatarUrl.value, username.value || displayName.value || 'creator', 128),
+);
 let usernameTimer: ReturnType<typeof setTimeout> | null = null;
 let usernameCheckSeq = 0;
 
@@ -1198,7 +1232,7 @@ async function closeAccount() {
 </script>
 
 <style scoped>
-.settings-layout { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 24px; align-items: start; }.settings-sidebar { position: sticky; top: 24px; }.settings-nav { display: grid; gap: 8px; }.settings-nav a { display: flex; align-items: center; gap: 12px; border: 1px solid transparent; border-radius: 12px; padding: 12px; color: var(--dashboard-text-secondary, #53445f); }.settings-nav a.selected { border-color: #bc92e83d; background: #b491db17; color: #542b85; }.settings-nav a:hover { background: #b491db0c; }.settings-nav-icon { width: 22px; font-size: 22px; color: #6d3db0; }.settings-nav a > span:nth-child(2) { flex: 1; }.settings-nav strong { display: block; font-size: 14px; font-weight: 800; line-height: 1.4; }.settings-nav small { display: block; font-size: 12px; font-weight: 700; line-height: 1.5; color: var(--dashboard-text-secondary, #53445f); margin-top: 3px; }.settings-preview { padding: 24px 16px; margin-top: 24px; border-top: 1px solid #e7dfee; text-align: center; }.settings-monogram { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 20px; margin: 16px auto; background: #b697df20; border: 1px solid #d8b4fe29; color: #6d3db0; font-size: 28px; }.settings-preview > strong { display: block; font-size: 19px; overflow-wrap: anywhere; }.settings-preview > span:not(:first-child) { font-size: 12px; color: var(--dashboard-text-secondary, #53445f); overflow-wrap: anywhere; }.settings-preview p { font-size: 12px; color: var(--dashboard-text-secondary, #53445f); line-height: 1.5; overflow-wrap: anywhere; }.settings-preview small { font-size: 12px; color: var(--dashboard-text-secondary, #53445f); }.profile-editor { min-width: 0; }.profile-editor > section { scroll-margin-top: 24px; }.profile-editor > p:last-child { margin-top: 24px; }.settings-form { max-width: 880px; }.settings-form > button.bg-cheer-leaf { border-radius: 12px; background: #7540b4; color: #fff; }
+.settings-layout { display: grid; grid-template-columns: 216px minmax(0, 1fr); gap: 24px; align-items: start; }.settings-sidebar { position: sticky; top: 24px; }.settings-nav { display: grid; gap: 8px; }.settings-nav a { display: flex; align-items: center; gap: 12px; border: 1px solid transparent; border-radius: 12px; padding: 12px; color: var(--dashboard-text-secondary, #53445f); }.settings-nav a.selected { border-color: #bc92e83d; background: #b491db17; color: #542b85; }.settings-nav a:hover { background: #b491db0c; }.settings-nav-icon { width: 22px; font-size: 22px; color: #6d3db0; }.settings-nav a > span:nth-child(2) { flex: 1; }.settings-nav strong { display: block; font-size: 14px; font-weight: 800; line-height: 1.4; }.settings-nav small { display: block; font-size: 12px; font-weight: 700; line-height: 1.5; color: var(--dashboard-text-secondary, #53445f); margin-top: 3px; }.settings-preview { padding: 24px 16px; margin-top: 24px; border-top: 1px solid #e7dfee; text-align: center; }.settings-preview__card { margin-top: 16px; }.settings-preview__cover { height: 72px; margin: 0 -16px; overflow: hidden; border-radius: 14px; background: #efe6fb; }.settings-preview__cover img { width: 100%; height: 100%; object-fit: cover; display: block; }.settings-preview__photo { width: 64px; height: 64px; margin: 16px auto 12px; display: block; object-fit: cover; border-radius: 18px; border: 3px solid #fff; background: #f4eefe; box-shadow: 0 8px 18px #35204f14; }.settings-preview__card:has(.settings-preview__cover) .settings-preview__photo { margin-top: -28px; }.settings-preview strong { display: block; font-size: 18px; line-height: 1.2; overflow-wrap: anywhere; }.settings-preview__handle { display: block; margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--dashboard-text-secondary, #53445f); overflow-wrap: anywhere; }.settings-preview p { font-size: 12px; color: var(--dashboard-text-secondary, #53445f); line-height: 1.5; overflow-wrap: anywhere; }.settings-preview__mantra { margin-top: 8px; }.settings-preview small { display: block; margin-top: 12px; font-size: 12px; color: var(--dashboard-text-secondary, #53445f); }.profile-editor { min-width: 0; }.profile-editor > section { scroll-margin-top: 24px; }.profile-editor > p:last-child { margin-top: 24px; }.settings-form { max-width: 880px; }.settings-form > button.bg-cheer-leaf { border-radius: 12px; background: #7540b4; color: #fff; }
 .settings-form > button.bg-cheer-leaf:hover { background: #603197; }.settings-form :is(input, textarea, select) { color: #261b38; }.settings-form input[type='checkbox'] { accent-color: #7c4ac0; }.settings-danger { border-color: #f3d0d7; }
 .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
 .theme-card {
