@@ -7,18 +7,26 @@
       <p class="support-heatmap__kicker">WALL OF LOVE</p>
       <h2 id="support-heatmap-heading">Support over time</h2>
     </header>
-    <div
-      class="support-heatmap__grid"
-      role="img"
-      :aria-label="ariaLabel"
+    <p
+      v-if="total === 0"
+      class="support-heatmap__empty"
     >
-      <span
-        v-for="day in days"
-        :key="day.date"
-        class="support-heatmap__cell"
-        :data-level="levelFor(day.count)"
-        :title="`${day.date}: ${day.count} tip${day.count === 1 ? '' : 's'}`"
-      />
+      No tips in this stretch yet. They’ll fill in here.
+    </p>
+    <div class="support-heatmap__scroll">
+      <div
+        class="support-heatmap__grid"
+        role="img"
+        :aria-label="ariaLabel"
+      >
+        <span
+          v-for="(day, index) in cells"
+          :key="day ? day.date : `pad-${index}`"
+          class="support-heatmap__cell"
+          :data-level="day ? levelFor(day.count) : 'pad'"
+          :title="day ? tipTitle(day) : undefined"
+        />
+      </div>
     </div>
     <footer class="support-heatmap__legend">
       <span>Less</span>
@@ -63,11 +71,25 @@ const ariaLabel = computed(
     `Support activity for the last ${props.days.length} days. ${total.value} tip${total.value === 1 ? '' : 's'} total.`,
 );
 
+/** Pad the front so each column is a Sunday–Saturday week. */
+const cells = computed(() => {
+  const days = props.days;
+  if (!days.length) return [] as (SupportActivityDay | null)[];
+  const first = new Date(`${days[0]!.date}T00:00:00Z`);
+  const lead = Number.isNaN(first.getTime()) ? 0 : first.getUTCDay();
+  const padded: (SupportActivityDay | null)[] = Array.from({ length: lead }, () => null);
+  return padded.concat(days);
+});
+
 function levelFor(count: number) {
   if (count <= 0) return 0;
   if (count === 1) return 1;
   if (count <= 3) return 2;
   return 3;
+}
+
+function tipTitle(day: SupportActivityDay) {
+  return `${day.date}: ${day.count} tip${day.count === 1 ? '' : 's'}`;
 }
 </script>
 
@@ -94,24 +116,39 @@ function levelFor(count: number) {
   letter-spacing: -.02em;
   color: var(--page-ink, #261b38);
 }
+.support-heatmap__empty {
+  margin: -4px 0 12px;
+  color: var(--page-muted, #6d5b82);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.support-heatmap__scroll {
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
 .support-heatmap__grid {
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-auto-rows: 12px;
+  grid-template-rows: repeat(7, 12px);
+  grid-auto-flow: column;
+  grid-auto-columns: 12px;
   gap: 4px;
+  width: max-content;
 }
 .support-heatmap__cell {
   display: block;
-  width: 100%;
-  aspect-ratio: 1;
+  width: 12px;
+  height: 12px;
   border-radius: 3px;
-  background: color-mix(in srgb, var(--page-accent, #7c4ac0) 10%, transparent);
+  background: color-mix(in srgb, var(--page-accent, #7c4ac0) 22%, var(--page-surface, #fff));
+}
+.support-heatmap__cell[data-level='pad'] {
+  background: transparent;
 }
 .support-heatmap__cell[data-level='1'] {
-  background: color-mix(in srgb, var(--page-accent, #7c4ac0) 35%, transparent);
+  background: color-mix(in srgb, var(--page-accent, #7c4ac0) 48%, var(--page-surface, #fff));
 }
 .support-heatmap__cell[data-level='2'] {
-  background: color-mix(in srgb, var(--page-accent, #7c4ac0) 62%, transparent);
+  background: color-mix(in srgb, var(--page-accent, #7c4ac0) 74%, var(--page-surface, #fff));
 }
 .support-heatmap__cell[data-level='3'] {
   background: var(--page-accent, #7c4ac0);
@@ -120,17 +157,15 @@ function levelFor(count: number) {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 4px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 14px;
   color: var(--page-muted, #6d5b82);
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1;
 }
 .support-heatmap__legend .support-heatmap__cell {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   flex: 0 0 auto;
-}
-@media (max-width: 520px) {
-  .support-heatmap__grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }
 </style>
