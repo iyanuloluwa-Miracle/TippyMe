@@ -387,7 +387,10 @@ onMounted(() => {
 
 .public-cover {
   position: relative;
-  height: clamp(140px, 22vw, 220px);
+  z-index: 0;
+  height: clamp(160px, 24vw, 240px);
+  overflow: hidden;
+  border-radius: 28px 28px 0 0;
   background:
     linear-gradient(135deg,
       color-mix(in srgb, var(--page-accent, #7c4ac0) 28%, transparent),
@@ -409,12 +412,14 @@ onMounted(() => {
 }
 
 .public-identity {
+  position: relative;
+  z-index: 1;
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 18px 20px;
-  padding: 0 28px 8px;
-  margin-top: -42px;
-  align-items: end;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 20px;
+  padding: 0 28px 16px;
+  margin-top: -48px;
+  align-items: start;
 }
 .public-portrait {
   width: 96px;
@@ -432,7 +437,11 @@ onMounted(() => {
   object-fit: cover;
   display: block;
 }
-.public-identity__text { min-width: 0; padding-bottom: 4px; }
+.public-identity__text {
+  min-width: 0;
+  /* Clear the cover. The row is pulled up so the avatar can overlap it. */
+  padding-top: 60px;
+}
 .creator-name-line {
   display: flex;
   flex-wrap: wrap;
@@ -457,9 +466,10 @@ onMounted(() => {
   border-radius: 6px;
 }
 .creator-handle {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   color: var(--page-muted, #53445f);
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.4;
 }
 .creator-bio {
   margin: 14px 0 0;
@@ -685,9 +695,10 @@ onMounted(() => {
   .public-columns { padding-left: 18px; padding-right: 18px; }
   .public-identity {
     grid-template-columns: 1fr;
-    margin-top: -36px;
+    margin-top: -40px;
     align-items: start;
   }
+  .public-identity__text { padding-top: 14px; }
   .public-portrait { width: 84px; height: 84px; }
 }
 </style>
