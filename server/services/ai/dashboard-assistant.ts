@@ -74,7 +74,7 @@ export function answerDashboardQuestion(
           : s.readiness === 'FAILED'
             ? 'Bank setup failed. Update your account details in the payout section and save again.'
             : 'You haven’t saved a bank account yet. Add your bank details in the payout section.';
-    response.answer = `${readiness}\n\n${s.message}\n\nSupport collected (tips): ${money(dashboard.totals.heldByCurrency)}. Paid out to bank: ${money(dashboard.totals.settledByCurrency)}. Available balance is shown in the payouts panel after the ${dashboard.platformFeePercent}% platform fee.\n\nI can’t confirm an individual bank transfer arrival time. Request a payout from the dashboard when your balance is ready.`;
+    response.answer = `${readiness}\n\n${s.message}\n\nSupport collected (tips): ${money(dashboard.totals.heldByCurrency)}. Paid out to bank: ${money(dashboard.totals.settledByCurrency)}. Available balance is shown in the payouts panel after the ${dashboard.platformFeePercent}% platform fee. NGN withdrawals show a ₦50 payout fee before you confirm.\n\nI can’t confirm an individual bank transfer arrival time. Request a payout from the dashboard when your balance is ready.`;
     response.actions = [{ label: 'Open payout & settlement', to: '/dashboard#payouts' }];
   } else if (topic === 'earnings') {
     const t = dashboard.totals;
@@ -90,7 +90,7 @@ export function answerDashboardQuestion(
     response.answer = `Your page has ${dashboard.linkViews.lifetime} lifetime views and ${dashboard.linkViews.thisWeek} views this week. ${dashboard.conversion.viewsToTipsPercent === null ? 'There isn’t enough data to calculate your views-to-tips conversion yet.' : `Your views-to-tips conversion is ${dashboard.conversion.viewsToTipsPercent}%.`}`;
     response.actions = [{ label: 'Explore analytics', to: '/dashboard/analytics' }];
   } else if (topic === 'fees') {
-    response.answer = `The platform fee reported by your dashboard is ${dashboard.platformFeePercent}%. It is deducted when calculating your withdrawable balance. Payment-provider fees may apply separately; I don’t have a verified fee breakdown for an individual transaction.`;
+    response.answer = `The platform fee reported by your dashboard is ${dashboard.platformFeePercent}%. It is deducted when calculating your withdrawable balance. NGN withdrawals also include a ₦50 payout fee, shown before you confirm. Payment-provider fees may apply separately; I don’t have a verified fee breakdown for an individual transaction.`;
     response.actions = [{ label: 'View my tips', to: '/dashboard/tips' }];
   } else if (topic === 'profile') {
     response.answer = `Your creator name is ${dashboard.displayName} and your username is @${dashboard.username}. You can edit your profile, choose a page theme, and copy your public support link from profile settings.`;

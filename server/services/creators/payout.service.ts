@@ -5,6 +5,7 @@ import {
   AuditLogModel,
   CreatorPayoutMethodModel,
   CreatorProfileModel,
+  PaymentTransactionModel,
   PayoutRequestModel,
   TipModel,
   isUniqueViolation,
@@ -22,17 +23,22 @@ import {
 import type {
   CreatorPayoutMethod,
   CreatorProfile,
+  PaymentTransaction,
   PayoutRequest,
+  Tip,
 } from '../../db/types';
 import {
   BachsHttpClient,
   type BachsPayoutResponse,
 } from '../payments/bachs/bachs-http.client';
 import { BachsProviderError } from '../payments/bachs/bachs.errors';
+import { ensureCreatorBachsAccount } from './bachs-account.service';
+import { isDirectChargeSettled } from './payout-readiness';
 import {
   computeCreatorNet,
   platformFeePercent,
 } from './platform-fee';
+import { NGN_PAYOUT_FEE, ngnWithdrawalAmounts } from '../../../utils/ngn-payout';
 import {
   buildSettlementStatus,
   type CreatorSettlementStatusDto,
@@ -101,6 +107,8 @@ export interface CreatorPayoutOverviewDto {
   currency: string;
   platformFeePercent: number;
   minPayoutAmount: string;
+  /** NGN fee shown before a withdrawal is sent. Charged on top by Bachs. */
+  payoutFee: string;
   recentRequests: PayoutRequestDto[];
 }
 
@@ -158,6 +166,7 @@ export class PayoutService {
       currency: profile.currency,
       platformFeePercent: platformFeePercent(),
       minPayoutAmount: MIN_PAYOUT_NGN.toFixed(2),
+      payoutFee: NGN_PAYOUT_FEE,
       recentRequests: toPlainList<PayoutRequest>(recent).map((row) => ({
         id: row.id,
         amount: row.amount,
@@ -350,14 +359,17 @@ export class PayoutService {
     if (!requested.isFinite() || requested.lte(0)) {
       throw new ApiError(400, 'INVALID_PAYOUT_AMOUNT', 'Enter a valid payout amount.');
     }
-    if (requested.lt(MIN_PAYOUT_NGN)) {
+    const split = ngnWithdrawalAmounts(requested.toFixed(2));
+    const gross = new Decimal(split.debit);
+    const toBank = new Decimal(split.toBank);
+    if (toBank.lt(MIN_PAYOUT_NGN)) {
       throw new ApiError(
         400,
         'PAYOUT_BELOW_MINIMUM',
-        `Minimum payout is ₦${MIN_PAYOUT_NGN.toFixed(2)}.`,
+        `Your bank receives the withdrawal minus a ₦${NGN_PAYOUT_FEE} payout fee. That amount must be at least ₦${MIN_PAYOUT_NGN.toFixed(2)}.`,
       );
     }
-    if (requested.gt(available)) {
+    if (gross.gt(available)) {
       throw new ApiError(
         400,
         'INSUFFICIENT_BALANCE',
@@ -365,7 +377,19 @@ export class PayoutService {
       );
     }
 
-    const amount = requested.toFixed(2);
+    const amount = gross.toFixed(2);
+    const bankAmount = toBank.toFixed(2);
+    let accountId: string;
+    try {
+      accountId = await ensureCreatorBachsAccount(profile, this.http);
+    } catch (err) {
+      if (err instanceof ApiError) throw err;
+      throw new ApiError(
+        502,
+        'PAYOUT_FAILED',
+        'Bachs could not open a payout account for this withdrawal. Try again shortly.',
+      );
+    }
     const feePct = platformFeePercent();
     const created = await PayoutRequestModel.create({
       creatorId: profile.id,
@@ -419,7 +443,7 @@ export class PayoutService {
         await this.http.createPayout(
           {
             destination: method.bachsDestinationId,
-            amount,
+            amount: bankAmount,
             reference: `payout_${requestRow.id}`.slice(0, 128),
             metadata: {
               tippyme_payout_request_id: requestRow.id,
@@ -427,6 +451,7 @@ export class PayoutService {
             },
           },
           `payout_${requestRow.id}`.slice(0, 255),
+          accountId,
         ),
       );
 
@@ -546,17 +571,38 @@ export class PayoutService {
   }
 
   async computeAvailableBalance(profile: CreatorProfile): Promise<string> {
-    const tips = await TipModel.find({
-      creatorId: profile.id,
-      status: TipStatus.PAID,
-      currency: profile.currency,
-    })
-      .select('amount')
-      .lean<LeanDoc[]>();
+    const tips = toPlainList<Pick<Tip, 'id' | 'amount' | 'paymentTransactionId'>>(
+      await TipModel.find({
+        creatorId: profile.id,
+        status: TipStatus.PAID,
+        currency: profile.currency,
+      })
+        .select('amount paymentTransactionId')
+        .lean<LeanDoc[]>(),
+    );
+
+    const paymentIds = tips
+      .map((tip) => tip.paymentTransactionId)
+      .filter((id): id is string => Boolean(id));
+    const payments = paymentIds.length
+      ? toPlainList<Pick<PaymentTransaction, 'id' | 'metadata'>>(
+          await PaymentTransactionModel.find({ _id: { $in: paymentIds } })
+            .select('metadata')
+            .lean<LeanDoc[]>(),
+        )
+      : [];
+    const directChargeIds = new Set(
+      payments
+        .filter((payment) => isDirectChargeSettled(payment.metadata))
+        .map((payment) => payment.id),
+    );
 
     let net = new Decimal(0);
     const feePct = platformFeePercent();
     for (const tip of tips) {
+      if (!tip.paymentTransactionId || !directChargeIds.has(tip.paymentTransactionId)) {
+        continue;
+      }
       net = net.plus(computeCreatorNet(String(tip.amount), feePct));
     }
 
@@ -609,8 +655,15 @@ export class PayoutService {
     }
 
     try {
+      const accountId = await ensureCreatorBachsAccount(profile, this.http);
       const accountNumber = openSecret(method.accountNumberEncrypted);
+      await CreatorPayoutMethodModel.updateOne(
+        { _id: method.id },
+        { $set: { bachsDestinationId: null, updatedAt: new Date() } },
+      );
       // Match Bachs NGN docs: type, currency, bank_code, account_number (+ optional name/label).
+      // Key includes the connected account so a destination created on the
+      // platform account is not reused.
       const destination = await this.http.createPayoutDestination(
         {
           type: 'bank_account',
@@ -620,11 +673,11 @@ export class PayoutService {
           name: method.accountName || profile.displayName,
           label: `TippyMe @${profile.username}`,
         },
-        // Include bank + account so retries after fixing details are not stuck on a cached failure.
-        `dest_${method.id}_${method.bankCode}_${method.accountNumberLast4}`.slice(
+        `dest_${accountId}_${method.id}_${method.bankCode}_${method.accountNumberLast4}`.slice(
           0,
           255,
         ),
+        accountId,
       );
 
       // Docs: trust is_usable; sandbox often auto-approves, live may stay pending_review.
@@ -663,18 +716,22 @@ export class PayoutService {
       return next;
     } catch (err) {
       const detail =
-        err instanceof BachsProviderError
-          ? this.destinationFailureMessage(err)
-          : 'Could not register bank account with Bachs.';
+        err instanceof ApiError
+          ? err.message
+          : err instanceof BachsProviderError
+            ? this.destinationFailureMessage(err)
+            : 'Could not register bank account with Bachs.';
       const clientStatus =
-        err instanceof BachsProviderError &&
-        (err.kind === 'VALIDATION' ||
-          err.kind === 'NOT_FOUND' ||
-          (err.providerErrorCode || '').toUpperCase() ===
-            'BANK_ROUTING_DETAILS_INVALID' ||
-          (err.providerErrorCode || '').toUpperCase() === 'VALIDATION_ERROR')
-          ? 400
-          : 502;
+        err instanceof ApiError
+          ? err.statusCode
+          : err instanceof BachsProviderError &&
+              (err.kind === 'VALIDATION' ||
+                err.kind === 'NOT_FOUND' ||
+                (err.providerErrorCode || '').toUpperCase() ===
+                  'BANK_ROUTING_DETAILS_INVALID' ||
+                (err.providerErrorCode || '').toUpperCase() === 'VALIDATION_ERROR')
+            ? 400
+            : 502;
       await CreatorPayoutMethodModel.updateOne(
         { _id: method.id },
         {
@@ -776,8 +833,12 @@ export class PayoutService {
 
     if ((!requestId || !destinationId) && this.http.isConfigured) {
       try {
+        const accountId = await this.accountIdForPayoutLookup(
+          requestId,
+          destinationId,
+        );
         const remote = unwrapPayout(
-          await this.http.getPayout(input.bachsPayoutId),
+          await this.http.getPayout(input.bachsPayoutId, accountId),
         );
         requestId =
           requestId || mongoId(remote.metadata?.tippyme_payout_request_id);
@@ -817,6 +878,33 @@ export class PayoutService {
       amount,
       currency,
     };
+  }
+
+  private async accountIdForPayoutLookup(
+    requestId?: string,
+    destinationId?: string,
+  ): Promise<string | undefined> {
+    let creatorId: string | undefined;
+    if (requestId) {
+      const request = toPlain<PayoutRequest>(
+        await PayoutRequestModel.findOne({ _id: requestId })
+          .select('creatorId')
+          .lean<LeanDoc | null>(),
+      );
+      creatorId = request?.creatorId;
+    }
+    if (!creatorId && destinationId) {
+      const method = await this.findPayoutMethodForWithdrawal(destinationId);
+      creatorId = method?.creatorId;
+    }
+    if (!creatorId) return undefined;
+    const profile = toPlain<CreatorProfile>(
+      await CreatorProfileModel.findOne({ _id: creatorId })
+        .select('bachsAccountId')
+        .lean<LeanDoc | null>(),
+    );
+    const accountId = profile?.bachsAccountId?.trim();
+    return accountId || undefined;
   }
 
   private async findPayoutMethodForWithdrawal(

@@ -1,8 +1,8 @@
 /**
  * Settlement / payout readiness for the creator dashboard.
  *
- * Tips settle into TippyMe’s Bachs platform balance. Creators save a bank
- * account and request payouts to that destination. TippyMe is not a bank.
+ * Supporters pay the creator's Bachs account. The creator withdraws to the
+ * Nigerian bank they saved. TippyMe is not a bank.
  */
 
 export type SettlementReadiness =
@@ -32,7 +32,7 @@ export function buildSettlementStatus(input: {
       bankPayoutReady: false,
       tippyInitiatedPayoutAvailable: false,
       message:
-        'Add your bank account to receive payouts. Tips collect on TippyMe via Bachs; you request payouts to your bank when you are ready.',
+        'Add your Nigerian bank account. Supporters pay through Bachs into your account. Withdrawals stay off until that bank is saved.',
     };
   }
 
@@ -42,7 +42,7 @@ export function buildSettlementStatus(input: {
       bankPayoutReady: true,
       tippyInitiatedPayoutAvailable: true,
       message:
-        'Your bank account is ready. Request a payout anytime from your available balance (after the platform fee).',
+        'Your Nigerian bank account is ready. Request a withdrawal and confirm the ₦50 payout fee. The platform fee is already deducted from your available balance.',
     };
   }
 

@@ -85,8 +85,17 @@
             <button type="submit" class="workspace-button workspace-button--primary" :disabled="payoutBusy">{{ payoutBusy ? 'Saving…' : 'Save bank account' }} <span aria-hidden="true">→</span></button>
           </form>
 
+          <div v-else-if="bankReady && showPayoutConfirm && withdrawalQuote" class="payout-confirm">
+            <p>Withdraw <strong>{{ formatMoney(withdrawalQuote.debit, payoutOverview?.currency || 'NGN') }}</strong></p>
+            <p>Payout fee <strong>{{ formatMoney(withdrawalQuote.fee, 'NGN') }}</strong></p>
+            <p>Your bank receives <strong>{{ formatMoney(withdrawalQuote.toBank, 'NGN') }}</strong></p>
+            <div class="payout-actions">
+              <button type="button" class="workspace-button workspace-button--primary" :disabled="payoutBusy" @click="requestPayout">{{ payoutBusy ? 'Sending…' : 'Confirm withdrawal' }}</button>
+              <button type="button" class="workspace-button workspace-button--quiet" :disabled="payoutBusy" @click="showPayoutConfirm = false">Cancel</button>
+            </div>
+          </div>
           <div v-else class="payout-actions">
-            <button type="button" class="workspace-button workspace-button--primary" :disabled="payoutBusy || !canRequestPayout" @click="requestPayout">{{ payoutBusy ? 'Sending…' : 'Request payout' }} <span aria-hidden="true">→</span></button>
+            <button type="button" class="workspace-button workspace-button--primary" :disabled="payoutBusy || !canRequestPayout" @click="showPayoutConfirm = true">{{ payoutBusy ? 'Sending…' : 'Request payout' }} <span aria-hidden="true">→</span></button>
             <button type="button" class="workspace-button workspace-button--quiet" :disabled="payoutBusy" @click="showBankForm = !showBankForm">{{ showBankForm ? 'Hide bank form' : 'Update bank' }}</button>
           </div>
           <p v-if="payoutHoldReason" class="payout-note">{{ payoutHoldReason }}</p>
@@ -115,7 +124,7 @@
             </li>
           </ul>
 
-          <details class="payout-details"><summary>How settlement works</summary><p>{{ dashboard.settlement.message }}</p><p>A {{ platformFeeLabel }} platform fee is deducted when computing your withdrawable balance. Tips collect via Bachs; TippyMe pays your saved bank account when you request a payout.</p></details>
+          <details class="payout-details"><summary>How settlement works</summary><p>{{ dashboard.settlement.message }}</p><p>A {{ platformFeeLabel }} platform fee is deducted from each payment. Supporters pay through Bachs into your account. A withdrawal goes to the Nigerian bank you saved after you confirm the ₦{{ payoutFeeLabel }} fee.</p></details>
         </section>
       </div>
 
@@ -183,6 +192,7 @@ import type {
   PayoutBankOption,
 } from '~/types/api';
 import { ApiClientError } from '~/services/api';
+import { NGN_PAYOUT_FEE, ngnWithdrawalAmounts } from '~/utils/ngn-payout';
 
 definePageMeta({
   layout: 'dashboard',
@@ -235,6 +245,7 @@ const banks = ref<PayoutBankOption[]>([]);
 const bankCode = ref('');
 const accountNumber = ref('');
 const showBankForm = ref(false);
+const showPayoutConfirm = ref(false);
 const payoutBusy = ref(false);
 const payoutError = ref<string | null>(null);
 
@@ -246,7 +257,7 @@ const bankReady = computed(
 
 const payoutDescription = computed(() => {
   if (bankReady.value) {
-    return 'Tips collect on TippyMe via Bachs. Request a payout to your saved bank account anytime.';
+    return 'Supporters pay through Bachs into your account. Withdraw to the Nigerian bank you saved. The ₦50 payout fee is shown before you confirm.';
   }
   if (dashboard.value?.settlement.readiness === 'PENDING') {
     return 'Bank details saved. Waiting for Bachs to approve your payout destination.';
@@ -254,7 +265,7 @@ const payoutDescription = computed(() => {
   if (dashboard.value?.settlement.readiness === 'FAILED') {
     return 'We could not register that bank account. Check the details and save again.';
   }
-  return 'Add your Nigerian bank account to receive payouts — no Bachs Connect setup required.';
+  return 'Add your Nigerian bank account. Withdrawals stay off until Bachs verifies it.';
 });
 
 const settlementLabel = computed(() => {
@@ -264,11 +275,26 @@ const settlementLabel = computed(() => {
   return 'Not configured yet';
 });
 
+const payoutFeeLabel = computed(() => {
+  const fee = payoutOverview.value?.payoutFee ?? NGN_PAYOUT_FEE;
+  return fee.replace(/\.00$/, '');
+});
+
+const withdrawalQuote = computed(() => {
+  const available = payoutOverview.value?.availableBalance;
+  if (!available) return null;
+  const quote = ngnWithdrawalAmounts(available);
+  if (Number(quote.toBank) <= 0) return null;
+  return quote;
+});
+
 const canRequestPayout = computed(() => {
-  if (dashboard.value?.currency !== 'NGN') return false;
-  const bal = Number(payoutOverview.value?.availableBalance ?? 0);
+  if (dashboard.value?.currency !== 'NGN' || !bankReady.value) return false;
+  const quote = withdrawalQuote.value;
+  if (!quote) return false;
   const min = Number(payoutOverview.value?.minPayoutAmount ?? 100);
-  return Number.isFinite(bal) && bal >= min;
+  const available = Number(payoutOverview.value?.availableBalance ?? 0);
+  return Number(quote.toBank) >= min && Number(quote.debit) <= available;
 });
 
 const payoutHoldReason = computed(() => {
@@ -277,10 +303,11 @@ const payoutHoldReason = computed(() => {
   if (!Number.isFinite(bal) || bal <= 0) {
     return 'Nothing is available to withdraw right now.';
   }
-  const min = payoutOverview.value?.minPayoutAmount;
+  const min = Number(payoutOverview.value?.minPayoutAmount ?? 100);
+  const fee = Number(payoutOverview.value?.payoutFee ?? NGN_PAYOUT_FEE);
   const currency = payoutOverview.value?.currency || 'NGN';
-  if (!min) return '';
-  return `Payouts start at ${formatMoney(min, currency)}. This balance is below that, so Request payout stays off.`;
+  const needed = (min + fee).toFixed(2);
+  return `Your bank receives at least ${formatMoney(min.toFixed(2), currency)} after the ${formatMoney(fee.toFixed(2), currency)} payout fee, so you need at least ${formatMoney(needed, currency)} available.`;
 });
 
 function moneyList(rows: { amount: string; currency: string }[] | undefined) {
@@ -337,6 +364,7 @@ async function saveBank() {
     if (dashboard.value) dashboard.value.settlement = overview.settlement;
     accountNumber.value = '';
     showBankForm.value = false;
+    showPayoutConfirm.value = false;
   } catch (err) {
     payoutError.value =
       err instanceof ApiClientError ? err.message : 'Could not save bank details.';
@@ -356,6 +384,7 @@ async function requestPayout() {
     });
     payoutOverview.value = overview;
     if (dashboard.value) dashboard.value.settlement = overview.settlement;
+    showPayoutConfirm.value = false;
     await refreshDashboardTotals();
   } catch (err) {
     payoutError.value =
@@ -524,6 +553,9 @@ function formatMoney(amount: string, currency: string) {
 .payout-bank-form label { display: grid; gap: 6px; font-size: 13px; color: var(--workspace-muted); }
 .payout-bank-form :is(select, input) { min-height: 40px; padding: 8px 12px; border: 1px solid #e7dfee; border-radius: 12px; color: #261b38; background: #fff; }
 .payout-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.payout-confirm { display: grid; gap: 6px; margin: 0 0 12px; padding: 12px 14px; border-radius: 12px; background: #f6f0ff; }
+.payout-confirm p { margin: 0; font-size: 13px; color: var(--workspace-muted); }
+.payout-confirm strong { color: #261b38; }
 .payout-note { margin: -4px 0 12px; color: var(--workspace-muted); font-size: 13px; line-height: 1.45; }
 .payout-history { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
 .payout-history li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; font-size: 12px; color: var(--workspace-muted); padding-top: 8px; border-top: 1px solid #eee8f4; }

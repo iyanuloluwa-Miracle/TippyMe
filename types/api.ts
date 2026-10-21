@@ -263,6 +263,7 @@ export interface CreatorPayoutOverview {
   currency: string;
   platformFeePercent: number;
   minPayoutAmount: string;
+  payoutFee: string;
   recentRequests: PayoutRequestRow[];
 }
 
