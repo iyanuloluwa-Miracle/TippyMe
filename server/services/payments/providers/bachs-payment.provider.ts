@@ -45,9 +45,15 @@ export class BachsPaymentProvider implements PaymentProviderPort {
       );
     }
 
-    // reference: TippyMe tip id (unique per org, max 128) — docs
-    // Idempotency-Key: stable internal payment reference — docs
-    const destination = input.bachsConnectAccountId?.trim();
+    // Direct charge: X-Account-Id makes the creator the merchant.
+    // Do not send transfer_data — that settles on the platform balance.
+    const accountId = input.bachsConnectAccountId?.trim();
+    if (!accountId) {
+      throw new BachsProviderError(
+        'VALIDATION',
+        'Creator Bachs account is required for checkout',
+      );
+    }
     const platformFee = input.platformFee?.trim();
 
     const session = await this.http.createCheckoutSession(
@@ -64,19 +70,13 @@ export class BachsPaymentProvider implements PaymentProviderPort {
           tip_id: input.tipId,
           payment_transaction_id: input.paymentTransactionId,
           creator_username: input.creatorUsername,
-          ...(destination
-            ? { bachs_connect_account_id: destination }
-            : {}),
+          bachs_account_id: accountId,
           ...(input.metadata ?? {}),
         },
-        ...(destination
-          ? {
-              transfer_data: { destination },
-              ...(platformFee ? { platform_fee: platformFee } : {}),
-            }
-          : {}),
+        ...(platformFee ? { platform_fee: platformFee } : {}),
       },
       input.internalReference.slice(0, 255),
+      accountId,
     );
 
     if (!session.checkout_id || !session.checkout_url) {
@@ -101,7 +101,11 @@ export class BachsPaymentProvider implements PaymentProviderPort {
   }
 
   async verifyPayment(input: VerifyPaymentInput): Promise<VerifyPaymentResult> {
-    const session = await this.http.getCheckoutSession(input.providerReference);
+    const accountId = input.bachsConnectAccountId?.trim() || undefined;
+    const session = await this.http.getCheckoutSession(
+      input.providerReference,
+      accountId,
+    );
     return this.mapCheckoutToVerification(session);
   }
 

@@ -32,6 +32,7 @@ import {
   mapVerificationToStatuses,
 } from '../payments/payment-status.transitions';
 import { PaymentsService } from '../payments/payments.service';
+import { bachsAccountIdFromMetadata } from '../creators/payout-readiness';
 import { decimalToAmountString } from '../tips/tips.types';
 
 export type WebhookProcessOutcome =
@@ -129,6 +130,9 @@ export class WebhookFulfilmentService {
       verified = await this.payments.verifyPayment({
         providerReference: verification.providerReference,
         internalReference: tip.paymentTransaction?.internalReference,
+        bachsConnectAccountId: bachsAccountIdFromMetadata(
+          tip.paymentTransaction?.metadata,
+        ),
       });
     } catch (err) {
       const kind = err instanceof BachsProviderError ? err.kind : 'PROVIDER';

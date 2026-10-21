@@ -14,7 +14,10 @@ export interface BachsCreateCheckoutSessionBody {
   cancel_url: string;
   reference: string;
   metadata?: Record<string, string>;
-  /** Destination charge — seller Connect account receives sale minus platform_fee. */
+  /**
+   * Destination charge. TippyMe uses direct charges (`X-Account-Id`) instead,
+   * so checkout does not settle on the platform balance.
+   */
   transfer_data?: { destination: string; amount?: string };
   /** Platform cut as decimal string (same currency precision as amount). */
   platform_fee?: string;
@@ -56,6 +59,14 @@ export interface BachsCreateConnectedAccountBody {
   first_name?: string;
   last_name?: string;
   configuration?: {
+    merchant?: {
+      capabilities?: {
+        bank_transfer?: { requested: boolean };
+        ngn_card_collection?: { requested: boolean };
+        card_collection?: { requested: boolean };
+        mobile_money?: { requested: boolean };
+      };
+    };
     recipient?: {
       capabilities?: {
         payouts?: { requested: boolean };
@@ -227,6 +238,7 @@ export class BachsHttpClient {
   async createCheckoutSession(
     body: BachsCreateCheckoutSessionBody,
     idempotencyKey: string,
+    accountId?: string,
   ): Promise<BachsCreateCheckoutSessionResponse> {
     return this.request<BachsCreateCheckoutSessionResponse>(
       'POST',
@@ -235,17 +247,19 @@ export class BachsHttpClient {
         body,
         idempotencyKey,
         expectedStatuses: [200, 201],
+        accountId,
       },
     );
   }
 
   async getCheckoutSession(
     checkoutId: string,
+    accountId?: string,
   ): Promise<BachsCheckoutSessionResponse> {
     return this.request<BachsCheckoutSessionResponse>(
       'GET',
       `/checkout-sessions/${encodeURIComponent(checkoutId)}`,
-      { expectedStatuses: [200] },
+      { expectedStatuses: [200], accountId },
     );
   }
 
@@ -363,6 +377,7 @@ export class BachsHttpClient {
   async createPayoutDestination(
     body: BachsCreatePayoutDestinationBody,
     idempotencyKey: string,
+    accountId?: string,
   ): Promise<BachsPayoutDestinationResponse> {
     return this.request<BachsPayoutDestinationResponse>(
       'POST',
@@ -371,6 +386,7 @@ export class BachsHttpClient {
         body,
         idempotencyKey,
         expectedStatuses: [200, 201],
+        accountId,
       },
     );
   }
@@ -378,19 +394,24 @@ export class BachsHttpClient {
   async createPayout(
     body: BachsCreatePayoutBody,
     idempotencyKey: string,
+    accountId?: string,
   ): Promise<BachsPayoutResponse> {
     return this.request<BachsPayoutResponse>('POST', '/payouts', {
       body,
       idempotencyKey,
       expectedStatuses: [200, 201],
+      accountId,
     });
   }
 
-  async getPayout(payoutId: string): Promise<BachsPayoutResponse> {
+  async getPayout(
+    payoutId: string,
+    accountId?: string,
+  ): Promise<BachsPayoutResponse> {
     return this.request<BachsPayoutResponse>(
       'GET',
       `/payouts/${encodeURIComponent(payoutId)}`,
-      { expectedStatuses: [200] },
+      { expectedStatuses: [200], accountId },
     );
   }
 

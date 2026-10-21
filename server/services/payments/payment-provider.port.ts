@@ -1,7 +1,7 @@
 /**
  * Payment provider port — TippyMe never leaks Bachs-specific types into tips/UI.
- * Connect destination charges are optional on initialize when the creator has
- * a linked Bachs Connect account. TippyMe never invents a withdrawable wallet.
+ * Checkout is a direct charge on the creator's Bachs account (`X-Account-Id`).
+ * TippyMe never invents a withdrawable wallet.
  */
 
 export type PaymentProviderName = 'DEV_STUB' | 'BACHS';
@@ -20,8 +20,8 @@ export interface InitializePaymentInput {
   customerName?: string;
   metadata?: Record<string, string>;
   /**
-   * Bachs Connect `acct_…` for destination charges.
-   * When set, checkout includes transfer_data.destination + platform_fee.
+   * Bachs Connect `acct_…`. Checkout is created as this account.
+   * Required for Bachs. There is no platform-account fallback.
    */
   bachsConnectAccountId?: string | null;
   /** Platform fee as decimal string (same currency). Computed by TipsService. */
@@ -39,6 +39,8 @@ export interface InitializePaymentResult {
 export interface VerifyPaymentInput {
   providerReference: string;
   internalReference?: string;
+  /** Connected account that owns a direct-charge checkout. */
+  bachsConnectAccountId?: string | null;
 }
 
 export type PaymentVerificationStatus =

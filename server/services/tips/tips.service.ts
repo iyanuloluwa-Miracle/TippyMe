@@ -25,6 +25,7 @@ import {
   bachsPublicMessage,
 } from '../payments/bachs/bachs.errors';
 import { PaymentsService } from '../payments/payments.service';
+import { ensureCreatorBachsAccount } from '../creators/bachs-account.service';
 import { computePlatformFee, platformFeePercent } from '../creators/platform-fee';
 import { amountValidationMessage, validateTipAmount } from './amount';
 import { createConfirmationToken, confirmationTokenMatches } from './confirmation-token';
@@ -183,10 +184,22 @@ export class TipsService {
     );
 
     let init;
+    let accountId = '';
     try {
       const feePercent = platformFeePercent();
       const platformFee = computePlatformFee(amountResult.amount, feePercent);
       const confirmUrl = `${appUrl}/support/confirm/${tipId}?token=${encodeURIComponent(confirmation.token)}`;
+      accountId = await ensureCreatorBachsAccount(creator);
+      await PaymentTransactionModel.updateOne(
+        { _id: paymentId },
+        {
+          $set: {
+            'metadata.bachsAccountId': accountId,
+            'metadata.settledVia': 'direct_charge',
+            'metadata.settled_via': 'direct_charge',
+          },
+        },
+      );
 
       init = await this.payments.initializePayment({
         tipId,
@@ -199,17 +212,21 @@ export class TipsService {
         cancelUrl: `${appUrl}/${creator.username}`,
         customerEmail: supporterEmail,
         customerName,
+        bachsConnectAccountId: accountId,
+        platformFee,
         metadata: {
           tip_id: tipId,
           creator_username: creator.username,
-          settledVia: 'platform_balance',
-          settled_via: 'platform_balance',
+          settledVia: 'direct_charge',
+          settled_via: 'direct_charge',
+          bachs_account_id: accountId,
           platform_fee: platformFee,
           platform_fee_percent: String(feePercent),
         },
       });
     } catch (err) {
       await this.markCheckoutFailed(tipId, paymentId, err);
+      if (err instanceof ApiError) throw err;
       if (err instanceof BachsProviderError) {
         console.error(
           `Payment init failed tip=${tipId} kind=${err.kind} http=${err.httpStatus ?? 'n/a'} code=${err.providerErrorCode ?? 'n/a'}`,
@@ -242,7 +259,9 @@ export class TipsService {
               source: 'tip_create',
               creatorUsername: creator.username,
               checkoutUrl: init.checkoutUrl,
-              settledVia: 'platform_balance',
+              settledVia: 'direct_charge',
+              settled_via: 'direct_charge',
+              bachsAccountId: accountId,
               platformFee: computePlatformFee(amountResult.amount),
               platformFeePercent: platformFeePercent(),
               providerMeta: init.metadata ?? {},

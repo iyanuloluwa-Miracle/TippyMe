@@ -44,3 +44,24 @@ export function isDestinationSettled(
     metadata.settled_via === 'destination_charge'
   );
 }
+
+/** True when the sale was charged to the creator's Bachs account. */
+export function isDirectChargeSettled(
+  metadata: Record<string, unknown> | null | undefined,
+): boolean {
+  if (!metadata) return false;
+  return (
+    metadata.settledVia === 'direct_charge' ||
+    metadata.settled_via === 'direct_charge'
+  );
+}
+
+export function bachsAccountIdFromMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+): string | undefined {
+  if (!metadata) return undefined;
+  const raw = metadata.bachsAccountId ?? metadata.bachs_account_id;
+  if (typeof raw !== 'string') return undefined;
+  const id = raw.trim();
+  return id || undefined;
+}
