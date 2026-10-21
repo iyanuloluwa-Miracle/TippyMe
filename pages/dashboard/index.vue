@@ -263,7 +263,7 @@ const payoutDescription = computed(() => {
     return 'Bank details saved. Waiting for Bachs to approve your payout destination.';
   }
   if (dashboard.value?.settlement.readiness === 'FAILED') {
-    return 'We could not register that bank account. Check the details and save again.';
+    return dashboard.value.settlement.message;
   }
   return 'Add your Nigerian bank account. Withdrawals stay off until Bachs verifies it.';
 });

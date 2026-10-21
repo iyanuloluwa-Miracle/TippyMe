@@ -24,6 +24,7 @@ export interface CreatorSettlementStatusDto {
 export function buildSettlementStatus(input: {
   hasMethod?: boolean;
   methodStatus?: string | null;
+  lastError?: string | null;
 }): CreatorSettlementStatusDto {
   const status = input.methodStatus ?? null;
   if (!input.hasMethod || !status) {
@@ -52,6 +53,7 @@ export function buildSettlementStatus(input: {
       bankPayoutReady: false,
       tippyInitiatedPayoutAvailable: false,
       message:
+        input.lastError?.trim() ||
         'We could not register that bank account with Bachs. Check the details and save again.',
     };
   }

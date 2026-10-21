@@ -117,6 +117,11 @@ export interface BachsConnectedAccountResponse {
     { status?: string; requested?: boolean } | undefined
   >;
   is_active?: boolean;
+  requirements?: {
+    currently_due?: string[];
+    pending_verification?: string[];
+    errors?: Array<{ field?: string; reason?: string; code?: string }>;
+  };
 }
 
 export interface BachsCreateAccountLinkBody {

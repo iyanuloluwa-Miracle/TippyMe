@@ -162,6 +162,35 @@ export function splitAccountHolderName(fullName: string): {
   return { first_name: first, last_name: parts.slice(1).join(' ').slice(0, 80) };
 }
 
+export type PayoutRequirementState = 'due' | 'accepted' | 'rejected' | 'unknown';
+
+/**
+ * Bachs creates the payout destination when this field is accepted.
+ * A missing requirements block is unknown, not a rejection.
+ */
+export function readPayoutRequirement(account: {
+  requirements?: BachsConnectedAccountResponse['requirements'];
+}): { state: PayoutRequirementState; reason: string | null } {
+  const requirements = account.requirements;
+  if (!requirements) return { state: 'unknown', reason: null };
+  const error = (requirements.errors ?? []).find((item) =>
+    (item.field ?? '').includes('payout_destination'),
+  );
+  if (error) {
+    return {
+      state: 'rejected',
+      reason:
+        error.reason?.trim() ||
+        'That bank account could not be verified. Check the bank and the 10-digit account number.',
+    };
+  }
+  const stillDue = (requirements.currently_due ?? []).some((field) =>
+    field.includes('payout_destination'),
+  );
+  if (stillDue) return { state: 'due', reason: null };
+  return { state: 'accepted', reason: null };
+}
+
 /** Name plus bank, submitted on the connected account so payouts can activate. */
 export function buildPayoutRequirementFields(input: {
   holderName: string;

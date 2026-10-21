@@ -696,6 +696,7 @@ export class CreatorsService {
       settlement: buildSettlementStatus({
         hasMethod: Boolean(payoutMethod),
         methodStatus: payoutMethod?.status ?? null,
+        lastError: payoutMethod?.lastError ?? null,
       }),
       platformFeePercent: platformFeePercent(),
     };

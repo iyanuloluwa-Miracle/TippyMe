@@ -96,6 +96,16 @@ describe('buildSettlementStatus', () => {
     expect(status.bankPayoutReady).toBe(false);
   });
 
+  it('shows the saved Bachs error when bank setup failed', () => {
+    const status = buildSettlementStatus({
+      hasMethod: true,
+      methodStatus: 'FAILED',
+      lastError: 'Bachs has not activated payouts for this account yet. Save the bank again in a moment.',
+    });
+    expect(status.readiness).toBe('FAILED');
+    expect(status.message).toContain('not activated payouts');
+  });
+
   it('marks ready when bank destination is READY', () => {
     const status = buildSettlementStatus({
       hasMethod: true,

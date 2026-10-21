@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildConnectedAccountBody, buildPayoutRequirementFields } from '../server/services/creators/bachs-account.service';
+import { buildConnectedAccountBody, buildPayoutRequirementFields, readPayoutRequirement } from '../server/services/creators/bachs-account.service';
 import {
   bachsAccountIdFromMetadata,
   isDirectChargeSettled,
@@ -128,6 +128,35 @@ describe('creator settlement helpers', () => {
       account_name: 'ADA OBI',
       bank_code: '058',
     });
+  });
+
+  it('treats an accepted payout destination separately from a rejected one', () => {
+    expect(
+      readPayoutRequirement({
+        requirements: {
+          currently_due: ['persons.name'],
+          pending_verification: ['payout_destination'],
+          errors: [],
+        },
+      }).state,
+    ).toBe('accepted');
+    expect(
+      readPayoutRequirement({
+        requirements: {
+          currently_due: ['payout_destination'],
+          errors: [],
+        },
+      }).state,
+    ).toBe('due');
+    expect(
+      readPayoutRequirement({
+        requirements: {
+          currently_due: ['payout_destination'],
+          errors: [{ field: 'payout_destination', reason: 'Unknown bank code.' }],
+        },
+      }),
+    ).toEqual({ state: 'rejected', reason: 'Unknown bank code.' });
+    expect(readPayoutRequirement({}).state).toBe('unknown');
   });
 
   it('counts only direct-charge payments toward a creator balance', () => {

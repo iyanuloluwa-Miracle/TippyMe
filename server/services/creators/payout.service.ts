@@ -33,7 +33,11 @@ import {
   type BachsPayoutResponse,
 } from '../payments/bachs/bachs-http.client';
 import { BachsProviderError } from '../payments/bachs/bachs.errors';
-import { ensureCreatorBachsAccount, buildPayoutRequirementFields } from './bachs-account.service';
+import {
+  ensureCreatorBachsAccount,
+  buildPayoutRequirementFields,
+  readPayoutRequirement,
+} from './bachs-account.service';
 import { isDirectChargeSettled } from './payout-readiness';
 import {
   computeCreatorNet,
@@ -161,6 +165,7 @@ export class PayoutService {
       settlement: buildSettlementStatus({
         methodStatus: method?.status ?? null,
         hasMethod: Boolean(method),
+        lastError: method?.lastError ?? null,
       }),
       method: method ? this.toMaskedMethod(method) : null,
       availableBalance,
@@ -730,14 +735,11 @@ export class PayoutService {
     try {
       const accountId = await ensureCreatorBachsAccount(profile, this.http);
       const accountNumber = openSecret(method.accountNumberEncrypted);
-      await CreatorPayoutMethodModel.updateOne(
-        { _id: method.id },
-        { $set: { bachsDestinationId: null, updatedAt: new Date() } },
-      );
       const holderName = method.accountName || profile.displayName;
-      // Payouts stays inactive until the holder name and bank are submitted
-      // on the account. Creating a destination before that returns 403.
-      await this.http.updateConnectedAccount(
+      // Submitting the bank on the account is what creates the destination.
+      // A direct create before that is accepted returns 403, which must not
+      // wipe a destination Bachs already approved.
+      const updatedAccount = await this.http.updateConnectedAccount(
         accountId,
         {
           fields: buildPayoutRequirementFields({
@@ -748,12 +750,50 @@ export class PayoutService {
           }),
         },
       );
-      const destination = await this.findCreatorDestination(
-        accountId,
-        method,
-        accountNumber,
-        profile,
-      );
+      const requirement = readPayoutRequirement(updatedAccount);
+      if (requirement.state === 'rejected') {
+        throw new ApiError(
+          400,
+          'PAYOUT_DESTINATION_FAILED',
+          requirement.reason ||
+            'That bank account could not be verified. Check the bank and the 10-digit account number.',
+        );
+      }
+      let destination: BachsPayoutDestinationResponse | null = null;
+      try {
+        destination = await this.findCreatorDestination(
+          accountId,
+          method,
+          accountNumber,
+          profile,
+        );
+      } catch (err) {
+        if (
+          requirement.state !== 'accepted' ||
+          !(err instanceof BachsProviderError) ||
+          err.kind !== 'FORBIDDEN'
+        ) {
+          throw err;
+        }
+      }
+      if (!destination) {
+        const pending = {
+          ...method,
+          status: PayoutMethodStatus.PENDING_DESTINATION,
+          lastError: null,
+        };
+        await CreatorPayoutMethodModel.updateOne(
+          { _id: method.id },
+          {
+            $set: {
+              status: pending.status,
+              lastError: null,
+              updatedAt: new Date(),
+            },
+          },
+        );
+        return pending;
+      }
 
       // Docs: trust is_usable; sandbox often auto-approves, live may stay pending_review.
       const status = (destination.status || '').toLowerCase();
