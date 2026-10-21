@@ -17,11 +17,18 @@ export class BachsProviderError extends Error {
   readonly kind: BachsErrorKind;
   readonly httpStatus?: number;
   readonly providerErrorCode?: string;
+  /** Short provider message. Safe to log; not a raw payload. */
+  readonly providerDetail?: string;
 
   constructor(
     kind: BachsErrorKind,
     message: string,
-    opts?: { httpStatus?: number; providerErrorCode?: string; cause?: unknown },
+    opts?: {
+      httpStatus?: number;
+      providerErrorCode?: string;
+      providerDetail?: string;
+      cause?: unknown;
+    },
   ) {
     super(message);
     if (opts?.cause !== undefined) {
@@ -31,6 +38,7 @@ export class BachsProviderError extends Error {
     this.kind = kind;
     this.httpStatus = opts?.httpStatus;
     this.providerErrorCode = opts?.providerErrorCode;
+    this.providerDetail = opts?.providerDetail;
   }
 }
 

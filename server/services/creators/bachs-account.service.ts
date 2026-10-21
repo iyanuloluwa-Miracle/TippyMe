@@ -12,6 +12,7 @@ import {
   BachsHttpClient,
   type BachsConnectedAccountResponse,
   type BachsCreateConnectedAccountBody,
+  type BachsUpdateConnectedAccountBody,
 } from '../payments/bachs/bachs-http.client';
 import { BachsProviderError } from '../payments/bachs/bachs.errors';
 
@@ -145,4 +146,45 @@ function readAccountId(account: BachsConnectedAccountResponse): string {
     data?: { id?: string };
   }).data?.id;
   return (account.id || nested || '').trim();
+}
+
+/** Split a resolved bank name into the person Bachs asks for during onboarding. */
+export function splitAccountHolderName(fullName: string): {
+  first_name: string;
+  last_name: string;
+} {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return { first_name: 'Creator', last_name: 'Account' };
+  }
+  const first = parts[0]!.slice(0, 80);
+  if (parts.length === 1) return { first_name: first, last_name: first };
+  return { first_name: first, last_name: parts.slice(1).join(' ').slice(0, 80) };
+}
+
+/** Name plus bank, submitted on the connected account so payouts can activate. */
+export function buildPayoutRequirementFields(input: {
+  holderName: string;
+  accountNumber: string;
+  accountName: string;
+  bankCode: string;
+}): NonNullable<BachsUpdateConnectedAccountBody['fields']> {
+  const person = splitAccountHolderName(input.holderName);
+  const accountName = input.accountName.trim().slice(0, 255) || person.first_name;
+  return {
+    persons: [
+      {
+        first_name: person.first_name,
+        last_name: person.last_name,
+        relationship: { representative: true },
+      },
+    ],
+    payout_destination: {
+      currency: 'NGN',
+      type: 'bank_account',
+      account_number: input.accountNumber,
+      account_name: accountName,
+      bank_code: input.bankCode,
+    },
+  };
 }

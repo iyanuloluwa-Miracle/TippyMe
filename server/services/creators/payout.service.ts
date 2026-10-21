@@ -29,10 +29,11 @@ import type {
 } from '../../db/types';
 import {
   BachsHttpClient,
+  type BachsPayoutDestinationResponse,
   type BachsPayoutResponse,
 } from '../payments/bachs/bachs-http.client';
 import { BachsProviderError } from '../payments/bachs/bachs.errors';
-import { ensureCreatorBachsAccount } from './bachs-account.service';
+import { ensureCreatorBachsAccount, buildPayoutRequirementFields } from './bachs-account.service';
 import { isDirectChargeSettled } from './payout-readiness';
 import {
   computeCreatorNet,
@@ -628,6 +629,78 @@ export class PayoutService {
     return net.toFixed(2);
   }
 
+  /**
+   * The onboarding field creates the destination. Listing finds that row.
+   * Creating one directly is only valid once payouts is active.
+   */
+  private async findCreatorDestination(
+    accountId: string,
+    method: CreatorPayoutMethod,
+    accountNumber: string,
+    profile: CreatorProfile,
+  ): Promise<BachsPayoutDestinationResponse> {
+    const listed = await this.matchingDestination(accountId, method, accountNumber);
+    if (listed) return listed;
+
+    try {
+      return await this.http.createPayoutDestination(
+        {
+          type: 'bank_account',
+          currency: 'NGN',
+          bank_code: method.bankCode,
+          account_number: accountNumber,
+          name: method.accountName || profile.displayName,
+          label: `TippyMe @${profile.username}`,
+        },
+        `dest_${accountId}_${method.id}_${method.bankCode}_${method.accountNumberLast4}`.slice(
+          0,
+          255,
+        ),
+        accountId,
+      );
+    } catch (err) {
+      if (!(err instanceof BachsProviderError) || err.kind !== 'FORBIDDEN') {
+        throw err;
+      }
+      const after = await this.matchingDestination(accountId, method, accountNumber);
+      if (after) return after;
+      throw err;
+    }
+  }
+
+  private async matchingDestination(
+    accountId: string,
+    method: CreatorPayoutMethod,
+    accountNumber: string,
+  ): Promise<BachsPayoutDestinationResponse | null> {
+    let listed: BachsPayoutDestinationResponse[] = [];
+    try {
+      listed = await this.http.listPayoutDestinations(accountId, 'NGN');
+    } catch (err) {
+      if (!(err instanceof BachsProviderError) || err.kind !== 'FORBIDDEN') {
+        throw err;
+      }
+      return null;
+    }
+    return (
+      listed.find((destination) =>
+        this.sameBankDestination(destination, method, accountNumber),
+      ) ?? null
+    );
+  }
+
+  private sameBankDestination(
+    destination: BachsPayoutDestinationResponse,
+    method: CreatorPayoutMethod,
+    accountNumber: string,
+  ): boolean {
+    const number = (destination.account_number || '').replace(/\s+/g, '');
+    const code = (destination.bank_code || '').trim();
+    if (!destination.id || !number) return false;
+    if (code && code !== method.bankCode) return false;
+    return number === accountNumber || number.endsWith(method.accountNumberLast4);
+  }
+
   private async registerDestination(
     profile: CreatorProfile,
     method: CreatorPayoutMethod,
@@ -661,23 +734,25 @@ export class PayoutService {
         { _id: method.id },
         { $set: { bachsDestinationId: null, updatedAt: new Date() } },
       );
-      // Match Bachs NGN docs: type, currency, bank_code, account_number (+ optional name/label).
-      // Key includes the connected account so a destination created on the
-      // platform account is not reused.
-      const destination = await this.http.createPayoutDestination(
-        {
-          type: 'bank_account',
-          currency: 'NGN',
-          bank_code: method.bankCode,
-          account_number: accountNumber,
-          name: method.accountName || profile.displayName,
-          label: `TippyMe @${profile.username}`,
-        },
-        `dest_${accountId}_${method.id}_${method.bankCode}_${method.accountNumberLast4}`.slice(
-          0,
-          255,
-        ),
+      const holderName = method.accountName || profile.displayName;
+      // Payouts stays inactive until the holder name and bank are submitted
+      // on the account. Creating a destination before that returns 403.
+      await this.http.updateConnectedAccount(
         accountId,
+        {
+          fields: buildPayoutRequirementFields({
+            holderName,
+            accountNumber,
+            accountName: holderName,
+            bankCode: method.bankCode,
+          }),
+        },
+      );
+      const destination = await this.findCreatorDestination(
+        accountId,
+        method,
+        accountNumber,
+        profile,
       );
 
       // Docs: trust is_usable; sandbox often auto-approves, live may stay pending_review.
@@ -761,6 +836,9 @@ export class PayoutService {
     }
     if (code === 'PAYOUT_CURRENCY_NOT_ENABLED') {
       return 'NGN bank payouts are not enabled on this Bachs account yet.';
+    }
+    if (err.kind === 'FORBIDDEN') {
+      return 'Bachs has not activated payouts for this account yet. Save the bank again in a moment.';
     }
     return `Bachs could not register this bank account (${err.kind}).`;
   }

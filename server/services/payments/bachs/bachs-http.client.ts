@@ -87,6 +87,24 @@ export interface BachsUpdateConnectedAccountBody {
   display_name?: string;
   contact_email?: string;
   configuration?: BachsCreateConnectedAccountBody['configuration'];
+  /**
+   * Onboarding fields. The holder name and bank must be submitted together
+   * before POST /payouts/destinations is allowed. Until then Bachs returns 403.
+   */
+  fields?: {
+    persons?: Array<{
+      first_name: string;
+      last_name: string;
+      relationship?: { representative?: boolean };
+    }>;
+    payout_destination?: {
+      currency: string;
+      type: 'bank_account';
+      account_number: string;
+      account_name: string;
+      bank_code: string;
+    };
+  };
 }
 
 export interface BachsConnectedAccountResponse {
@@ -193,6 +211,7 @@ export interface BachsPayoutResponse {
 interface BachsErrorBody {
   detail?: string;
   error_code?: string;
+  errors?: Array<{ field?: string; message?: string }>;
 }
 
 /**
@@ -374,6 +393,22 @@ export class BachsHttpClient {
     );
   }
 
+  async listPayoutDestinations(
+    accountId: string,
+    currency = 'NGN',
+  ): Promise<BachsPayoutDestinationResponse[]> {
+    const raw = await this.request<
+      | { destinations?: BachsPayoutDestinationResponse[] }
+      | BachsPayoutDestinationResponse[]
+    >(
+      'GET',
+      `/payouts/destinations?currency=${encodeURIComponent(currency)}`,
+      { expectedStatuses: [200], accountId },
+    );
+    if (Array.isArray(raw)) return raw;
+    return raw.destinations ?? [];
+  }
+
   async createPayoutDestination(
     body: BachsCreatePayoutDestinationBody,
     idempotencyKey: string,
@@ -469,8 +504,10 @@ export class BachsHttpClient {
       try {
         const errBody = (await response.json()) as BachsErrorBody;
         providerErrorCode = errBody.error_code;
-        providerDetail =
-          typeof errBody.detail === 'string' ? errBody.detail.slice(0, 200) : undefined;
+        const firstError = errBody.errors?.find((item) => item.message)?.message;
+        providerDetail = (
+          typeof errBody.detail === 'string' ? errBody.detail : firstError
+        )?.slice(0, 200);
       } catch {
         // ignore parse errors
       }
@@ -480,7 +517,11 @@ export class BachsHttpClient {
       throw new BachsProviderError(
         mapHttpStatusToKind(response.status),
         `Bachs API error (${response.status})`,
-        { httpStatus: response.status, providerErrorCode },
+        {
+          httpStatus: response.status,
+          providerErrorCode,
+          providerDetail,
+        },
       );
     }
 

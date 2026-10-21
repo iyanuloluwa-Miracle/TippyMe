@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildConnectedAccountBody } from '../server/services/creators/bachs-account.service';
+import { buildConnectedAccountBody, buildPayoutRequirementFields } from '../server/services/creators/bachs-account.service';
 import {
   bachsAccountIdFromMetadata,
   isDirectChargeSettled,
@@ -106,6 +106,27 @@ describe('creator settlement helpers', () => {
     });
     expect(body.configuration?.recipient?.capabilities?.payouts).toEqual({
       requested: true,
+    });
+  });
+
+  it('submits the holder name and bank together so payouts can activate', () => {
+    const fields = buildPayoutRequirementFields({
+      holderName: 'Ada Obi',
+      accountNumber: '0123456789',
+      accountName: 'ADA OBI',
+      bankCode: '058',
+    });
+    expect(fields.persons?.[0]).toEqual({
+      first_name: 'Ada',
+      last_name: 'Obi',
+      relationship: { representative: true },
+    });
+    expect(fields.payout_destination).toEqual({
+      currency: 'NGN',
+      type: 'bank_account',
+      account_number: '0123456789',
+      account_name: 'ADA OBI',
+      bank_code: '058',
     });
   });
 
