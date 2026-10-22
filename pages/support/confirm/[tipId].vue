@@ -1,5 +1,6 @@
 <template>
   <div class="mx-auto max-w-md px-4 py-16">
+    <SupportPartyBurst v-if="showParty" />
     <div
       v-if="loading"
       class="text-center text-sm font-semibold text-cheer-ink/80"
@@ -28,7 +29,6 @@
       class="confirm-result space-y-6"
       :class="{ 'confirm-result--paid': tip.status === 'PAID' }"
     >
-      <SupportPartyBurst v-if="tip.status === 'PAID'" />
       <div class="rounded-2xl border border-cheer-leaf/20 bg-cheer-mint/25 p-8 text-center">
         <p class="text-sm font-semibold text-cheer-leaf">
           {{ headline }}
@@ -130,6 +130,7 @@ const error = ref<string | null>(null);
 const tip = ref<PublicTip | null>(null);
 const thankYou = ref<string | null>(null);
 const polling = ref(false);
+const showParty = ref(false);
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const formattedAmount = computed(() => {
@@ -198,6 +199,10 @@ function isTerminal(status: TipStatus) {
   return status === 'PAID' || status === 'FAILED' || status === 'EXPIRED' || status === 'REFUNDED' || status === 'DISPUTED';
 }
 
+function celebrateIfPaid(status: TipStatus) {
+  if (status === 'PAID' && !showParty.value) showParty.value = true;
+}
+
 function stopPolling() {
   polling.value = false;
   if (pollTimer) {
@@ -223,6 +228,7 @@ async function refreshStatus() {
     if (isTerminal(status.tipStatus)) {
       stopPolling();
       if (status.tipStatus === 'PAID') {
+        celebrateIfPaid(status.tipStatus);
         void loadThankYou();
       }
     }
@@ -252,6 +258,7 @@ async function load() {
     const result = await api.getPublicTip(tipId.value, confirmationToken.value);
     tip.value = result.tip;
     if (result.tip.status === 'PAID') {
+      celebrateIfPaid(result.tip.status);
       thankYou.value = result.tip.aiThankYouMessage;
       void loadThankYou();
     } else if (!isTerminal(result.tip.status)) {
@@ -274,8 +281,8 @@ async function load() {
   animation: confirm-pop 0.6s cubic-bezier(.16, .84, .32, 1);
 }
 @keyframes confirm-pop {
-  from { opacity: 0; transform: translateY(10px) scale(0.98); }
-  to { opacity: 1; transform: none; }
+  from { transform: translateY(10px) scale(0.98); }
+  to { transform: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .confirm-result--paid { animation: none; }

@@ -1,17 +1,19 @@
 <template>
-  <div
-    v-if="active"
-    class="party"
-    aria-hidden="true"
-  >
-    <span
-      v-for="piece in pieces"
-      :key="piece.id"
-      class="party__piece"
-      :class="piece.kind"
-      :style="piece.style"
-    />
-  </div>
+  <Teleport to="body">
+    <div
+      v-if="active"
+      class="party"
+      aria-hidden="true"
+    >
+      <span
+        v-for="piece in pieces"
+        :key="piece.id"
+        class="party__piece"
+        :class="[piece.kind, { 'is-on': playing }]"
+        :style="piece.style"
+      />
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -24,11 +26,22 @@ interface Piece {
 const COLORS = ['#9362ff', '#c4a0ff', '#ffb454', '#ff7a9c', '#3dbe8b', '#ffe56b', '#ffffff'];
 
 const active = ref(false);
+const playing = ref(false);
 const pieces = ref<Piece[]>([]);
 let clearTimer: ReturnType<typeof setTimeout> | null = null;
+let frame = 0;
 
 function rand(min: number, max: number) {
   return min + Math.random() * (max - min);
+}
+
+function pieceLook(color: string, width: number, height: number, radius: string) {
+  return {
+    width: `${width}px`,
+    height: `${height}px`,
+    backgroundColor: color,
+    borderRadius: radius,
+  };
 }
 
 function buildPieces(): Piece[] {
@@ -36,15 +49,17 @@ function buildPieces(): Piece[] {
     id,
     kind: 'fall',
     style: {
+      ...pieceLook(
+        COLORS[id % COLORS.length]!,
+        rand(7, 12),
+        rand(8, 16),
+        Math.random() > 0.55 ? '999px' : '2px',
+      ),
       '--x': `${rand(0, 100)}%`,
       '--drift': `${rand(-80, 80)}px`,
       '--rot': `${rand(180, 720)}deg`,
       '--d': `${rand(2.4, 4.2)}s`,
       '--delay': `${rand(0, 0.45)}s`,
-      '--c': COLORS[id % COLORS.length]!,
-      '--w': `${rand(7, 12)}px`,
-      '--h': `${rand(8, 16)}px`,
-      '--radius': Math.random() > 0.55 ? '999px' : '2px',
     },
   }));
 
@@ -55,14 +70,16 @@ function buildPieces(): Piece[] {
       id: 100 + index,
       kind: 'burst',
       style: {
+        ...pieceLook(
+          COLORS[index % COLORS.length]!,
+          rand(8, 13),
+          rand(8, 13),
+          Math.random() > 0.4 ? '999px' : '3px',
+        ),
         '--dx': `${Math.cos(angle) * distance}px`,
         '--dy': `${Math.sin(angle) * distance - 40}px`,
         '--rot': `${rand(-180, 180)}deg`,
         '--d': `${rand(0.9, 1.35)}s`,
-        '--c': COLORS[index % COLORS.length]!,
-        '--w': `${rand(8, 13)}px`,
-        '--h': `${rand(8, 13)}px`,
-        '--radius': Math.random() > 0.4 ? '999px' : '3px',
       },
     };
   });
@@ -70,16 +87,26 @@ function buildPieces(): Piece[] {
   return [...burst, ...falling];
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   pieces.value = buildPieces();
   active.value = true;
+  await nextTick();
+  // Paint the pieces once before starting motion. If the animation class
+  // is on the first frame, the burst can finish at opacity 0 before it is seen.
+  frame = requestAnimationFrame(() => {
+    frame = requestAnimationFrame(() => {
+      playing.value = true;
+    });
+  });
   clearTimer = setTimeout(() => {
     active.value = false;
-  }, 4600);
+    playing.value = false;
+  }, 4800);
 });
 
 onBeforeUnmount(() => {
+  if (frame) cancelAnimationFrame(frame);
   if (clearTimer) clearTimeout(clearTimer);
 });
 </script>
@@ -88,26 +115,34 @@ onBeforeUnmount(() => {
 .party {
   position: fixed;
   inset: 0;
-  z-index: 30;
+  z-index: 80;
   overflow: hidden;
   pointer-events: none;
 }
 .party__piece {
   position: absolute;
-  width: var(--w);
-  height: var(--h);
-  background: var(--c);
-  border-radius: var(--radius);
+  display: block;
 }
 .party__piece.fall {
   top: -20px;
   left: var(--x);
-  animation: party-fall var(--d) var(--delay) linear forwards;
 }
 .party__piece.burst {
   top: 28%;
   left: 50%;
-  animation: party-burst var(--d) cubic-bezier(.16, .84, .32, 1) forwards;
+}
+.party__piece.fall.is-on {
+  animation-name: party-fall;
+  animation-duration: var(--d);
+  animation-delay: var(--delay);
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+.party__piece.burst.is-on {
+  animation-name: party-burst;
+  animation-duration: var(--d);
+  animation-timing-function: cubic-bezier(0.16, 0.84, 0.32, 1);
+  animation-fill-mode: forwards;
 }
 @keyframes party-fall {
   0% { transform: translate3d(0, -8vh, 0) rotate(0deg); opacity: 1; }
