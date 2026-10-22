@@ -267,6 +267,12 @@ function mapError(err: unknown): string {
     if (err.errorCode === 'CREATOR_NOT_FOUND') {
       return 'This creator page is no longer available.';
     }
+    if (
+      err.errorCode === 'PAYMENT_INIT_FAILED' ||
+      err.errorCode === 'CREATOR_PAYOUT_ACCOUNT_UNAVAILABLE'
+    ) {
+      return err.message;
+    }
     if (err.statusCode >= 500) {
       return 'Something went wrong. Please try again.';
     }

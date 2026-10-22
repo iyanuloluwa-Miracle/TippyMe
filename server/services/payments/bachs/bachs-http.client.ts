@@ -1,9 +1,8 @@
 import { getServerEnv } from '../../../lib/env';
 import {
   BACHS_API_VERSION_PREFIX,
-  BACHS_PRODUCTION_BASE_URL,
   BACHS_REQUEST_TIMEOUT_MS,
-  BACHS_SANDBOX_BASE_URL,
+  resolveBachsBaseUrl,
 } from './bachs.constants';
 import { BachsProviderError, mapHttpStatusToKind } from './bachs.errors';
 
@@ -229,26 +228,15 @@ export class BachsHttpClient {
   }
 
   private baseUrl(): string {
-    const configured = getServerEnv().BACHS_API_BASE_URL?.replace(/\/$/, '');
-    if (configured) return configured;
-    const key = getServerEnv().BACHS_API_KEY?.trim() ?? '';
-    if (key.startsWith('sk_live_')) return BACHS_PRODUCTION_BASE_URL;
-    return BACHS_SANDBOX_BASE_URL;
-  }
-
-  /** Warn when key environment and base URL disagree (common Connect 401/404 cause). */
-  private assertKeyMatchesBaseUrl(): void {
-    const key = this.apiKey();
-    const base = this.baseUrl().toLowerCase();
-    const liveKey = key.startsWith('sk_live_');
-    const sandboxKey = key.startsWith('sk_sandbox_');
-    const liveBase = base.includes('sandbox') === false && base.includes('bachs.io');
-    const sandboxBase = base.includes('sandbox');
-    if ((liveKey && sandboxBase) || (sandboxKey && liveBase && !sandboxBase)) {
+    const env = getServerEnv();
+    const resolved = resolveBachsBaseUrl(env.BACHS_API_KEY, env.BACHS_API_BASE_URL);
+    const configured = env.BACHS_API_BASE_URL?.replace(/\/$/, '') ?? '';
+    if (configured && configured !== resolved) {
       console.error(
-        `Bachs config mismatch: key_prefix=${key.slice(0, 10)}… base=${base}`,
+        `Bachs base URL ${configured} does not match the API key environment. Using ${resolved}.`,
       );
     }
+    return resolved;
   }
 
   private apiKey(): string {
@@ -465,7 +453,6 @@ export class BachsHttpClient {
       accountId?: string;
     },
   ): Promise<T> {
-    this.assertKeyMatchesBaseUrl();
     const url = `${this.baseUrl()}${BACHS_API_VERSION_PREFIX}${path}`;
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey()}`,

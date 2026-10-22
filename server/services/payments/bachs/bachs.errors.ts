@@ -65,8 +65,9 @@ export function bachsPublicMessage(kind: BachsErrorKind): string {
       return 'Payment service timed out. Please try again.';
     case 'CONFIG':
       return 'Payments are temporarily unavailable.';
-    case 'UNAUTHORIZED':
     case 'FORBIDDEN':
+      return 'This creator’s Bachs account is not on the API key this site is using, so checkout cannot start.';
+    case 'UNAUTHORIZED':
     case 'NOT_FOUND':
     case 'CONFLICT':
     case 'PROVIDER':

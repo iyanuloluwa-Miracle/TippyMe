@@ -7,6 +7,7 @@ import {
 import { BachsProviderError } from '../server/services/payments/bachs/bachs.errors';
 import type { BachsHttpClient } from '../server/services/payments/bachs/bachs-http.client';
 import { BachsPaymentProvider } from '../server/services/payments/providers/bachs-payment.provider';
+import { resolveBachsBaseUrl } from '../server/services/payments/bachs/bachs.constants';
 import { NGN_PAYOUT_FEE, ngnWithdrawalAmounts } from '../utils/ngn-payout';
 
 class FakeBachs {
@@ -86,6 +87,17 @@ describe('direct-charge checkout', () => {
 
     expect(http.verifiedAccountId).toBe('acct_creator');
     expect(result.status).toBe('succeeded');
+  });
+});
+
+describe('Bachs API host', () => {
+  it('follows the key so a live URL cannot be used with a sandbox account', () => {
+    expect(
+      resolveBachsBaseUrl('sk_sandbox_test', 'https://api.bachs.io'),
+    ).toBe('https://sandbox-api.bachs.io');
+    expect(
+      resolveBachsBaseUrl('sk_live_test', 'https://sandbox-api.bachs.io'),
+    ).toBe('https://api.bachs.io');
   });
 });
 
