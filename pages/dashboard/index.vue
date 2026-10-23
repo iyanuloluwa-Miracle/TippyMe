@@ -257,7 +257,7 @@ const bankReady = computed(
 
 const payoutDescription = computed(() => {
   if (bankReady.value) {
-    return 'Supporters pay through Bachs into your account. Withdraw to the Nigerian bank you saved. The ₦50 payout fee is shown before you confirm.';
+    return `Supporters pay through Bachs into your account. Withdraw to the Nigerian bank you saved. The ₦${payoutFeeLabel.value} payout fee is shown before you confirm.`;
   }
   if (dashboard.value?.settlement.readiness === 'PENDING') {
     return 'Bank details saved. Waiting for Bachs to approve your payout destination.';

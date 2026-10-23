@@ -1,7 +1,7 @@
 import Decimal from 'decimal.js';
 
 /** Shown before a creator confirms an NGN withdrawal. Bachs charges this on top. */
-export const NGN_PAYOUT_FEE = '50.00';
+export const NGN_PAYOUT_FEE = '100.00';
 
 /**
  * `gross` is what leaves the creator's available balance.
