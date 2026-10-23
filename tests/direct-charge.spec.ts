@@ -302,13 +302,13 @@ describe('creator settlement helpers', () => {
     expect(bachsAccountIdFromMetadata({ settledVia: 'platform_balance' })).toBeUndefined();
   });
 
-  it('shows the ₦100 fee before the amount sent to the bank', () => {
-    expect(NGN_PAYOUT_FEE).toBe('100.00');
+  it('shows the ₦50 fee before the amount sent to the bank', () => {
+    expect(NGN_PAYOUT_FEE).toBe('50.00');
     expect(ngnWithdrawalAmounts('1000.00')).toEqual({
-      fee: '100.00',
-      toBank: '900.00',
+      fee: '50.00',
+      toBank: '950.00',
       debit: '1000.00',
     });
-    expect(Number(ngnWithdrawalAmounts('190.00').toBank)).toBeLessThan(100);
+    expect(Number(ngnWithdrawalAmounts('149.00').toBank)).toBeLessThan(100);
   });
 });

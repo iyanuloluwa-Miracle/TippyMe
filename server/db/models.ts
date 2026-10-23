@@ -128,6 +128,9 @@ const payoutRequestSchema = new Schema(
     creatorId: { type: String, required: true },
     payoutMethodId: { type: String, required: true },
     amount: { type: String, required: true },
+    bankAmount: { type: String, default: null },
+    providerFee: { type: String, default: null },
+    totalDebited: { type: String, default: null },
     currency: { type: String, required: true, maxlength: 3 },
     platformFeePercent: { type: Number, required: true, default: 5 },
     status: {

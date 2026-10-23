@@ -106,6 +106,12 @@ export type PayoutRequest = {
   creatorId: string;
   payoutMethodId: string;
   amount: string;
+  /** Amount instructed to the bank, excluding the provider payout fee. */
+  bankAmount: string | null;
+  /** Actual Bachs payout fee when supplied by the provider. */
+  providerFee: string | null;
+  /** Actual amount removed from the Bachs balance. */
+  totalDebited: string | null;
   currency: string;
   platformFeePercent: number;
   status: PayoutRequestStatus;

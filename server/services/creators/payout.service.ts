@@ -185,7 +185,7 @@ export class PayoutService {
       payoutFee: NGN_PAYOUT_FEE,
       recentRequests: toPlainList<PayoutRequest>(recent).map((row) => ({
         id: row.id,
-        amount: row.amount,
+        amount: row.bankAmount ?? row.amount,
         currency: row.currency,
         status: row.status,
         createdAt: row.createdAt.toISOString(),
@@ -437,6 +437,9 @@ export class PayoutService {
       creatorId: profile.id,
       payoutMethodId: method.id,
       amount,
+      bankAmount,
+      providerFee: NGN_PAYOUT_FEE,
+      totalDebited: amount,
       currency: 'NGN',
       platformFeePercent: feePct,
       status: PayoutRequestStatus.REQUESTED,
@@ -502,6 +505,8 @@ export class PayoutService {
 
       const status = this.mapPayoutStatus(payout.status);
       const debited = normalizePayoutAmount(payout.total_debited);
+      const paidToBank = normalizePayoutAmount(payout.amount) ?? bankAmount;
+      const providerFee = normalizePayoutAmount(payout.fee) ?? NGN_PAYOUT_FEE;
       const reserved =
         debited && new Decimal(debited).gt(amount) ? debited : amount;
       await PayoutRequestModel.updateOne(
@@ -509,6 +514,9 @@ export class PayoutService {
         {
           $set: {
             amount: reserved,
+            bankAmount: paidToBank,
+            providerFee,
+            totalDebited: debited ?? amount,
             bachsPayoutId: payout.id || null,
             status,
             failureReason:
@@ -1008,6 +1016,9 @@ export class PayoutService {
         creatorId: resolved.method.creatorId,
         payoutMethodId: resolved.method.id,
         amount,
+        bankAmount: amount,
+        providerFee: null,
+        totalDebited: null,
         currency,
         platformFeePercent: platformFeePercent(),
         status: PayoutRequestStatus.REQUESTED,

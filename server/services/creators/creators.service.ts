@@ -884,7 +884,7 @@ export class CreatorsService {
       creatorId,
       status: PayoutRequestStatus.PAID,
     })
-      .select('amount currency')
+      .select('amount bankAmount currency')
       .lean<LeanDoc[]>();
 
     const held = new Map<string, { sum: Decimal; count: number }>();
@@ -900,7 +900,7 @@ export class CreatorsService {
     for (const row of toPlainList<PayoutRequest>(payouts)) {
       const currency = row.currency;
       const current = settled.get(currency) ?? { sum: new Decimal(0), count: 0 };
-      current.sum = current.sum.plus(row.amount);
+      current.sum = current.sum.plus(row.bankAmount ?? row.amount);
       current.count += 1;
       settled.set(currency, current);
     }
