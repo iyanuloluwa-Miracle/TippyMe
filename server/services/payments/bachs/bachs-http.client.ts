@@ -145,6 +145,18 @@ export interface BachsBalanceSettingsBody {
   };
 }
 
+export interface BachsBalance {
+  currency?: string;
+  available_balance?: string;
+  pending_balance?: string;
+  held_for_disputes?: string;
+}
+
+export interface BachsBalancesResponse {
+  balances?: BachsBalance[];
+  data?: BachsBalance[];
+}
+
 export interface BachsBank {
   code?: string;
   bank_code?: string;
@@ -335,6 +347,20 @@ export class BachsHttpClient {
       expectedStatuses: [200, 201],
       accountId,
     });
+  }
+
+  /** Read the connected account's provider-backed available balances. */
+  async getBalances(accountId: string): Promise<BachsBalance[]> {
+    const raw = await this.request<
+      BachsBalance[] | BachsBalancesResponse
+    >('GET', '/balances', {
+      expectedStatuses: [200],
+      accountId,
+    });
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw.balances)) return raw.balances;
+    if (Array.isArray(raw.data)) return raw.data;
+    return [];
   }
 
   /**

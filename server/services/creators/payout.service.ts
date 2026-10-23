@@ -29,6 +29,7 @@ import type {
 } from '../../db/types';
 import {
   BachsHttpClient,
+  type BachsBalance,
   type BachsCreatePayoutBody,
   type BachsPayoutDestinationResponse,
   type BachsPayoutResponse,
@@ -111,7 +112,9 @@ export interface PayoutRequestDto {
 export interface CreatorPayoutOverviewDto {
   settlement: CreatorSettlementStatusDto;
   method: MaskedPayoutMethodDto | null;
-  availableBalance: string;
+  availableBalance: string | null;
+  balanceSource: 'BACHS_LIVE' | 'LOCAL_LEDGER' | 'UNAVAILABLE';
+  balanceMessage: string | null;
   currency: string;
   platformFeePercent: number;
   minPayoutAmount: string;
@@ -156,13 +159,15 @@ export class PayoutService {
         LeanDoc | null
       >(),
     );
-    const [availableBalance, recent] = await Promise.all([
+    const [ledgerBalance, recent] = await Promise.all([
       this.computeAvailableBalance(profile),
       PayoutRequestModel.find({ creatorId: profile.id })
         .sort({ createdAt: -1 })
         .limit(10)
         .lean<LeanDoc[]>(),
     ]);
+
+    const balance = await this.resolveWithdrawableBalance(profile, ledgerBalance);
 
     return {
       settlement: buildSettlementStatus({
@@ -171,7 +176,9 @@ export class PayoutService {
         lastError: method?.lastError ?? null,
       }),
       method: method ? this.toMaskedMethod(method) : null,
-      availableBalance,
+      availableBalance: balance.amount,
+      balanceSource: balance.source,
+      balanceMessage: balance.message,
       currency: profile.currency,
       platformFeePercent: platformFeePercent(),
       minPayoutAmount: MIN_PAYOUT_NGN.toFixed(2),
@@ -362,7 +369,37 @@ export class PayoutService {
       );
     }
 
-    const available = new Decimal(await this.computeAvailableBalance(profile));
+    const ledgerBalance = await this.computeAvailableBalance(profile);
+    let accountId: string;
+    let availableBalance = ledgerBalance;
+    try {
+      accountId = await ensureCreatorBachsAccount(profile, this.http);
+      if (this.http.isConfigured) {
+        await this.assertStoredDestinationMatches(accountId, method);
+        const balances = await this.http.getBalances(accountId);
+        const verified = providerBackedWithdrawableBalance(
+          ledgerBalance,
+          balances,
+          'NGN',
+        );
+        if (verified === null) {
+          throw new ApiError(
+            503,
+            'PAYOUT_BALANCE_UNAVAILABLE',
+            'Your live Bachs balance is temporarily unavailable. Try again shortly.',
+          );
+        }
+        availableBalance = verified;
+      }
+    } catch (err) {
+      if (err instanceof ApiError) throw err;
+      throw new ApiError(
+        502,
+        'PAYOUT_FAILED',
+        'Bachs could not open a payout account for this withdrawal. Try again shortly.',
+      );
+    }
+    const available = new Decimal(availableBalance);
     const requested = parseRequestedAmount(input?.amount) ?? available;
 
     if (!available.isFinite() || available.lte(0)) {
@@ -389,24 +426,12 @@ export class PayoutService {
       throw new ApiError(
         400,
         'INSUFFICIENT_BALANCE',
-        'That amount is more than your available balance.',
+        'That amount is more than your live available balance.',
       );
     }
 
     const amount = gross.toFixed(2);
     const bankAmount = toBank.toFixed(2);
-    let accountId: string;
-    try {
-      accountId = await ensureCreatorBachsAccount(profile, this.http);
-      await this.assertStoredDestinationMatches(accountId, method);
-    } catch (err) {
-      if (err instanceof ApiError) throw err;
-      throw new ApiError(
-        502,
-        'PAYOUT_FAILED',
-        'Bachs could not open a payout account for this withdrawal. Try again shortly.',
-      );
-    }
     const feePct = platformFeePercent();
     const created = await PayoutRequestModel.create({
       creatorId: profile.id,
@@ -646,6 +671,54 @@ export class PayoutService {
 
     if (net.lt(0)) net = new Decimal(0);
     return net.toFixed(2);
+  }
+
+  private async resolveWithdrawableBalance(
+    profile: CreatorProfile,
+    ledgerBalance: string,
+  ): Promise<{
+    amount: string | null;
+    source: CreatorPayoutOverviewDto['balanceSource'];
+    message: string | null;
+  }> {
+    if (!this.http.isConfigured) {
+      return { amount: ledgerBalance, source: 'LOCAL_LEDGER', message: null };
+    }
+
+    const accountId = profile.bachsAccountId?.trim();
+    if (!accountId || accountId.startsWith('acct_stub_')) {
+      return {
+        amount: null,
+        source: 'UNAVAILABLE',
+        message: 'Your live Bachs balance is not available yet.',
+      };
+    }
+
+    try {
+      const balances = await this.http.getBalances(accountId);
+      const amount = providerBackedWithdrawableBalance(
+        ledgerBalance,
+        balances,
+        profile.currency,
+      );
+      if (amount === null) {
+        return {
+          amount: null,
+          source: 'UNAVAILABLE',
+          message: 'Bachs returned an invalid balance. Payouts are paused for safety.',
+        };
+      }
+      return { amount, source: 'BACHS_LIVE', message: null };
+    } catch (err) {
+      console.warn(
+        `Bachs balance lookup failed account=${accountId}: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+      return {
+        amount: null,
+        source: 'UNAVAILABLE',
+        message: 'Your live Bachs balance is temporarily unavailable. Try again shortly.',
+      };
+    }
   }
 
   /**
@@ -1169,6 +1242,27 @@ export function buildBachsPayoutBody(input: {
       tippyme_creator_id: input.creatorId,
     },
   };
+}
+
+/** Never show or withdraw more than both systems agree is available. */
+export function providerBackedWithdrawableBalance(
+  ledgerBalance: string,
+  providerBalances: BachsBalance[],
+  currency: string,
+): string | null {
+  try {
+    const ledger = new Decimal(ledgerBalance);
+    if (!ledger.isFinite() || ledger.lt(0)) return null;
+    const row = providerBalances.find(
+      (balance) => balance.currency?.toUpperCase() === currency.toUpperCase(),
+    );
+    if (!row) return '0.00';
+    const provider = new Decimal(row.available_balance ?? '');
+    if (!provider.isFinite() || provider.lt(0)) return null;
+    return Decimal.min(ledger, provider).toFixed(2);
+  } catch {
+    return null;
+  }
 }
 
 function mongoId(value: string | undefined): string | undefined {

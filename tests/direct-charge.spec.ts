@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildConnectedAccountBody, buildPayoutRequirementFields, enforceManualBachsPayoutSchedule, readPayoutRequirement } from '../server/services/creators/bachs-account.service';
-import { buildBachsPayoutBody, payoutDestinationMatchesSavedBank, payoutDestinationVersionMatches } from '../server/services/creators/payout.service';
+import { buildBachsPayoutBody, payoutDestinationMatchesSavedBank, payoutDestinationVersionMatches, providerBackedWithdrawableBalance } from '../server/services/creators/payout.service';
 import {
   bachsAccountIdFromMetadata,
   isDirectChargeSettled,
@@ -196,6 +196,31 @@ describe('creator settlement helpers', () => {
         tippyme_creator_id: 'creator_1',
       },
     });
+  });
+
+  it('uses the lower live Bachs balance instead of overstating withdrawals', () => {
+    expect(
+      providerBackedWithdrawableBalance(
+        '9500.00',
+        [{ currency: 'NGN', available_balance: '9350.00' }],
+        'NGN',
+      ),
+    ).toBe('9350.00');
+    expect(
+      providerBackedWithdrawableBalance(
+        '9000.00',
+        [{ currency: 'NGN', available_balance: '9350.00' }],
+        'NGN',
+      ),
+    ).toBe('9000.00');
+    expect(providerBackedWithdrawableBalance('9500.00', [], 'NGN')).toBe('0.00');
+    expect(
+      providerBackedWithdrawableBalance(
+        '9500.00',
+        [{ currency: 'NGN', available_balance: 'not-money' }],
+        'NGN',
+      ),
+    ).toBeNull();
   });
 
   it('requests collection and payout capabilities for a new connected account', () => {

@@ -64,7 +64,13 @@
           <p v-if="dashboard.currency !== 'NGN'" class="inline-error" role="status">
             Bank payouts currently require NGN. Change your preferred currency in profile settings to enable withdrawals.
           </p>
-          <p v-if="payoutOverview" class="payout-balance"><span>Available</span><strong>{{ formatMoney(payoutOverview.availableBalance, payoutOverview.currency) }}</strong></p>
+          <p v-if="payoutOverview && payoutOverview.availableBalance !== null" class="payout-balance">
+            <span>Available to withdraw<small v-if="payoutOverview?.balanceSource === 'BACHS_LIVE'">Live Bachs balance</small></span>
+            <strong>{{ formatMoney(payoutOverview.availableBalance || '0.00', payoutOverview.currency) }}</strong>
+          </p>
+          <p v-else-if="payoutOverview" class="payout-balance payout-balance--unavailable" role="status">
+            <span>Available to withdraw</span><strong>Temporarily unavailable</strong>
+          </p>
           <dl class="payout-facts">
             <div><dt>Bank</dt><dd>{{ payoutOverview?.method ? `${payoutOverview.method.bankName || 'Bank'} ···${payoutOverview.method.accountNumberLast4}` : 'Not saved' }}</dd></div>
             <div><dt>Account name</dt><dd>{{ payoutOverview?.method?.accountName || '—' }}</dd></div>
@@ -262,7 +268,7 @@ const bankReady = computed(
 
 const payoutDescription = computed(() => {
   if (bankReady.value) {
-    return `Supporters pay through Bachs into your account. Withdraw to the Nigerian bank you saved. The ₦${payoutFeeLabel.value} payout fee is shown before you confirm.`;
+    return `Your withdrawable amount uses your live Bachs balance after collection and platform fees. The ₦${payoutFeeLabel.value} payout fee is shown before you confirm.`;
   }
   if (dashboard.value?.settlement.readiness === 'PENDING') {
     return 'Bank details saved. Waiting for Bachs to approve your payout destination.';
@@ -287,7 +293,7 @@ const payoutFeeLabel = computed(() => {
 
 const withdrawalQuote = computed(() => {
   const available = payoutOverview.value?.availableBalance;
-  if (!available) return null;
+  if (available === null || available === undefined) return null;
   const quote = ngnWithdrawalAmounts(available);
   if (Number(quote.toBank) <= 0) return null;
   return quote;
@@ -304,6 +310,9 @@ const canRequestPayout = computed(() => {
 
 const payoutHoldReason = computed(() => {
   if (!bankReady.value || dashboard.value?.currency !== 'NGN' || canRequestPayout.value) return '';
+  if (payoutOverview.value?.availableBalance === null) {
+    return payoutOverview.value.balanceMessage || 'Your live payout balance is temporarily unavailable.';
+  }
   const bal = Number(payoutOverview.value?.availableBalance ?? 0);
   if (!Number.isFinite(bal) || bal <= 0) {
     return 'Nothing is available to withdraw right now.';
@@ -385,7 +394,7 @@ async function requestPayout() {
   payoutError.value = null;
   try {
     const overview = await api.requestPayout({
-      amount: payoutOverview.value?.availableBalance,
+      amount: payoutOverview.value?.availableBalance ?? undefined,
       destinationVersion: payoutOverview.value?.method?.destinationVersion || '',
     });
     payoutOverview.value = overview;
@@ -555,6 +564,8 @@ function formatMoney(amount: string, currency: string) {
 .payout-facts { display: grid; gap: 8px; margin: 0 0 16px; font-size: 13px; }.payout-facts div { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }.payout-facts dt { color: var(--workspace-muted); }.payout-facts dd { margin: 0; font-weight: 700; }
 .payout-balance { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 0 0 16px; padding: 12px 14px; border-radius: 12px; background: #f6f0ff; }
 .payout-balance span { color: var(--workspace-muted); font-size: 13px; }.payout-balance strong { font-size: 22px; letter-spacing: -.03em; }
+.payout-balance span small { display: block; margin-top: 2px; font-size: 11px; }
+.payout-balance--unavailable { align-items: center; }.payout-balance--unavailable strong { color: #986015; font-size: 14px; letter-spacing: 0; }
 .payout-bank-form { display: grid; gap: 12px; margin: 0 0 12px; }
 .payout-bank-form label { display: grid; gap: 6px; font-size: 13px; color: var(--workspace-muted); }
 .payout-bank-form :is(select, input) { min-height: 40px; padding: 8px 12px; border: 1px solid #e7dfee; border-radius: 12px; color: #261b38; background: #fff; }

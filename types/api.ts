@@ -260,7 +260,9 @@ export interface PayoutRequestRow {
 export interface CreatorPayoutOverview {
   settlement: CreatorSettlementStatus;
   method: MaskedPayoutMethod | null;
-  availableBalance: string;
+  availableBalance: string | null;
+  balanceSource: 'BACHS_LIVE' | 'LOCAL_LEDGER' | 'UNAVAILABLE';
+  balanceMessage: string | null;
   currency: string;
   platformFeePercent: number;
   minPayoutAmount: string;
