@@ -245,6 +245,7 @@ export interface MaskedPayoutMethod {
   payoutCurrency: string;
   status: 'PENDING_DESTINATION' | 'READY' | 'FAILED';
   ready: boolean;
+  destinationVersion: string;
 }
 
 export interface PayoutRequestRow {

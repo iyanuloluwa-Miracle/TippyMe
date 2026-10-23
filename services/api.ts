@@ -270,7 +270,7 @@ export function createApiClient(
         { method: 'POST', body: JSON.stringify(payload) },
       ),
 
-    requestPayout: (payload?: { amount?: string }) =>
+    requestPayout: (payload: { amount?: string; destinationVersion: string }) =>
       request<import('~/types/api').CreatorPayoutOverview>(
         '/api/creators/me/payout/request',
         { method: 'POST', body: JSON.stringify(payload ?? {}) },

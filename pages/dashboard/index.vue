@@ -86,6 +86,11 @@
           </form>
 
           <div v-else-if="bankReady && showPayoutConfirm && withdrawalQuote" class="payout-confirm">
+            <div v-if="payoutOverview?.method" class="payout-confirm-destination">
+              <span>Send to</span>
+              <strong>{{ payoutOverview.method.bankName || 'Bank' }} ···{{ payoutOverview.method.accountNumberLast4 }}</strong>
+              <small>{{ payoutOverview.method.accountName || 'Verified account holder' }}</small>
+            </div>
             <p>Withdraw <strong>{{ formatMoney(withdrawalQuote.debit, payoutOverview?.currency || 'NGN') }}</strong></p>
             <p>Payout fee <strong>{{ formatMoney(withdrawalQuote.fee, 'NGN') }}</strong></p>
             <p>Your bank receives <strong>{{ formatMoney(withdrawalQuote.toBank, 'NGN') }}</strong></p>
@@ -381,6 +386,7 @@ async function requestPayout() {
   try {
     const overview = await api.requestPayout({
       amount: payoutOverview.value?.availableBalance,
+      destinationVersion: payoutOverview.value?.method?.destinationVersion || '',
     });
     payoutOverview.value = overview;
     if (dashboard.value) dashboard.value.settlement = overview.settlement;
@@ -556,6 +562,9 @@ function formatMoney(amount: string, currency: string) {
 .payout-confirm { display: grid; gap: 6px; margin: 0 0 12px; padding: 12px 14px; border-radius: 12px; background: #f6f0ff; }
 .payout-confirm p { margin: 0; font-size: 13px; color: var(--workspace-muted); }
 .payout-confirm strong { color: #261b38; }
+.payout-confirm-destination { display: grid; gap: 3px; margin-bottom: 6px; padding-bottom: 10px; border-bottom: 1px solid #e1d7ef; }
+.payout-confirm-destination span, .payout-confirm-destination small { color: var(--workspace-muted); font-size: 12px; }
+.payout-confirm-destination strong { font-size: 14px; }
 .payout-note { margin: -4px 0 12px; color: var(--workspace-muted); font-size: 13px; line-height: 1.45; }
 .payout-history { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
 .payout-history li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; font-size: 12px; color: var(--workspace-muted); padding-top: 8px; border-top: 1px solid #eee8f4; }

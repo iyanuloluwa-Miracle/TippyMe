@@ -29,6 +29,7 @@ import type {
 } from '../../db/types';
 import {
   BachsHttpClient,
+  type BachsCreatePayoutBody,
   type BachsPayoutDestinationResponse,
   type BachsPayoutResponse,
 } from '../payments/bachs/bachs-http.client';
@@ -94,6 +95,8 @@ export interface MaskedPayoutMethodDto {
   payoutCurrency: string;
   status: CreatorPayoutMethod['status'];
   ready: boolean;
+  /** Changes whenever the saved bank destination changes. */
+  destinationVersion: string;
 }
 
 export interface PayoutRequestDto {
@@ -328,7 +331,7 @@ export class PayoutService {
 
   async requestPayout(
     userId: string,
-    input?: { amount?: string },
+    input?: { amount?: string; destinationVersion?: string },
   ): Promise<CreatorPayoutOverviewDto> {
     await useDb();
     const profile = await this.requireProfile(userId);
@@ -342,6 +345,13 @@ export class PayoutService {
         400,
         'PAYOUT_METHOD_REQUIRED',
         'Save a verified bank account before requesting a payout.',
+      );
+    }
+    if (!payoutDestinationVersionMatches(method, input?.destinationVersion)) {
+      throw new ApiError(
+        409,
+        'PAYOUT_DESTINATION_CHANGED',
+        'Your payout bank changed or the confirmation expired. Review the bank details and confirm again.',
       );
     }
     if (profile.currency.toUpperCase() !== 'NGN') {
@@ -388,6 +398,7 @@ export class PayoutService {
     let accountId: string;
     try {
       accountId = await ensureCreatorBachsAccount(profile, this.http);
+      await this.assertStoredDestinationMatches(accountId, method);
     } catch (err) {
       if (err instanceof ApiError) throw err;
       throw new ApiError(
@@ -422,7 +433,13 @@ export class PayoutService {
         action: AuditAction.PAYOUT_REQUESTED,
         entityType: 'PayoutRequest',
         entityId: requestRow.id,
-        metadata: { amount, currency: 'NGN' },
+        metadata: {
+          amount,
+          currency: 'NGN',
+          bachsDestinationId: method.bachsDestinationId,
+          bankCode: method.bankCode,
+          accountNumberLast4: method.accountNumberLast4,
+        },
       },
     ]);
 
@@ -447,15 +464,12 @@ export class PayoutService {
     try {
       const payout = unwrapPayout(
         await this.http.createPayout(
-          {
-            destination: method.bachsDestinationId,
-            amount: bankAmount,
-            reference: `payout_${requestRow.id}`.slice(0, 128),
-            metadata: {
-              tippyme_payout_request_id: requestRow.id,
-              tippyme_creator_id: profile.id,
-            },
-          },
+          buildBachsPayoutBody({
+            destinationId: method.bachsDestinationId,
+            bankAmount,
+            payoutRequestId: requestRow.id,
+            creatorId: profile.id,
+          }),
           `payout_${requestRow.id}`.slice(0, 255),
           accountId,
         ),
@@ -678,32 +692,37 @@ export class PayoutService {
     method: CreatorPayoutMethod,
     accountNumber: string,
   ): Promise<BachsPayoutDestinationResponse | null> {
-    let listed: BachsPayoutDestinationResponse[] = [];
     try {
-      listed = await this.http.listPayoutDestinations(accountId, 'NGN');
+      const listed = await this.http.listPayoutDestinations(accountId, 'NGN');
+      return (
+        listed.find((destination) =>
+          payoutDestinationMatchesSavedBank(destination, method, accountNumber),
+        ) ?? null
+      );
     } catch (err) {
       if (!(err instanceof BachsProviderError) || err.kind !== 'FORBIDDEN') {
         throw err;
       }
       return null;
     }
-    return (
-      listed.find((destination) =>
-        this.sameBankDestination(destination, method, accountNumber),
-      ) ?? null
-    );
   }
 
-  private sameBankDestination(
-    destination: BachsPayoutDestinationResponse,
+  private async assertStoredDestinationMatches(
+    accountId: string,
     method: CreatorPayoutMethod,
-    accountNumber: string,
-  ): boolean {
-    const number = (destination.account_number || '').replace(/\s+/g, '');
-    const code = (destination.bank_code || '').trim();
-    if (!destination.id || !number) return false;
-    if (code && code !== method.bankCode) return false;
-    return number === accountNumber || number.endsWith(method.accountNumberLast4);
+  ): Promise<void> {
+    const accountNumber = openSecret(method.accountNumberEncrypted);
+    const destinations = await this.http.listPayoutDestinations(accountId, 'NGN');
+    const stored = destinations.find(
+      (destination) => destination.id === method.bachsDestinationId,
+    );
+    if (!stored || !payoutDestinationMatchesSavedBank(stored, method, accountNumber)) {
+      throw new ApiError(
+        409,
+        'PAYOUT_DESTINATION_MISMATCH',
+        'The bank saved on your dashboard no longer matches the Bachs payout destination. Save the bank again before withdrawing.',
+      );
+    }
   }
 
   private async registerDestination(
@@ -1094,6 +1113,7 @@ export class PayoutService {
       payoutCurrency: method.payoutCurrency,
       status: method.status,
       ready: method.status === PayoutMethodStatus.READY,
+      destinationVersion: method.updatedAt.toISOString(),
     };
   }
 
@@ -1106,6 +1126,49 @@ export class PayoutService {
     }
     return profile;
   }
+}
+
+/** Match only the exact dashboard account, or a masked account with the same bank. */
+export function payoutDestinationMatchesSavedBank(
+  destination: BachsPayoutDestinationResponse,
+  method: Pick<CreatorPayoutMethod, 'bankCode' | 'accountNumberLast4'>,
+  accountNumber: string,
+): boolean {
+  const rawNumber = (destination.account_number || '').trim();
+  const digits = rawNumber.replace(/\D/g, '');
+  const bankCode = (destination.bank_code || '').trim();
+  if (!destination.id || !digits) return false;
+  if (bankCode !== method.bankCode) return false;
+  if (digits === accountNumber) return true;
+
+  const isMasked = /[^\d\s]/.test(rawNumber) && digits === method.accountNumberLast4;
+  return isMasked && bankCode === method.bankCode;
+}
+
+export function payoutDestinationVersionMatches(
+  method: Pick<CreatorPayoutMethod, 'updatedAt'>,
+  expectedVersion: string | undefined,
+): boolean {
+  return Boolean(
+    expectedVersion && expectedVersion === method.updatedAt.toISOString(),
+  );
+}
+
+export function buildBachsPayoutBody(input: {
+  destinationId: string;
+  bankAmount: string;
+  payoutRequestId: string;
+  creatorId: string;
+}): BachsCreatePayoutBody {
+  return {
+    destination: input.destinationId,
+    amount: input.bankAmount,
+    reference: `payout_${input.payoutRequestId}`.slice(0, 128),
+    metadata: {
+      tippyme_payout_request_id: input.payoutRequestId,
+      tippyme_creator_id: input.creatorId,
+    },
+  };
 }
 
 function mongoId(value: string | undefined): string | undefined {

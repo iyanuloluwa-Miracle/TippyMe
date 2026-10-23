@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildConnectedAccountBody, buildPayoutRequirementFields, readPayoutRequirement } from '../server/services/creators/bachs-account.service';
+import { buildConnectedAccountBody, buildPayoutRequirementFields, enforceManualBachsPayoutSchedule, readPayoutRequirement } from '../server/services/creators/bachs-account.service';
+import { buildBachsPayoutBody, payoutDestinationMatchesSavedBank, payoutDestinationVersionMatches } from '../server/services/creators/payout.service';
 import {
   bachsAccountIdFromMetadata,
   isDirectChargeSettled,
@@ -14,6 +15,8 @@ class FakeBachs {
   checkoutBody: Record<string, unknown> | null = null;
   checkoutAccountId: string | undefined;
   verifiedAccountId: string | undefined;
+  balanceSettingsAccountId: string | undefined;
+  balanceSettingsBody: Record<string, unknown> | undefined;
 
   createCheckoutSession(
     body: Record<string, unknown>,
@@ -38,6 +41,12 @@ class FakeBachs {
       amount: '1000.00',
       currency: 'NGN',
     });
+  }
+
+  updateBalanceSettings(accountId: string, body: Record<string, unknown>) {
+    this.balanceSettingsAccountId = accountId;
+    this.balanceSettingsBody = body;
+    return Promise.resolve({});
   }
 }
 
@@ -102,6 +111,93 @@ describe('Bachs API host', () => {
 });
 
 describe('creator settlement helpers', () => {
+  it('forces connected accounts to manual payouts', async () => {
+    const http = new FakeBachs();
+    await enforceManualBachsPayoutSchedule(
+      'acct_creator',
+      http as unknown as BachsHttpClient,
+    );
+    expect(http.balanceSettingsAccountId).toBe('acct_creator');
+    expect(http.balanceSettingsBody).toEqual({
+      payout_schedule: { interval: 'manual' },
+    });
+  });
+
+  it('matches only the dashboard bank destination', () => {
+    const saved = { bankCode: '305', accountNumberLast4: '0826' };
+    expect(
+      payoutDestinationMatchesSavedBank(
+        { id: 'pd_saved', bank_code: '305', account_number: '1234560826' },
+        saved,
+        '1234560826',
+      ),
+    ).toBe(true);
+    expect(
+      payoutDestinationMatchesSavedBank(
+        { id: 'pd_saved', bank_code: '305', account_number: '******0826' },
+        saved,
+        '1234560826',
+      ),
+    ).toBe(true);
+    expect(
+      payoutDestinationMatchesSavedBank(
+        { id: 'pd_default', bank_code: '058', account_number: '******0826' },
+        saved,
+        '1234560826',
+      ),
+    ).toBe(false);
+    expect(
+      payoutDestinationMatchesSavedBank(
+        { id: 'pd_default', account_number: '9876540826' },
+        saved,
+        '1234560826',
+      ),
+    ).toBe(false);
+    expect(
+      payoutDestinationMatchesSavedBank(
+        { id: 'pd_unknown_bank', account_number: '1234560826' },
+        saved,
+        '1234560826',
+      ),
+    ).toBe(false);
+  });
+
+  it('rejects a payout confirmation after the saved bank changes', () => {
+    const updatedAt = new Date('2026-10-23T08:15:00.000Z');
+    expect(
+      payoutDestinationVersionMatches(
+        { updatedAt },
+        '2026-10-23T08:15:00.000Z',
+      ),
+    ).toBe(true);
+    expect(
+      payoutDestinationVersionMatches(
+        { updatedAt },
+        '2026-10-23T08:14:59.000Z',
+      ),
+    ).toBe(false);
+    expect(payoutDestinationVersionMatches({ updatedAt }, undefined)).toBe(false);
+  });
+
+  it('sends the dashboard destination in the final Bachs payout body', () => {
+    expect(
+      buildBachsPayoutBody({
+        destinationId: 'pd_dashboard_bank',
+        bankAmount: '4650.00',
+        payoutRequestId: 'request_1',
+        creatorId: 'creator_1',
+      }),
+    ).toEqual({
+      destination: 'pd_dashboard_bank',
+      amount: '4650.00',
+      reference: 'payout_request_1',
+      metadata: {
+        tippyme_payout_request_id: 'request_1',
+        tippyme_creator_id: 'creator_1',
+      },
+    });
+  });
+
   it('requests collection and payout capabilities for a new connected account', () => {
     const body = buildConnectedAccountBody({
       email: 'ada@example.com',

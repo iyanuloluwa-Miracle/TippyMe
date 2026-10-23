@@ -68,6 +68,9 @@ export async function ensureCreatorBachsAccount(
 
   const stored = fresh.bachsAccountId?.trim() ?? '';
   if (stored && (!http.isConfigured || !stored.startsWith('acct_stub_'))) {
+    if (http.isConfigured) {
+      await enforceManualBachsPayoutSchedule(stored, http);
+    }
     return stored;
   }
 
@@ -110,18 +113,10 @@ export async function ensureCreatorBachsAccount(
     );
   }
 
-  try {
-    await http.updateConnectedAccount(accountId, {
-      balance_currencies: { NGN: true },
-    });
-    await http.updateBalanceSettings(accountId, {
-      payout_schedule: { interval: 'manual' },
-    });
-  } catch (err) {
-    console.warn(
-      `Bachs account setup incomplete account=${accountId}: ${err instanceof Error ? err.message : 'unknown'}`,
-    );
-  }
+  await http.updateConnectedAccount(accountId, {
+    balance_currencies: { NGN: true },
+  });
+  await enforceManualBachsPayoutSchedule(accountId, http);
 
   try {
     await CreatorProfileModel.updateOne(
@@ -139,6 +134,16 @@ export async function ensureCreatorBachsAccount(
   }
 
   return accountId;
+}
+
+/** Prevent Bachs from sending a creator balance to its dashboard default bank. */
+export async function enforceManualBachsPayoutSchedule(
+  accountId: string,
+  http: BachsHttpClient = new BachsHttpClient(),
+): Promise<void> {
+  await http.updateBalanceSettings(accountId, {
+    payout_schedule: { interval: 'manual' },
+  });
 }
 
 function readAccountId(account: BachsConnectedAccountResponse): string {

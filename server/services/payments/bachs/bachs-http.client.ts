@@ -325,7 +325,7 @@ export class BachsHttpClient {
     );
   }
 
-  /** Set the Friday schedule on the connected Bachs balance. */
+  /** Set the payout schedule on the connected Bachs balance. */
   async updateBalanceSettings(
     accountId: string,
     body: BachsBalanceSettingsBody,

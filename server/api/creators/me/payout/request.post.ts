@@ -8,12 +8,21 @@ export default defineApiHandler(async (event) => {
   await assertRateLimit(`payout:request:${user.sub}`, 5, 60_000);
 
   let amount: string | undefined;
+  let destinationVersion: string | undefined;
   try {
-    const body = await readBody<{ amount?: string }>(event);
+    const body = await readBody<{ amount?: string; destinationVersion?: string }>(event);
     amount = typeof body?.amount === 'string' ? body.amount : undefined;
+    destinationVersion =
+      typeof body?.destinationVersion === 'string'
+        ? body.destinationVersion
+        : undefined;
   } catch {
     amount = undefined;
+    destinationVersion = undefined;
   }
 
-  return new PayoutService().requestPayout(user.sub, { amount });
+  return new PayoutService().requestPayout(user.sub, {
+    amount,
+    destinationVersion,
+  });
 });
