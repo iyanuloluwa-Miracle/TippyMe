@@ -3,6 +3,7 @@ import type { LeanDoc } from '../../db/lean';
 import type { PaymentTransaction, Tip } from '../../db/types';
 import { PaymentProvider, PaymentStatus } from '../../db/enums';
 import { consumeRateLimit } from '../../lib/rate-limit';
+import { logError, maskLogReference } from '../../lib/logger';
 import { WebhookFulfilmentService } from '../webhooks/webhook-fulfilment.service';
 
 const PROCESSING_INTERVAL_MS = 5 * 60_000;
@@ -64,7 +65,9 @@ export async function reconcilePendingPayments(): Promise<void> {
       if (!result.ok) await releaseForRetry();
     } catch (err) {
       await releaseForRetry();
-      console.error(`Pending payment reconciliation failed payment=${payment.id}: ${err instanceof Error ? err.message : 'unknown'}`);
+      logError('payment.reconciliation.failed', err, {
+        paymentRef: maskLogReference(payment.id),
+      });
     }
   }
 }

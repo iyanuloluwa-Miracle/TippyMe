@@ -1,6 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { ApiError } from '../../lib/errors';
 import { getServerEnv } from '../../lib/env';
+import { logWarn } from '../../lib/logger';
 
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -192,9 +193,10 @@ export async function exchangeGoogleCode(code: string): Promise<GoogleUserInfo> 
   };
 
   if (!tokenRes.ok || !tokenBody.access_token) {
-    console.warn(
-      `[google-oauth] token exchange failed status=${tokenRes.status} error=${tokenBody.error ?? 'unknown'} desc=${tokenBody.error_description ?? ''} redirect_uri=${redirectUri}`,
-    );
+    logWarn('auth.google.token_exchange.failed', {
+      providerStatusCode: tokenRes.status,
+      providerErrorCode: tokenBody.error,
+    });
     throw new ApiError(
       401,
       'GOOGLE_TOKEN_EXCHANGE_FAILED',
@@ -206,7 +208,9 @@ export async function exchangeGoogleCode(code: string): Promise<GoogleUserInfo> 
     headers: { Authorization: `Bearer ${tokenBody.access_token}` },
   });
   if (!userRes.ok) {
-    console.warn(`[google-oauth] userinfo failed status=${userRes.status}`);
+    logWarn('auth.google.userinfo.failed', {
+      providerStatusCode: userRes.status,
+    });
     throw new ApiError(
       401,
       'GOOGLE_USERINFO_FAILED',

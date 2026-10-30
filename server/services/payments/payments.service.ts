@@ -17,6 +17,7 @@ import type {
   TipStatus as TipStatusT,
 } from '../../db/types';
 import { getServerEnv } from '../../lib/env';
+import { logWarn, maskLogReference } from '../../lib/logger';
 import { decimalToAmountString } from '../tips/tips.types';
 import type {
   HandleWebhookInput,
@@ -145,9 +146,10 @@ export class PaymentsService {
     await useDb();
     const tip = await this.findTipForVerification(params);
     if (!tip) {
-      console.warn(
-        `No tip found for verification ref=${params.providerReference ?? 'none'} tip=${params.tipId ?? 'none'}`,
-      );
+      logWarn('payment.verification.tip_not_found', {
+        providerReference: maskLogReference(params.providerReference),
+        tipRef: maskLogReference(params.tipId),
+      });
       return { updated: false };
     }
 

@@ -136,6 +136,23 @@ AIB-mandated host remains **UNKNOWN** ([aib-stack.md](./aib-stack.md)). Default 
 | Notification failure logging | Resend errors logged without OTP body | ☐ |
 | Never log OTP / API secrets / passwords / card data | Scrubber on structured logger | ☐ |
 
+### Tracing one failed production request
+
+Set `LOG_FORMAT=json` in production. Every wrapped `/api` response includes an
+`X-Request-Id` header; API error JSON includes the same value as `requestId`.
+Search the deployment logs for that exact value to see the API completion
+record, Bachs request status and duration, and payout failure stage as one
+trace.
+
+```bash
+curl -i https://www.tippyme.click/api/ready
+```
+
+For an authenticated failure, copy `requestId` from the browser Network tab's
+response body (or `X-Request-Id` from its response headers), then search the
+production log stream for it. Do not paste session cookies, API keys, bank
+account numbers, or request bodies into log searches or support messages.
+
 ---
 
 ## 9. Functional verification (post-deploy)

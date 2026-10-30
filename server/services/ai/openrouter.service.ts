@@ -1,4 +1,5 @@
 import { getServerEnv } from '../../lib/env';
+import { logError, logWarn } from '../../lib/logger';
 
 export type AiAssistKind = 'bio' | 'thank_you';
 
@@ -132,7 +133,9 @@ export class OpenRouterAiService {
       });
 
       if (!response.ok) {
-        console.warn(`OpenRouter chat failed status=${response.status}`);
+        logWarn('ai.openrouter.request.failed', {
+          providerStatusCode: response.status,
+        });
         return null;
       }
 
@@ -145,9 +148,7 @@ export class OpenRouterAiService {
         (typeof body.content === 'string' ? body.content : null);
       return content?.trim() || null;
     } catch (err) {
-      console.warn(
-        `OpenRouter chat error: ${err instanceof Error ? err.message : 'unknown'}`,
-      );
+      logError('ai.openrouter.request.failed', err);
       return null;
     }
   }

@@ -11,6 +11,7 @@ import {
 } from '../../db/enums';
 import { ResendService } from './resend.service';
 import { getServerEnv } from '../../lib/env';
+import { logError, maskLogReference } from '../../lib/logger';
 import {
   accountExistsEmail,
   accountVerifiedEmail,
@@ -150,17 +151,19 @@ export class TransactionalNotificationsService {
     try {
       return await attempt();
     } catch (firstErr) {
-      console.error(
-        `Resend failed key=${params.idempotencyKey}: ${firstErr instanceof Error ? firstErr.message : 'unknown'}`,
-      );
+      logError('notification.delivery.failed', firstErr, {
+        idempotencyRef: maskLogReference(params.idempotencyKey),
+        notificationType: params.type,
+      });
 
       if (params.retryOnce) {
         try {
           return await attempt();
         } catch (retryErr) {
-          console.error(
-            `Resend retry failed key=${params.idempotencyKey}: ${retryErr instanceof Error ? retryErr.message : 'unknown'}`,
-          );
+          logError('notification.delivery.retry_failed', retryErr, {
+            idempotencyRef: maskLogReference(params.idempotencyKey),
+            notificationType: params.type,
+          });
           const failed = await this.persistFailed({
             existingId: existing?.id,
             to: params.to,

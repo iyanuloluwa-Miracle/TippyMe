@@ -1,6 +1,7 @@
 import { RateLimitModel, isUniqueViolation, useDb } from '../db';
 import { ApiError } from './errors';
 import { getServerEnv } from './env';
+import { logError } from './logger';
 
 type Bucket = { count: number; resetAt: number };
 const memoryBuckets = new Map<string, Bucket>();
@@ -65,7 +66,9 @@ export async function consumeRateLimit(
     if (err && typeof err === 'object' && 'statusCode' in err && (err as { statusCode?: number }).statusCode === 429) {
       throw err;
     }
-    console.error(`Rate limit store unavailable, using local fallback: ${err instanceof Error ? err.message : 'unknown'}`);
+    logError('rate_limit.store.unavailable', err, {
+      fallback: 'process_memory',
+    });
     if ((getServerEnv().NODE_ENV ?? 'development') === 'production') {
       throw new ApiError(
         503,

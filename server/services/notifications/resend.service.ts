@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 import { ApiError } from '../../lib/errors';
 import { getServerEnv } from '../../lib/env';
+import { logError, logInfo, logWarn } from '../../lib/logger';
 
 export interface SendEmailParams {
   to: string;
@@ -45,9 +46,10 @@ export class ResendService {
       throw new Error('RESEND_API_KEY is required in production');
     } else {
       this.client = null;
-      console.warn(
-        'RESEND_API_KEY not set — OTP emails will use DEV_LOG transport',
-      );
+      logWarn('email.provider.not_configured', {
+        provider: 'resend',
+        transport: 'DEV_LOG',
+      });
     }
   }
 
@@ -61,9 +63,7 @@ export class ResendService {
         );
       }
       // Never include OTP or message body in logs.
-      console.info(
-        `DEV_LOG email queued to=${params.to} subject=${params.subject}`,
-      );
+      logInfo('email.dev_transport.queued', { provider: 'resend' });
       return {
         id: `dev_${Date.now()}`,
         provider: 'DEV_LOG',
@@ -96,9 +96,11 @@ export class ResendService {
       );
 
       if (error) {
-        console.error(
-          `Resend error name=${error.name} message=${error.message}`,
-        );
+        logError('email.send.failed', error, {
+          provider: 'resend',
+          providerErrorName: error.name,
+          providerErrorMessage: error.message,
+        });
         throw new ApiError(
           503,
           'SERVICE_UNAVAILABLE',
@@ -108,7 +110,9 @@ export class ResendService {
 
       const id = data?.id;
       if (!id) {
-        console.error('Resend send returned no message id');
+        logError('email.send.missing_message_id', undefined, {
+          provider: 'resend',
+        });
         throw new ApiError(
           503,
           'SERVICE_UNAVAILABLE',
@@ -119,7 +123,7 @@ export class ResendService {
       return { id, provider: 'RESEND' };
     } catch (err) {
       if (err instanceof ApiError) throw err;
-      console.error('Resend send failed');
+      logError('email.send.failed', err, { provider: 'resend' });
       throw new ApiError(
         503,
         'SERVICE_UNAVAILABLE',

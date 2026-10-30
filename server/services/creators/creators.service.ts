@@ -1,4 +1,5 @@
 import Decimal from 'decimal.js';
+import { logWarn, maskLogReference } from '../../lib/logger';
 import {
   AuditLogModel,
   CreatorPayoutMethodModel,
@@ -296,9 +297,10 @@ export class CreatorsService {
         });
       } catch (emailError) {
         // Communication failures must never turn a saved profile into an onboarding error.
-        console.warn(
-          `Creator welcome email failed user=${userId}: ${emailError instanceof Error ? emailError.message : 'unknown'}`,
-        );
+        logWarn('notification.creator_welcome.failed', {
+          error: emailError,
+          userRef: maskLogReference(userId),
+        });
       }
 
       return toCreatorProfileDto(profile);

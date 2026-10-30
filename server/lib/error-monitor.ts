@@ -1,4 +1,5 @@
 import { getServerEnv } from './env';
+import { logError, logWarn, sanitizeLogText } from './logger';
 
 /**
  * Optional Sentry-compatible error report. No-op when ERROR_MONITORING_DSN is empty.
@@ -6,18 +7,19 @@ import { getServerEnv } from './env';
  */
 export function reportServerError(
   err: unknown,
-  context?: { path?: string; method?: string },
+  context?: { path?: string; method?: string; requestId?: string },
 ): void {
   const dsn = getServerEnv().ERROR_MONITORING_DSN?.trim();
   if (!dsn) return;
 
   const parsed = parseSentryDsn(dsn);
   if (!parsed) {
-    console.error('ERROR_MONITORING_DSN is set but is not a Sentry DSN');
+    logWarn('error_monitor.configuration.invalid_dsn');
     return;
   }
 
-  const message = err instanceof Error ? err.message : 'unknown error';
+  const message =
+    err instanceof Error ? sanitizeLogText(err.message, 500) : 'unknown error';
   const eventId = crypto.randomUUID().replace(/-/g, '');
   const payload = {
     event_id: eventId,
@@ -25,8 +27,9 @@ export function reportServerError(
     level: 'error',
     platform: 'node',
     tags: {
-      path: context?.path ?? '',
-      method: context?.method ?? '',
+      path: sanitizeLogText(context?.path ?? '', 500),
+      method: sanitizeLogText(context?.method ?? '', 16),
+      request_id: sanitizeLogText(context?.requestId ?? '', 128),
     },
   };
   const envelope = [
@@ -43,9 +46,7 @@ export function reportServerError(
     },
     body: envelope,
   }).catch((sendErr) => {
-    console.error(
-      `Error monitor delivery failed: ${sendErr instanceof Error ? sendErr.message : 'unknown'}`,
-    );
+    logError('error_monitor.delivery.failed', sendErr);
   });
 }
 

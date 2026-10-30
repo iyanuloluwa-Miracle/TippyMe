@@ -19,6 +19,7 @@ import {
 import type { CreatorProfile, PaymentTransaction, Tip } from '../../db/types';
 import { ApiError } from '../../lib/errors';
 import { getServerEnv } from '../../lib/env';
+import { logError, logWarn, maskLogReference } from '../../lib/logger';
 import { ALLOWED_CURRENCIES } from '../creators/username';
 import {
   BachsProviderError,
@@ -166,9 +167,9 @@ export class TipsService {
       if (isUniqueViolation(err)) {
         const replay = await this.findByInternalReference(internalReference);
         if (replay) return replay;
-        console.error(
-          `Tip create unique violation (not idempotent replay) ref=${internalReference}`,
-        );
+        logWarn('tip.create.conflict', {
+          internalReference: maskLogReference(internalReference),
+        });
         throw new ApiError(
           409,
           'TIP_CONFLICT',
@@ -228,18 +229,23 @@ export class TipsService {
       await this.markCheckoutFailed(tipId, paymentId, err);
       if (err instanceof ApiError) throw err;
       if (err instanceof BachsProviderError) {
-        console.error(
-          `Payment init failed tip=${tipId} kind=${err.kind} http=${err.httpStatus ?? 'n/a'} code=${err.providerErrorCode ?? 'n/a'}`,
-        );
+        logError('payment.initialize.failed', err, {
+          tipRef: maskLogReference(tipId),
+          provider: 'bachs',
+          providerFailureKind: err.kind,
+          providerStatusCode: err.httpStatus,
+          providerErrorCode: err.providerErrorCode,
+        });
         throw new ApiError(
           503,
           'PAYMENT_INIT_FAILED',
           bachsPublicMessage(err.kind),
         );
       }
-      console.error(
-        `Payment init failed tip=${tipId}: ${err instanceof Error ? err.message : 'unknown'}`,
-      );
+      logError('payment.initialize.failed', err, {
+        tipRef: maskLogReference(tipId),
+        provider: 'bachs',
+      });
       throw new ApiError(
         503,
         'PAYMENT_INIT_FAILED',
@@ -358,9 +364,10 @@ export class TipsService {
     err: unknown,
   ) {
     const kind = err instanceof BachsProviderError ? err.kind : 'PROVIDER';
-    console.error(
-      `Marking tip=${tipId} failed after payment init kind=${kind}`,
-    );
+    logWarn('tip.checkout.failed', {
+      tipRef: maskLogReference(tipId),
+      failureKind: kind,
+    });
     try {
       await withTransaction(async (session) => {
         await PaymentTransactionModel.updateOne(
@@ -394,9 +401,10 @@ export class TipsService {
         );
       });
     } catch (markErr) {
-      console.error(
-        `Failed to mark tip failed tip=${tipId}: ${markErr instanceof Error ? markErr.message : 'unknown'}`,
-      );
+      logError('tip.checkout.failure_persist_failed', markErr, {
+        tipRef: maskLogReference(tipId),
+        failureKind: kind,
+      });
     }
   }
 

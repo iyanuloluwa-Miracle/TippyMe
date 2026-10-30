@@ -1,4 +1,5 @@
 import { getServerEnv } from '../../../lib/env';
+import { logError, logWarn } from '../../../lib/logger';
 import { BACHS_CHECKOUT_STATUS } from '../bachs/bachs.constants';
 import { BachsHttpClient } from '../bachs/bachs-http.client';
 import { BachsProviderError } from '../bachs/bachs.errors';
@@ -80,7 +81,9 @@ export class BachsPaymentProvider implements PaymentProviderPort {
     );
 
     if (!session.checkout_id || !session.checkout_url) {
-      console.error('Bachs checkout response missing checkout_id/url');
+      logError('payment.checkout.invalid_response', undefined, {
+        provider: this.name,
+      });
       throw new BachsProviderError(
         'PROVIDER',
         'Incomplete Bachs checkout response',
@@ -112,7 +115,9 @@ export class BachsPaymentProvider implements PaymentProviderPort {
   handleWebhook(input: HandleWebhookInput): Promise<HandleWebhookResult> {
     const secret = getServerEnv().BACHS_WEBHOOK_SECRET?.trim();
     if (!secret) {
-      console.error('BACHS_WEBHOOK_SECRET not configured');
+      logError('webhook.configuration.missing_secret', undefined, {
+        provider: this.name,
+      });
       return Promise.resolve({ acknowledged: false });
     }
 
@@ -129,7 +134,7 @@ export class BachsPaymentProvider implements PaymentProviderPort {
     });
 
     if (!valid) {
-      console.warn('Bachs webhook signature verification failed');
+      logWarn('webhook.signature.invalid', { provider: this.name });
       return Promise.resolve({ acknowledged: false });
     }
 
@@ -141,7 +146,7 @@ export class BachsPaymentProvider implements PaymentProviderPort {
           : input.rawBody.toString('utf8');
       envelope = JSON.parse(raw) as BachsWebhookEnvelope;
     } catch {
-      console.warn('Bachs webhook body is not valid JSON');
+      logWarn('webhook.payload.invalid_json', { provider: this.name });
       return Promise.resolve({ acknowledged: false });
     }
 

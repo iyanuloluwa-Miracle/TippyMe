@@ -1,10 +1,11 @@
-import { defineEventHandler, getQuery, getRouterParam, setHeader, setResponseStatus } from 'h3';
+import { getQuery, getRouterParam, setHeader, setResponseStatus } from 'h3';
+import { defineApiHandler } from '../../lib/define-api';
 
 const cache = new Map<string, { bytes: Buffer; expiresAt: number }>();
 const CACHE_TTL_MS = 60 * 60 * 1000;
 
 /** Same-origin avatar images so profiles do not depend on DiceBear staying reachable. */
-export default defineEventHandler(async (event) => {
+export default defineApiHandler(async (event) => {
   const seed = getRouterParam(event, 'seed') ?? '';
   if (!/^[a-zA-Z0-9_-]{1,64}$/.test(seed)) {
     setResponseStatus(event, 400);

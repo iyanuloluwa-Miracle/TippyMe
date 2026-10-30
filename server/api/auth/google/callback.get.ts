@@ -1,4 +1,5 @@
 import { defineApiHandler } from '../../../lib/define-api';
+import { logWarn } from '../../../lib/logger';
 import { setAuthCookie } from '../../../lib/auth';
 import { ApiError } from '../../../lib/errors';
 import { AuthService } from '../../../services/auth.service';
@@ -90,9 +91,7 @@ export default defineApiHandler(async (event) => {
     );
   } catch (err) {
     const code = errorCodeFor(err);
-    console.warn(
-      `Google OAuth callback failed code=${code}: ${err instanceof Error ? err.message : 'unknown'}`,
-    );
+    logWarn('auth.google.callback.failed', { error: err, errorCode: code });
     return sendRedirect(event, redirectWithError(code), 302);
   }
 });

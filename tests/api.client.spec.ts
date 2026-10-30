@@ -75,6 +75,38 @@ describe('createApiClient', () => {
     }
   });
 
+  it('keeps the production request id on API errors for log tracing', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          statusCode: 502,
+          message: 'The payout provider is temporarily unavailable.',
+          error: 'PAYOUT_DESTINATION_FAILED',
+          requestId: 'req-production-123',
+        }),
+        {
+          status: 502,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Request-Id': 'req-production-123',
+          },
+        },
+      )) as typeof fetch;
+
+    try {
+      const client = createApiClient('http://localhost:3001');
+      await expect(client.getPayoutOverview()).rejects.toMatchObject({
+        name: 'ApiClientError',
+        errorCode: 'PAYOUT_DESTINATION_FAILED',
+        statusCode: 502,
+        requestId: 'req-production-123',
+      } satisfies Partial<ApiClientError>);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it('requests creator dashboard with credentials', async () => {
     const originalFetch = globalThis.fetch;
     let calledUrl = '';

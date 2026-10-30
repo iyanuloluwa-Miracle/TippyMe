@@ -208,7 +208,9 @@ describe('onboarding welcome delivery', () => {
       id: 'creator_1',
     });
     expect(ResendService.prototype.sendEmail).not.toHaveBeenCalled();
-    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('Creator welcome email failed'));
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('notification.creator_welcome.failed'),
+    );
   });
 
   it.each(['SENT', 'DELIVERED'])('skips an already %s welcome notification', async (status) => {

@@ -1,5 +1,11 @@
 import { getServerEnv } from '../../../lib/env';
 import {
+  logError,
+  logInfo,
+  logWarn,
+  maskLogReference,
+} from '../../../lib/logger';
+import {
   BACHS_API_VERSION_PREFIX,
   BACHS_REQUEST_TIMEOUT_MS,
   resolveBachsBaseUrl,
@@ -244,9 +250,11 @@ export class BachsHttpClient {
     const resolved = resolveBachsBaseUrl(env.BACHS_API_KEY, env.BACHS_API_BASE_URL);
     const configured = env.BACHS_API_BASE_URL?.replace(/\/$/, '') ?? '';
     if (configured && configured !== resolved) {
-      console.error(
-        `Bachs base URL ${configured} does not match the API key environment. Using ${resolved}.`,
-      );
+      logWarn('provider.configuration.corrected', {
+        provider: 'bachs',
+        configuredBaseUrl: configured,
+        resolvedBaseUrl: resolved,
+      });
     }
     return resolved;
   }
@@ -479,6 +487,14 @@ export class BachsHttpClient {
       accountId?: string;
     },
   ): Promise<T> {
+    const startedAt = performance.now();
+    const logFields = {
+      provider: 'bachs',
+      providerMethod: method,
+      providerPath: path,
+      providerAccountRef: maskLogReference(opts.accountId),
+    };
+    logInfo('provider.request.started', logFields);
     const url = `${this.baseUrl()}${BACHS_API_VERSION_PREFIX}${path}`;
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey()}`,
@@ -506,9 +522,11 @@ export class BachsHttpClient {
       const isTimeout =
         err instanceof Error &&
         (err.name === 'TimeoutError' || err.name === 'AbortError');
-      console.error(
-        `Bachs ${method} ${path} ${isTimeout ? 'timeout' : 'network_error'}`,
-      );
+      logError('provider.request.failed', err, {
+        ...logFields,
+        providerOutcome: isTimeout ? 'timeout' : 'network_error',
+        durationMs: Math.round((performance.now() - startedAt) * 100) / 100,
+      });
       throw new BachsProviderError(
         isTimeout ? 'TIMEOUT' : 'NETWORK',
         isTimeout ? 'Bachs request timed out' : 'Bachs network error',
@@ -529,9 +547,14 @@ export class BachsHttpClient {
       } catch {
         // ignore parse errors
       }
-      console.error(
-        `Bachs ${method} ${path} status=${response.status} code=${providerErrorCode ?? 'none'} detail=${providerDetail ?? 'none'}`,
-      );
+      logError('provider.request.failed', undefined, {
+        ...logFields,
+        providerOutcome: 'http_error',
+        providerStatusCode: response.status,
+        providerErrorCode,
+        providerDetail,
+        durationMs: Math.round((performance.now() - startedAt) * 100) / 100,
+      });
       throw new BachsProviderError(
         mapHttpStatusToKind(response.status),
         `Bachs API error (${response.status})`,
@@ -543,6 +566,11 @@ export class BachsHttpClient {
       );
     }
 
+    logInfo('provider.request.completed', {
+      ...logFields,
+      providerStatusCode: response.status,
+      durationMs: Math.round((performance.now() - startedAt) * 100) / 100,
+    });
     return (await response.json()) as T;
   }
 }

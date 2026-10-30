@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { getServerEnv } from '../lib/env';
+import { logError, logInfo, logWarn } from '../lib/logger';
 import { CreatorProfileModel, PaymentTransactionModel, RateLimitModel } from './models';
 
 export type DbSession = mongoose.ClientSession;
@@ -41,15 +42,13 @@ async function ensureIndexes(): Promise<void> {
           name !== 'bachsAccountId_partial'
         ) {
           await collection.dropIndex(name);
-          console.info(`[db] dropped legacy index ${name}`);
+          logInfo('database.legacy_index.dropped', { index: name });
         }
       }
 
       await CreatorProfileModel.syncIndexes();
     } catch (err) {
-      console.warn(
-        `[db] creator index repair skipped: ${err instanceof Error ? err.message : 'unknown'}`,
-      );
+      logWarn('database.creator_index.repair_skipped', { error: err });
     }
 
     try {
@@ -78,15 +77,13 @@ async function ensureIndexes(): Promise<void> {
           name !== 'provider_providerReference_partial'
         ) {
           await paymentCollection.dropIndex(name);
-          console.info(`[db] dropped legacy index ${name}`);
+          logInfo('database.legacy_index.dropped', { index: name });
         }
       }
 
       await PaymentTransactionModel.syncIndexes();
     } catch (err) {
-      console.warn(
-        `[db] payment index repair skipped: ${err instanceof Error ? err.message : 'unknown'}`,
-      );
+      logWarn('database.payment_index.repair_skipped', { error: err });
     }
   })();
 
@@ -106,14 +103,14 @@ export async function connectMongo(uri?: string): Promise<typeof mongoose> {
         serverSelectionTimeoutMS: 15_000,
       })
       .then(async (conn) => {
-        console.info('[db] mongodb connected');
+        logInfo('database.connected');
         await ensureIndexes();
         return conn;
       });
     globalForMongo.__tippyMongoReady.catch((err: Error) => {
       globalForMongo.__tippyMongoReady = undefined;
       globalForMongo.__tippyMongoIndexesReady = undefined;
-      console.error(`[db] mongodb connect failed: ${err.message}`);
+      logError('database.connection.failed', err);
     });
   }
   return globalForMongo.__tippyMongoReady;

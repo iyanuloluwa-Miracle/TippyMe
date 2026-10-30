@@ -20,18 +20,21 @@ export class ApiClientError extends Error {
   statusCode: number;
   errorCode: string;
   retryAfterSeconds?: number;
+  requestId?: string;
 
   constructor(
     statusCode: number,
     message: string,
     errorCode: string,
     retryAfterSeconds?: number,
+    requestId?: string,
   ) {
     super(message);
     this.name = 'ApiClientError';
     this.statusCode = statusCode;
     this.errorCode = errorCode;
     this.retryAfterSeconds = retryAfterSeconds;
+    this.requestId = requestId;
   }
 }
 
@@ -65,6 +68,7 @@ export function createApiClient(
       let message = response.statusText;
       let errorCode = 'REQUEST_FAILED';
       let retryAfterSeconds: number | undefined;
+      let requestId = response.headers.get('x-request-id') ?? undefined;
 
       try {
         const body = (await response.json()) as ApiErrorBody;
@@ -79,6 +83,9 @@ export function createApiClient(
         if (typeof body.retryAfterSeconds === 'number') {
           retryAfterSeconds = body.retryAfterSeconds;
         }
+        if (body.requestId) {
+          requestId = body.requestId;
+        }
       } catch {
         // ignore JSON parse errors
       }
@@ -88,6 +95,7 @@ export function createApiClient(
         message,
         errorCode,
         retryAfterSeconds,
+        requestId,
       );
     }
 

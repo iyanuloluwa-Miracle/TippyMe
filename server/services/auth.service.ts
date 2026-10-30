@@ -1,6 +1,7 @@
 import * as bcrypt from 'bcryptjs';
 import { ApiError } from '../lib/errors';
 import { getServerEnv } from '../lib/env';
+import { logError, logWarn, maskLogReference } from '../lib/logger';
 import {
   AuditLogModel,
   CreatorProfileModel,
@@ -141,9 +142,7 @@ export class AuthService {
       try {
         await this.notifications.notifyAccountExists({ email });
       } catch (err) {
-        console.warn(
-          `Account-exists email failed: ${err instanceof Error ? err.message : 'unknown'}`,
-        );
+        logWarn('notification.account_exists.failed', { error: err });
       }
       return {
         ok: true,
@@ -224,7 +223,9 @@ export class AuthService {
         { _id: challengeId },
         { $set: { consumedAt: new Date() } },
       );
-      console.warn(`OTP email delivery failed for challenge=${challengeId}`);
+      logError('notification.otp_delivery.failed', err, {
+        challengeRef: maskLogReference(challengeId),
+      });
       throw err;
     }
 
@@ -405,9 +406,10 @@ export class AuthService {
     void this.notifications
       .notifyAccountVerified({ userId: verified.id, email: verified.email })
       .catch((err) => {
-        console.warn(
-          `Account verified email failed user=${verified.id}: ${err instanceof Error ? err.message : 'unknown'}`,
-        );
+        logWarn('notification.account_verified.failed', {
+          error: err,
+          userRef: maskLogReference(verified.id),
+        });
       });
 
     return {
@@ -515,9 +517,10 @@ export class AuthService {
         auditLogId,
       })
       .catch((err) => {
-        console.warn(
-          `Security login email failed user=${user.id}: ${err instanceof Error ? err.message : 'unknown'}`,
-        );
+        logWarn('notification.security_login.failed', {
+          error: err,
+          userRef: maskLogReference(user.id),
+        });
       });
 
     return {
@@ -651,9 +654,10 @@ export class AuthService {
         auditLogId,
       })
       .catch((err) => {
-        console.warn(
-          `Security login email failed user=${user!.id}: ${err instanceof Error ? err.message : 'unknown'}`,
-        );
+        logWarn('notification.security_login.failed', {
+          error: err,
+          userRef: maskLogReference(user!.id),
+        });
       });
 
     return {

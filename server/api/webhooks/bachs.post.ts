@@ -2,6 +2,7 @@ import { PaymentsService } from '../../services/payments/payments.service';
 import { WebhookFulfilmentService } from '../../services/webhooks/webhook-fulfilment.service';
 import { ApiError } from '../../lib/errors';
 import { defineApiHandler } from '../../lib/define-api';
+import { logWarn, maskLogReference } from '../../lib/logger';
 import { assertRateLimit } from '../../lib/rate-limit';
 
 /**
@@ -70,9 +71,11 @@ export default defineApiHandler(async (event) => {
         payoutRequestId: parsed.payout.payoutRequestId,
       });
       if (!updated) {
-        console.warn(
-          `Bachs ${parsed.eventType} ${parsed.providerEventId} did not match a payout request`,
-        );
+        logWarn('webhook.payout.unmatched', {
+          eventType: parsed.eventType,
+          providerEventRef: maskLogReference(parsed.providerEventId),
+          payoutRef: maskLogReference(parsed.payout.id),
+        });
       }
     }
     setResponseStatus(event, 200);

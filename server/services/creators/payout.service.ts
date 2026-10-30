@@ -34,6 +34,7 @@ import {
   type BachsPayoutDestinationResponse,
   type BachsPayoutResponse,
 } from '../payments/bachs/bachs-http.client';
+import { logError, logWarn, maskLogReference } from '../../lib/logger';
 import { BachsProviderError } from '../payments/bachs/bachs.errors';
 import {
   ensureCreatorBachsAccount,
@@ -143,9 +144,7 @@ export class PayoutService {
           return mapped;
         }
       } catch (err) {
-        console.warn(
-          `Bachs list banks failed: ${err instanceof Error ? err.message : 'unknown'}`,
-        );
+        logWarn('payout.bank_list.failed', { error: err, provider: 'bachs' });
       }
     }
     return [...NGN_BANKS_FALLBACK].sort((a, b) => a.name.localeCompare(b.name));
@@ -240,9 +239,10 @@ export class PayoutService {
       } catch (err) {
         if (err instanceof ApiError) throw err;
         // Resolve failed at the network/API layer; destination create may still succeed.
-        console.warn(
-          `Bachs resolve bank account failed: ${err instanceof Error ? err.message : 'unknown'}`,
-        );
+        logWarn('payout.bank_account.resolve_failed', {
+          error: err,
+          provider: 'bachs',
+        });
       }
     }
 
@@ -553,9 +553,10 @@ export class PayoutService {
           },
         },
       );
-      console.error(
-        `Payout create failed request=${requestRow.id}: ${err instanceof Error ? err.message : 'unknown'}`,
-      );
+      logError('payout.create.failed', err, {
+        payoutRequestRef: maskLogReference(requestRow.id),
+        provider: 'bachs',
+      });
       throw new ApiError(502, 'PAYOUT_FAILED', message);
     }
 
@@ -718,9 +719,11 @@ export class PayoutService {
       }
       return { amount, source: 'BACHS_LIVE', message: null };
     } catch (err) {
-      console.warn(
-        `Bachs balance lookup failed account=${accountId}: ${err instanceof Error ? err.message : 'unknown'}`,
-      );
+      logWarn('payout.balance.lookup_failed', {
+        error: err,
+        provider: 'bachs',
+        providerAccountRef: maskLogReference(accountId),
+      });
       return {
         amount: null,
         source: 'UNAVAILABLE',
@@ -957,9 +960,14 @@ export class PayoutService {
           },
         },
       );
-      console.error(
-        `Payout destination failed method=${method.id}: ${err instanceof Error ? err.message : 'unknown'}`,
-      );
+      logError('payout.destination.registration.failed', err, {
+        payoutMethodRef: maskLogReference(method.id),
+        clientStatusCode: clientStatus,
+        providerErrorCode:
+          err instanceof BachsProviderError ? err.providerErrorCode : undefined,
+        providerErrorKind:
+          err instanceof BachsProviderError ? err.kind : undefined,
+      });
       throw new ApiError(clientStatus, 'PAYOUT_DESTINATION_FAILED', detail);
     }
   }
@@ -1067,9 +1075,11 @@ export class PayoutService {
         amount = amount || remote.amount;
         currency = currency || remote.currency;
       } catch (err) {
-        console.warn(
-          `Bachs payout lookup failed id=${input.bachsPayoutId}: ${err instanceof Error ? err.message : 'unknown'}`,
-        );
+        logWarn('payout.provider_lookup.failed', {
+          error: err,
+          provider: 'bachs',
+          providerPayoutRef: maskLogReference(input.bachsPayoutId),
+        });
       }
     }
 

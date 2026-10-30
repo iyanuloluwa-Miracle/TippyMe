@@ -24,6 +24,7 @@ import type {
   WebhookEvent,
 } from '../../db/types';
 import { TransactionalNotificationsService } from '../notifications/transactional-notifications.service';
+import { logError, logWarn, maskLogReference } from '../../lib/logger';
 import { BachsProviderError } from '../payments/bachs/bachs.errors';
 import type { VerifyPaymentResult } from '../payments/payment-provider.port';
 import {
@@ -105,9 +106,11 @@ export class WebhookFulfilmentService {
     });
 
     if (!tip) {
-      console.warn(
-        `Webhook unknown transaction evt=${providerEventId} chk=${verification.providerReference}`,
-      );
+      logWarn('webhook.payment.unknown_transaction', {
+        eventType,
+        providerEventRef: maskLogReference(providerEventId),
+        checkoutRef: maskLogReference(verification.providerReference),
+      });
       await this.recordIgnoredEvent(providerEventId, eventType, {
         reason: 'unknown_transaction',
         providerReference: verification.providerReference,
@@ -136,9 +139,10 @@ export class WebhookFulfilmentService {
       });
     } catch (err) {
       const kind = err instanceof BachsProviderError ? err.kind : 'PROVIDER';
-      console.error(
-        `Webhook Bachs verify failed tip=${tip.id} kind=${kind}`,
-      );
+      logError('webhook.payment.verification_failed', err, {
+        tipRef: maskLogReference(tip.id),
+        providerFailureKind: kind,
+      });
       return {
         ok: false,
         outcome: 'verify_failed',
@@ -150,9 +154,10 @@ export class WebhookFulfilmentService {
 
     const mismatch = this.validateAgainstTip(tip, verified);
     if (mismatch) {
-      console.error(
-        `Webhook validation mismatch tip=${tip.id} reason=${mismatch}`,
-      );
+      logError('webhook.payment.validation_mismatch', undefined, {
+        tipRef: maskLogReference(tip.id),
+        mismatchReason: mismatch,
+      });
       await this.recordProcessedEvent(providerEventId, eventType, {
         tipId: tip.id,
         reason: 'mismatch',
@@ -511,9 +516,9 @@ export class WebhookFulfilmentService {
       }
     } catch (err) {
       // Never reverse payment success because email failed.
-      console.error(
-        `Failed to notify creator for tip=${tipId}: ${err instanceof Error ? err.message : 'unknown'}`,
-      );
+      logError('notification.tip_received.failed', err, {
+        tipRef: maskLogReference(tipId),
+      });
     }
   }
 
@@ -544,9 +549,10 @@ export class WebhookFulfilmentService {
         });
       }
     } catch (err) {
-      console.error(
-        `Failed to notify creator of reversal tip=${tipId}: ${err instanceof Error ? err.message : 'unknown'}`,
-      );
+      logError('notification.tip_reversal.failed', err, {
+        tipRef: maskLogReference(tipId),
+        reversalStatus: status,
+      });
     }
   }
 }
